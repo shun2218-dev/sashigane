@@ -24,9 +24,13 @@ pnpm install     # prepare が core.hooksPath を .githooks に向ける
 
 ## 手順（人間・AI 共通。速度を理由に飛ばさない）
 
-1. **Issue を立ててから branch を切る。** main への直接 push は禁止
+**ブランチ戦略とリリース手順は @docs/branching.md に従う。**
+`main` はリリース線、`develop` が統合線かつ既定ブランチ。
+両方とも pre-push フックと GitHub の branch protection で保護されている。
+
+1. **Issue を立ててから `develop` から branch を切る。** `main` / `develop` への直接 push は禁止
 2. 実装する
-3. PR を出す
+3. `develop` へ PR を出す
 4. **Strict Lead Engineer として自己レビューし、結果を `gh pr review` で PR に投稿する**
    チャット内だけのレビューはレビューとみなさない
 5. 指摘を修正し、対応をコメントで記録する
@@ -75,6 +79,14 @@ grep が外れていて「生成されない」と**逆の結論**を出しか�
 設定ファイルの意味論の誤りは、動かしてもエラーにならない。誰も気づかない。
 
 **エラーにならない仕組みほど、意図どおり動いていることを能動的に確かめる。**
+
+### 6. 仕様に出てきた語を、決定済みと推測しない
+
+指示に固有の語が出てきても、**それがその領域の決定を意味するとは限らない。**
+着手前に「この領域で決まっていないことは何か」を列挙する。
+
+**判断の経緯を説明するとき、存在しなかった思考を再構成しない。**
+「検討していない」が答えなら、そう答える。後付けの理屈は原因を隠す。
 
 ### 5. 検査は「禁止するもの」ではなく「許可するもの」を列挙する
 
@@ -130,6 +142,7 @@ Storybook のストーリー3状態（**通常 / 空 / エッジケース**）�
 | [docs/roles.md](docs/roles.md) | 既存4本から観測したセマンティック役割 |
 | [docs/verification.md](docs/verification.md) | 生成スケールが実需要を覆えるかの検証 |
 | [docs/agent-failures.md](docs/agent-failures.md) | 失敗とガードレールの由来 |
+| [docs/branching.md](docs/branching.md) | ブランチ戦略・リリース手順・保護の二層構造 |
 | [docs/experiments/](docs/experiments) | 仕様を推測せず動かして確かめた記録 |
 
 ## よく使うコマンド
