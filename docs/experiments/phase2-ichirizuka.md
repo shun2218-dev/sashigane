@@ -117,7 +117,12 @@ ichirizuka の `--faint` は「km」「本」といった単位に使われて�
 **これは「アクセシビリティを守るシステムが、意図的な弱さを許さない」という衝突であり、
 どちらが正しいかは自明ではない。** 現時点では sashigane の側を変えず、事実として記録する。
 
-### 穴4: 中性色の色相を primary と独立に選べない
+### 穴4: 中性色の色相を primary と独立に選べない — **穴ではなかった**
+
+> **2026-08-24 追記。** 測ったところ、この色相差は**知覚できない**（ΔE 0.025）。
+> 決定5-6 の根拠の記述は確かに誤っていたが、決定そのものは正しかった。
+> [neutral-hue.md](./neutral-hue.md) を参照。
+> **数値が大きいことと、それが問題であることは別である。**
 
 決定5-6 により中間色は primary の色相で着色される。
 ichirizuka は teal（192.8°）のアクセントに**青寄りのグレー**（ΔH −21〜−54°）を合わせていた。
@@ -213,7 +218,7 @@ ichirizuka では増加が teal であることに意味があり、**意味色�
 | 1 暗色モードを拒否できない | **トークン層を直した**（決定5-10）。適用は [ichirizuka#35](https://github.com/shun2218-dev/ichirizuka/pull/35) |
 | 2 面の重なり方が逆 | [#29](https://github.com/shun2218-dev/sashigane/issues/29) |
 | 3 意図的に弱い注記 | 記録のみ。設計思想の衝突であり、変えるかどうかは別の判断 |
-| 4 中性色の色相 | [#33](https://github.com/shun2218-dev/sashigane/issues/33) |
+| 4 中性色の色相 | [#33](https://github.com/shun2218-dev/sashigane/issues/33) → **穴ではなかった**（[neutral-hue.md](./neutral-hue.md)） |
 | 5 `font-family` | [#30](https://github.com/shun2218-dev/sashigane/issues/30) |
 | 6 密度の軸 | [#32](https://github.com/shun2218-dev/sashigane/issues/32) |
 | 7 JS から値を読めない | [#31](https://github.com/shun2218-dev/sashigane/issues/31) → **対処した**（決定2-6 の改訂） |
