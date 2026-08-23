@@ -426,23 +426,80 @@ Phase 2 で ichirizuka の既存 `:root` に重ねる。無プレフィックス
 **Tailwind 対応が生成されたアダプタ1枚に閉じ込められること自体が、
 トークン層が Tailwind 非依存であることの証明になる。**
 
-### 未解決: Tailwind v4 の動的 spacing
+### 決定 3-1: Tailwind v4 の動的 spacing を無効化する
 
-v4 の padding ユーティリティは `--spacing` の乗算で動的生成される。
+> 当初「未解決」として Phase 1 に持ち越した論点。
+> **実験（Tailwind v4.3.3）で確認し、決定に格上げした。** 実験記録は
+> [experiments/tailwind-v4-spacing.md](./experiments/tailwind-v4-spacing.md)。
+
+#### 問題
+
+v4 の spacing 系ユーティリティは `--spacing` の乗算で動的生成される。
 
 ```
 p-<number>  →  padding: calc(var(--spacing) * <number>);
 ```
 
-`--spacing: 4px` を定義すると **`p-5`（20px）も `p-7`（28px）も自動的に有効になる。**
-決定1-2 でスケールから除外した値が Tailwind 経由なら書けてしまう。
+`--spacing: 4px` を定義すると、**決定1-2 で除外した `p-5`(20px) `p-7`(28px) が
+自動的に有効になる**ことを実験1で確認した。
 
-対処候補（**どちらも公式ドキュメントに明記がない**）:
-- `--spacing: initial` で動的名前空間を無効化し、個別に定義する
-- Tailwind クラス名も検査する lint ルールを別途持つ
+#### 決定
 
-**Phase 1 で実際に動かして確認する。推測で設計しない。**
-結果は [agent-failures.md](./agent-failures.md) ではなくこのファイルに追記する。
+```css
+@theme inline {
+  --spacing: initial;        /* 動的名前空間を無効化する */
+  --spacing-0: var(--sg-space-0);
+  --spacing-1: var(--sg-space-1);
+  /* … スケールにある段だけを列挙する … */
+}
+```
+
+実験2で `--spacing: initial` により spacing ユーティリティが**一つも生成されなくなる**こと、
+実験3で名前付きの段を定義するとその段だけが生成され `p-5` は生成されないことを確認した。
+
+**スケール外の値は Tailwind から書けなくなる。lint ではなく構造で強制できる。**
+
+`--spacing-*: initial` という書き方も等価に機能する（実験4）。
+`--spacing: initial` の方が「動的乗算を止める」という意図が読み取りやすいため、こちらを採る。
+
+#### 残る穴: 任意値記法
+
+**任意値 `p-[20px]` `gap-[7px]` は依然として生成される。**
+
+```css
+.p-\[20px\] { padding: 20px; }
+```
+
+これは構造では塞げないため lint が必要。ただし**検査対象が任意値記法だけに狭まった**ため、
+ルールは「Tailwind クラスの `[...]` 記法を禁止する」という単純な形で済む。
+スケール外の数値クラスを列挙して弾く必要はない。
+
+### 決定 3-2: アダプタは `@theme inline` を使う
+
+実験5で、`--sg-*` を定義した CSS を `@import` した上で
+`@theme inline` に写像すると、ユーティリティが生成されることを確認した。
+
+```css
+@theme inline { --color-danger: var(--sg-color-bg-danger); }
+→ .bg-danger { background-color: var(--sg-color-bg-danger); }
+```
+
+`inline` の有無で出力が変わる（実験6）。
+
+| | ユーティリティが参照するもの |
+|---|---|
+| `@theme inline` | `var(--sg-color-bg-danger)` — **`--sg-*` を直接参照** |
+| `@theme`（inline なし） | `var(--color-danger)` — Tailwind の変数を経由（2段） |
+
+不透明度修飾子（`bg-danger/15`）は**どちらでも機能する**。
+`color-mix(in oklab, …)` に展開され、status の淡い背景（roles.md で観測した 12〜15% の帯）は
+アダプタ経由でそのまま表現できる。
+
+`inline` を採る理由は、**`--sg-*` を唯一のスイッチ点にするため**である。
+inline なしだと Tailwind 側の `--color-danger` を上書きしても効いてしまい、
+テーマ切り替えの入口が2つになる。
+
+---
 
 ---
 
