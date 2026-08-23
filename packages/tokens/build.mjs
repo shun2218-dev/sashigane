@@ -14,6 +14,7 @@ import {
   hexToOklch,
   toScss,
   toThemeCss,
+  tokenLayers,
   toTokensCss,
   toTypeDefinitions,
 } from './src/index.ts';
@@ -41,6 +42,10 @@ const files = {
   'theme.css': toThemeCss(palette),
   'tokens.scss': toScss(palette),
   'index.d.ts': toTypeDefinitions(palette),
+
+  // 配布物ではなく検査用。scripts/check-token-usage.mjs が
+  // 「参照してよい名前の集合」として読む（原則3、決定2-3）。
+  'tokens.layers.json': `${JSON.stringify(tokenLayers(palette), null, 2)}\n`,
 };
 
 for (const [name, content] of Object.entries(files)) {
