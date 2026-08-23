@@ -8,6 +8,7 @@
  * ただし保証が崩れる入力・編集には警告を返す。警告を握りつぶさないこと。
  */
 import tokens from '../tokens.json' with { type: 'json' };
+import { minPerceptualDistance } from './cvd.ts';
 import {
   contrastRatio,
   hueDistance,
@@ -255,11 +256,46 @@ const solveEndpoint = (
   return darkerIsBetter ? lo : hi;
 };
 
+/**
+ * 識別色の各系列にどの段を割り当てるかを、色覚特性下での見分けやすさが
+ * 最大になるように選ぶ（決定5-8）。
+ *
+ * 5系列を同じ段（＝同じ明度・同じ彩度）で並べると、違いが色相しかない。
+ * 二色覚では色相軸が潰れるため、2型色覚下で最小 ΔE が 0.003 まで落ちる。
+ * 段をずらすと明度で見分けられるようになる。
+ *
+ * 候補は 5! = 120 通り。全部試して最良を採る（約 0.5ms）。
+ * 探索であって恣意ではない。同じ入力からは必ず同じ結果が出る。
+ */
+const bestStepAssignment = (
+  ramps: readonly Ramp[],
+  candidates: readonly number[],
+): number[] => {
+  const permutations = (xs: readonly number[]): number[][] =>
+    xs.length <= 1
+      ? [[...xs]]
+      : xs.flatMap((x, i) =>
+          permutations([...xs.slice(0, i), ...xs.slice(i + 1)]).map((rest) => [x!, ...rest]),
+        );
+  let best: number[] = [...candidates];
+  let bestScore = -1;
+  for (const perm of permutations(candidates)) {
+    const score = minPerceptualDistance(ramps.map((r, i) => r.byStep[perm[i]!]!));
+    if (score > bestScore) {
+      bestScore = score;
+      best = perm;
+    }
+  }
+  return best;
+};
+
 export interface Palette {
   /** 生成のたびに解き直したアンカー段の明度 */
   anchorLightness: number;
   /** 生成のたびに解き直した下端の明度 */
   bottomLightness: number;
+  /** 識別色の系列 i がマークに使う段。色覚特性下の見分けやすさで決まる（決定5-8） */
+  categoricalSteps: { light: number[]; dark: number[] };
   lightnesses: readonly number[];
   primary: Ramp;
   neutral: Ramp;
@@ -334,6 +370,8 @@ export const generatePalette = (primary: Oklch): Palette => {
     });
   }
 
+  const categoricalRamps = categorical.map((h) => buildRamp(h, lightnesses, chroma.shared));
+
   return {
     anchorLightness: anchorL,
     bottomLightness: bottomL,
@@ -343,7 +381,11 @@ export const generatePalette = (primary: Oklch): Palette => {
     status: Object.fromEntries(
       statusNames.map((n) => [n, buildRamp(statusHues[n], lightnesses, soloChroma(statusHues[n]))]),
     ) as Record<StatusName, Ramp>,
-    categorical: categorical.map((h) => buildRamp(h, lightnesses, chroma.shared)),
+    categorical: categoricalRamps,
+    categoricalSteps: {
+      light: bestStepAssignment(categoricalRamps, cfg.categorical.lightSteps),
+      dark: bestStepAssignment(categoricalRamps, cfg.categorical.darkSteps),
+    },
     warnings,
   };
 };

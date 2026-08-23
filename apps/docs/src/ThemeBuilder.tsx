@@ -95,6 +95,7 @@ const Preview = ({ palette, mode }: { palette: Palette; mode: 'light' | 'dark' }
   // 段500 で描いていたときは5系列が沈んで見分けにくかった。
   const textStep = mode === 'light' ? 500 : 400;
   const markStep = mode === 'light' ? 400 : 300;
+  const seriesSteps = mode === 'light' ? palette.categoricalSteps.light : palette.categoricalSteps.dark;
   return (
     <div className="preview" style={{ background: toCss(bg), color: toCss(text) }}>
       <div
@@ -132,7 +133,8 @@ const Preview = ({ palette, mode }: { palette: Palette; mode: 'light' | 'dark' }
         <div className="preview-row">
           {palette.categorical.map((r, i) => (
             <span key={r.hue} className="series">
-              <i style={{ background: toCss(r.byStep[markStep]!) }} />
+              {/* 系列ごとに段が違う。色相だけ変えると二色覚で潰れるため（決定5-8） */}
+              <i style={{ background: toCss(r.byStep[seriesSteps[i]!]!) }} />
               系列{i + 1}
             </span>
           ))}

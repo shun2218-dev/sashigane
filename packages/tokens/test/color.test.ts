@@ -16,6 +16,7 @@ import {
   hueDistance,
   inSrgbGamut,
   maxSafeChroma,
+  minPerceptualDistance,
   oklchToLinearRgb,
   resolveStatusHues,
   statusNames,
@@ -230,8 +231,79 @@ describe('識別色（決定5-5）', () => {
     }
   });
 
+  it('色覚特性のもとでも系列が見分けられる（決定5-8）', () => {
+    // 色相だけ変えた5系列は二色覚で潰れる。実測で 2型色覚下の最小 ΔE が 0.003 だった。
+    // 閾値 0.08 は Okabe-Ito 5色（色覚配慮設計の定番）の実測 0.086 を基準にしている。
+    for (const { H, pal } of palettes) {
+      for (const mode of ['light', 'dark'] as const) {
+        const stepsFor = pal.categoricalSteps[mode];
+        const colors = pal.categorical.map((r, i) => r.byStep[stepsFor[i]!]!);
+        expect(
+          minPerceptualDistance(colors),
+          `primary=${H}° の ${mode}（段 ${stepsFor.join(',')}）`,
+        ).toBeGreaterThanOrEqual(cfg.categorical.minDistance);
+      }
+    }
+  });
+
+  it('系列に割り当てる段が重複しない', () => {
+    for (const { H, pal } of palettes) {
+      for (const mode of ['light', 'dark'] as const) {
+        const stepsFor = pal.categoricalSteps[mode];
+        expect(new Set(stepsFor).size, `primary=${H}° の ${mode}`).toBe(stepsFor.length);
+      }
+    }
+  });
+
+  it('系列に使う段が、面に対して 3:1 を満たす', () => {
+    // マークは文字ではないので 3:1 で足りる（決定5-7）。段をずらしても割ってはいけない
+    for (const { H, pal } of palettes) {
+      for (const [mode, surfaceStep] of [
+        ['light', g.lightSurfaceStep],
+        ['dark', g.darkSurfaceStep],
+      ] as const) {
+        const bg = pal.neutral.byStep[surfaceStep]!;
+        pal.categoricalSteps[mode].forEach((step, i) => {
+          expect(
+            contrastBetween(pal.categorical[i]!.byStep[step]!, bg),
+            `primary=${H}° の ${mode} 系列${i + 1}（段${step}）`,
+          ).toBeGreaterThanOrEqual(3);
+        });
+      }
+    }
+  });
+
   it('系列数は tokens.json のとおり', () => {
     expect(palettes[0]!.pal.categorical).toHaveLength(cfg.categorical.count);
+  });
+});
+
+describe('status は色だけでは判別できない（決定5-9）', () => {
+  /*
+   * これは「良い値」を検査するテストではない。**既知の限界を可視化するためのもの。**
+   *
+   * status 4色は色覚特性下で ΔE が 0.01 を下回り、2型色覚では
+   * danger・warning・success がほぼ同一の色になる。
+   * danger 25° と warning 70° は赤と黄で、色相を離せば意味が壊れる（決定5-4）。
+   *
+   * したがって status は**色以外の手がかり（アイコン・テキスト）を必須**とする。
+   * 色の識別性を上げることは補助にしかならない（WCAG 1.4.1）。
+   *
+   * この値が大きく変わったら、決定5-9 の前提が変わったということなので
+   * docs を更新すること。**通すために期待値を書き換えない。**
+   */
+  it('色覚特性下で status を色だけで判別することはできない', () => {
+    let worst = Number.POSITIVE_INFINITY;
+    for (const { pal } of palettes) {
+      worst = Math.min(
+        worst,
+        minPerceptualDistance(statusNames.map((n) => pal.status[n].byStep[500]!)),
+      );
+    }
+    // 識別色に課している 0.08 には遠く及ばない
+    expect(worst).toBeLessThan(0.02);
+    // 0 ではない（色は補助としては効いている）
+    expect(worst).toBeGreaterThan(0);
   });
 });
 
