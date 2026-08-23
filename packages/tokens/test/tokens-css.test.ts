@@ -35,6 +35,19 @@ describe('tokens.css のテーマ切り替え', () => {
     expect(blockOf('[data-theme="dark"]')!.at).toBeGreaterThan(media);
   });
 
+  it('どのテーマブロックも color-scheme を伴う', () => {
+    // CSS 変数はスクロールバーやフォームコントロールへ届かない。
+    // これが無いと、暗色に切り替えても明色のスクロールバーが暗い面の上に出る（自己レビュー B1）
+    expect(blockOf('[data-theme="light"]')!.body).toContain('color-scheme: light;');
+    expect(blockOf('[data-theme="dark"]')!.body).toContain('color-scheme: dark;');
+
+    const root = css.slice(css.indexOf(':root {'), css.indexOf('\n}'));
+    expect(root).toContain('color-scheme: light;');
+
+    const media = css.slice(css.indexOf('@media (prefers-color-scheme: dark)'));
+    expect(media.slice(0, media.indexOf('\n}'))).toContain('color-scheme: dark;');
+  });
+
   it('固定用のブロックの中身が :root / メディアクエリと一致する', () => {
     const declarations = (body: string) =>
       body
