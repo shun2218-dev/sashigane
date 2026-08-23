@@ -32,7 +32,12 @@
  *   - CSS-in-JS、`style` 属性に直接書いた生値。トークンを経由しないので `--sg-` が現れない
  *   - 消費側が自分で `--sg-*` を**定義**した場合は「表に無い名前」として落ちるが、
  *     `--brand-blue: #3b82f6` のような別名の生値は検出できない
+ *   - `className={…}` の式の中に閉じ括弧を含む文字列がある場合、式として読めないので飛ばす
  *   - 除外したファイル（下記 EXCLUDED）
+ *
+ * 逆に**過剰に検出する**ものが1つある。コメントに書いた `--sg-space-3` も違反として落ちる。
+ * コメントだけを除くには言語ごとのパーサが要り、割に合わない。
+ * 説明でプリミティブ名に触れたい場合は `--sg-space-N` のように書く。
  *
  * ## 陰性対照
  *
@@ -81,22 +86,74 @@ const EXCLUDED = [
 /** ソース中に現れる `--sg-*` の名前 */
 const SG_NAME = /--sg-[a-z0-9-]+/g;
 
-/** class / className の属性値。`class="…"` `className={"…"}` `className={`…`}` を拾う */
-const CLASS_ATTR = /\b(?:class|className)\s*=\s*\{?\s*(["'`])([\s\S]*?)\1/g;
+/** class / className の始まり。値の切り出しは classValues() が続きを読む */
+const CLASS_ATTR_HEAD = /\b(?:class|className)\s*=\s*/g;
+
+/** 文字列リテラル。エスケープを跨ぐ */
+const STRING_LITERAL = /(["'`])((?:\\.|(?!\1)[\s\S])*?)\1/g;
 
 /** SCSS / CSS 側の Tailwind 呼び出し */
 const APPLY = /@apply\s+([^;{}]+)/g;
 
-/** 実行時に埋まる部分。静的には読めないので取り除く（見逃す範囲） */
+/** 実行時に埋まる部分。静的には読めない（見逃す範囲） */
 const INTERPOLATION = /\$\{[^}]*\}/g;
 
 /**
  * class トークンとして許す形。
- * 英数字と、Tailwind が修飾に使う記号だけ。`[` `]` `(` `)` は入っていない。
+ * 英数字と、Tailwind が修飾に使う記号だけ。**許可リストは狭いほど強い**ので、
+ * 使われる根拠のある記号しか入れない。`[` `]` `(` `)` は当然入っていない。
+ *
+ *   @ コンテナ変種   : 変種の区切り   / 不透明度・分数   . 小数   ! important   * 全子要素   - 負値
  */
-const ALLOWED_CLASS_TOKEN = /^[A-Za-z0-9_@:.\/!*+~<>-]+$/;
+const ALLOWED_CLASS_TOKEN = /^[A-Za-z0-9_@:.\/!*-]+$/;
 
 const lineOf = (text, index) => text.slice(0, index).split('\n').length;
+
+/**
+ * class の値を、text 内での位置つきで切り出す。
+ *
+ *   class="…"          属性値そのもの
+ *   className={ … }    **式の中の文字列リテラルを全部拾う**
+ *
+ * 式を丸ごと見るのは `className={clsx('p-4', cond && 'p-[7px]')}` のように
+ * ヘルパー呼び出しの中へリテラルで書かれた場合を捕まえるため。
+ * 引用符が波括弧の直後に来る形だけを見ていたときは、これを見逃していた（自己レビュー B1）。
+ *
+ * 変数を経由した class 名（`const c = 'p-[7px]'` を渡す）は静的に読めないので依然として見逃す。
+ */
+const classValues = (text) => {
+  const out = [];
+  for (const head of text.matchAll(CLASS_ATTR_HEAD)) {
+    const start = head.index + head[0].length;
+    const ch = text[start];
+
+    if (ch === '{') {
+      // 対応する } を探す。テンプレートリテラルの ${ } も釣り合うので同じ数え方で足りる
+      let depth = 0;
+      let end = -1;
+      for (let j = start; j < text.length; j++) {
+        if (text[j] === '{') depth += 1;
+        else if (text[j] === '}') {
+          depth -= 1;
+          if (depth === 0) {
+            end = j;
+            break;
+          }
+        }
+      }
+      // 閉じ括弧が見つからない場合（文字列の中に { がある等）は式として読めない。
+      // 誤検出を出すより見逃す方を選ぶ。範囲は冒頭に申告してある
+      if (end === -1) continue;
+      for (const lit of text.slice(start, end + 1).matchAll(STRING_LITERAL)) {
+        out.push({ raw: lit[2], at: start + lit.index + 1 });
+      }
+    } else if (ch === '"' || ch === "'") {
+      const close = text.indexOf(ch, start + 1);
+      if (close !== -1) out.push({ raw: text.slice(start + 1, close), at: start + 1 });
+    }
+  }
+  return out;
+};
 
 /** 1. プリミティブ参照 / 表に無い名前 */
 const findTokenViolations = (text, semantics, primitives) => {
@@ -117,13 +174,15 @@ const findTokenViolations = (text, semantics, primitives) => {
 const findClassViolations = (text) => {
   const out = [];
   const scan = (raw, at) => {
-    for (const token of raw.replace(INTERPOLATION, ' ').split(/\s+/)) {
-      if (token === '' || ALLOWED_CLASS_TOKEN.test(token)) continue;
-      out.push({ kind: 'arbitrary', line: lineOf(text, at), what: token });
+    // 補間は取り除くが、**長さは保つ**。トークンの位置がずれると行番号がずれる（自己レビュー B2）
+    const readable = raw.replace(INTERPOLATION, (m) => ' '.repeat(m.length));
+    for (const token of readable.matchAll(/\S+/g)) {
+      if (ALLOWED_CLASS_TOKEN.test(token[0])) continue;
+      out.push({ kind: 'arbitrary', line: lineOf(text, at + token.index), what: token[0] });
     }
   };
-  for (const m of text.matchAll(CLASS_ATTR)) scan(m[2], m.index);
-  for (const m of text.matchAll(APPLY)) scan(m[1], m.index);
+  for (const v of classValues(text)) scan(v.raw, v.at);
+  for (const m of text.matchAll(APPLY)) scan(m[1], m.index + m[0].indexOf(m[1]));
   return out;
 };
 
@@ -164,6 +223,11 @@ const FIXTURES = [
   { text: '<div class="bg-(--sg-color-accent)">', expect: 'arbitrary' },
   { text: '.card { @apply gap-[7px]; }', expect: 'arbitrary' },
   { text: 'const c = <b className={"text-[13px]"} />', expect: 'arbitrary' },
+  // 自己レビュー B1: ヘルパー呼び出しの中のリテラル
+  { text: 'const c = <b className={clsx("p-4", on && "p-[7px]")} />', expect: 'arbitrary' },
+  { text: 'const c = <b className={`p-4 ${x} gap-[9px]`} />', expect: 'arbitrary' },
+  // 自己レビュー B2: 複数行にまたがる class リストで行番号がずれない
+  { text: '<div\n  class="p-4\n    gap-[9px]"\n/>', expect: 'arbitrary', line: 3 },
 
   // 通るべきもの
   { text: 'a { color: var(--sg-color-text-muted); }', expect: null },
@@ -176,12 +240,18 @@ const FIXTURES = [
 
 const selfTestFailures = [];
 for (const f of FIXTURES) {
-  const kinds = findAll(f.text, semantics, primitives).map((v) => v.kind);
+  const found = findAll(f.text, semantics, primitives);
+  const kinds = found.map((v) => v.kind);
   const ok = f.expect === null ? kinds.length === 0 : kinds.includes(f.expect);
   if (!ok) {
     selfTestFailures.push(
       `期待 ${f.expect ?? '検出なし'} / 実際 ${kinds.length ? kinds.join(',') : '検出なし'}: ${f.text}`,
     );
+    continue;
+  }
+  // 行番号を指定したフィクスチャは、位置まで合っていることを見る
+  if (f.line !== undefined && found[0]?.line !== f.line) {
+    selfTestFailures.push(`期待 ${f.line} 行目 / 実際 ${found[0]?.line} 行目: ${f.text}`);
   }
 }
 
@@ -203,6 +273,8 @@ const files = execSync('git ls-files', { encoding: 'utf8' })
 
 const violations = [];
 for (const file of files) {
+  // 追跡されているが作業ツリーには無い（削除の途中など）。検査失敗ではなく飛ばす
+  if (!existsSync(file)) continue;
   for (const v of findAll(readFileSync(file, 'utf8'), semantics, primitives)) {
     violations.push({ file, ...v });
   }

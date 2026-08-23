@@ -50,5 +50,5 @@ const files = {
 
 for (const [name, content] of Object.entries(files)) {
   writeFileSync(join(dist, name), content, 'utf8');
-  console.log(`  ${name.padEnd(14)} ${content.split('\n').length} 行`);
+  console.log(`  ${name.padEnd(18)} ${content.split('\n').length} 行`);
 }
