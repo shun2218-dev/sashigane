@@ -20,6 +20,7 @@ import {
   resolveStatusHues,
   statusNames,
   steps,
+  verifyPalette,
   type Palette,
 } from '../src/index.ts';
 
@@ -202,8 +203,46 @@ describe('識別色（決定5-5）', () => {
     }
   });
 
+  it('識別色どうしも互いに離れている', () => {
+    // status との距離だけ検査していて、識別色どうしは偶然離れていただけだった。
+    // 禁止帯を避ける処理で2色が同じ縁に寄せられれば、系列が見分けられなくなる。
+    for (const { H, pal } of palettes) {
+      const hues = pal.categorical.map((r) => r.hue);
+      for (let i = 0; i < hues.length; i++) {
+        for (let j = i + 1; j < hues.length; j++) {
+          expect(
+            hueDistance(hues[i]!, hues[j]!),
+            `primary=${H}° の識別色 ${hues[i]!.toFixed(0)}° と ${hues[j]!.toFixed(0)}°`,
+          ).toBeGreaterThanOrEqual(cfg.categorical.avoidRadius);
+        }
+      }
+    }
+  });
+
   it('系列数は tokens.json のとおり', () => {
     expect(palettes[0]!.pal.categorical).toHaveLength(cfg.categorical.count);
+  });
+});
+
+describe('編集後の検査（決定5-1）', () => {
+  it('生成直後のパレットは警告を出さない', () => {
+    for (const { H, pal } of palettes) {
+      expect(verifyPalette(pal), `primary=${H}°`).toHaveLength(0);
+    }
+  });
+
+  it('段を1つ明るく書き換えると警告が出る', () => {
+    // 人間が編集したときに気づけることの確認。出ないなら検査が機能していない
+    const pal = generatePalette({ L: 0.6, C: 0.1, H: 200 });
+    const broken: Palette = {
+      ...pal,
+      primary: {
+        ...pal.primary,
+        byStep: { ...pal.primary.byStep, 500: { ...pal.primary.byStep[500]!, L: 0.85 } },
+      },
+    };
+    const warnings = verifyPalette(broken);
+    expect(warnings.some((w) => w.code === 'contrast-below-target')).toBe(true);
   });
 });
 

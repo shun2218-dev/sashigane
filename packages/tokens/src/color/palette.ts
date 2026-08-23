@@ -53,13 +53,6 @@ export const lightnessesFor = (anchorL: number, bottom: number): number[] => {
   );
 };
 
-/** tokens.json の既定アンカーによる段。生成時は palette ごとに解き直す */
-export const lightnessForStep = (step: number): number => {
-  const i = cfg.steps.indexOf(step as Step);
-  if (i < 0) throw new Error(`未定義の段です: ${step}`);
-  return lightnessesFor(cfg.lightness.anchorInitial, cfg.lightness.bottomInitial)[i]!;
-};
-
 /**
  * 与えた色相すべてが sRGB に収まる最大の彩度を二分探索で求める。
  *
@@ -336,6 +329,46 @@ export const generatePalette = (primary: Oklch): Palette => {
     categorical: categorical.map((h) => buildRamp(h, lightnesses, categoricalChroma)),
     warnings,
   };
+};
+
+/**
+ * パレットがコントラスト保証を満たしているかを検査する。
+ *
+ * 生成直後は必ず満たすが、**人間が編集したあとは満たすとは限らない。**
+ * テーマビルダーはユーザーが値をいじるたびにこれを呼び、警告を出す。
+ * 生成物は提案であって強制ではないが、保証が崩れたことは知らせる必要がある（決定5-1）。
+ */
+export const verifyPalette = (palette: Palette): Warning[] => {
+  const warnings: Warning[] = [];
+  const ramps: [string, Ramp][] = [
+    ['primary', palette.primary],
+    ...statusNames.map((n) => [n, palette.status[n]] as [string, Ramp]),
+    ...palette.categorical.map((r, i) => [`categorical-${i + 1}`, r] as [string, Ramp]),
+  ];
+  for (const [side, surfaceStep, reqs] of [
+    ['明色', cfg.guarantees.lightSurfaceStep, cfg.guarantees.light],
+    ['暗色', cfg.guarantees.darkSurfaceStep, cfg.guarantees.dark],
+  ] as const) {
+    const surface = palette.neutral.byStep[surfaceStep];
+    if (!surface) continue;
+    for (const req of reqs) {
+      for (const [name, ramp] of ramps) {
+        const fg = ramp.byStep[req.step];
+        if (!fg) continue;
+        const ratio = contrastBetween(fg, surface);
+        if (ratio < req.min) {
+          warnings.push({
+            code: 'contrast-below-target',
+            message:
+              `${name} の段 ${req.step} が${side}の面に対して ${ratio.toFixed(2)}:1 しかありません` +
+              `（必要: ${req.min}:1）。この組み合わせは読めない可能性があります。`,
+            detail: { ramp: name, step: req.step, surface: surfaceStep, ratio, required: req.min },
+          });
+        }
+      }
+    }
+  }
+  return warnings;
 };
 
 /** 前景と背景のコントラスト比。テーマビルダーの警告と CI の両方で使う */
