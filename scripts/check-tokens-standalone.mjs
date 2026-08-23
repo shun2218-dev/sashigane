@@ -9,8 +9,10 @@
  * 捕まえられるのは以下。
  *   - 外部への依存（@import、@apply、Tailwind 固有の記法）
  *   - 未定義の変数を参照している var()
- *   - プリミティブがセマンティックより後に定義されていて解決順が壊れている、等はの対象外
- *     （CSS 変数の解決は宣言順に依存しないため、そもそも問題にならない）
+ *   - セマンティックが1件も無い（出力が空）
+ *
+ * 実ブラウザでの解決は apps/docs の /standalone.html で目視する。
+ * 静的検査だけでは「解決する」を証明できない。
  */
 import { execSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';

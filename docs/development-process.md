@@ -60,6 +60,7 @@ pnpm check:no-build-output    # 生成物がコミットされていないこと
 
 pnpm build:tokens             # dist/ に4形式を出力する（生成物はコミットしない）
 pnpm check:tokens-standalone  # tokens.css が単体で成立すること（原則4）
+pnpm check:scss               # tokens.scss が SCSS としてコンパイルできること
 pnpm check:tailwind-adapter   # アダプタが期待どおりのユーティリティを出すこと
 ```
 

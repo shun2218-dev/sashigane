@@ -4,6 +4,8 @@
  * pylabo が SCSS なので必要になる。CSS 変数を参照する形にしており、
  * **テーマの切り替えは実行時に効く。** SCSS のコンパイル時に値を焼き込むと
  * 暗色モードが成立しなくなる。
+ *
+ * **出すのはセマンティックだけ。** プリミティブは参照禁止なので SCSS 変数にもしない（原則3）。
  */
 import type { Palette } from '../color/palette.ts';
 import { colorSemanticVars } from './color-vars.ts';

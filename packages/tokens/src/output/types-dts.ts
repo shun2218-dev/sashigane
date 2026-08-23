@@ -4,6 +4,11 @@
  * **セマンティックの名前だけを出す。** プリミティブを型に出すと
  * 補完に現れてしまい、原則3（コンポーネントはセマンティックしか参照できない）が
  * 型の側から崩れる。
+ *
+ * **型だけを出し、実体のある値は宣言しない。**
+ * 一度 `export declare const semanticTokens` を出していたが、実装がどこにも無く、
+ * 利用側が import すると型は通って実行時に壊れる状態だった。
+ * 型定義が嘘をつくのは最悪の形なので、実体が要るときに実装ごと足す。
  */
 import type { Palette } from '../color/palette.ts';
 import { colorSemanticVars } from './color-vars.ts';
@@ -29,8 +34,6 @@ export const toTypeDefinitions = (palette: Palette): string => {
     'export type SemanticToken =',
     ...names.map((n) => `  | '${n}'`),
     '  ;',
-    '',
-    'export declare const semanticTokens: readonly SemanticToken[];',
     '',
   ].join('\n');
 };

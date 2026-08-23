@@ -64,6 +64,10 @@ jobs:
       - name: tokens.css の単体成立性
         run: pnpm check:tokens-standalone
 
+      # 生成した tokens.scss が SCSS としてコンパイルできること
+      - name: tokens.scss のコンパイル
+        run: pnpm check:scss
+
       # 生成した Tailwind アダプタが期待どおりのユーティリティを出すこと
       - name: Tailwind アダプタ
         run: pnpm check:tailwind-adapter
