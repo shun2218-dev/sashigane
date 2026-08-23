@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "prepare:tokens": "pnpm --filter @sashigane/tokens build && cp ../../packages/tokens/dist/tokens.css public/tokens.css",
+    "dev": "pnpm prepare:tokens && vite",
+    "build": "pnpm prepare:tokens && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -9,7 +9,8 @@
     "./tokens.json": "./src/tokens.json"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "node build.mjs"
   },
   "dependencies": {}
 }

@@ -5,7 +5,7 @@ import {
   statusNames,
   steps,
   toCss,
-  toCssVariables,
+  toTokensCss,
   toHex,
   type Palette,
   type Ramp,
@@ -147,7 +147,7 @@ const Preview = ({ palette, mode }: { palette: Palette; mode: 'light' | 'dark' }
 export const ThemeBuilder = () => {
   const [hex, setHex] = useState('#3b82f6');
   const palette = useMemo(() => generatePalette(hexToOklch(hex)), [hex]);
-  const css = useMemo(() => toCssVariables(palette), [palette]);
+  const css = useMemo(() => toTokensCss(palette), [palette]);
   const [copied, setCopied] = useState(false);
 
   return (

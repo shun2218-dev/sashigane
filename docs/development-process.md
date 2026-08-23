@@ -57,7 +57,14 @@ pnpm typecheck
 pnpm check:tokens-isolation   # packages/tokens が単体で成立していること（原則4）
 pnpm check:docs-scales        # decisions.md の数値表が生成器と一致すること
 pnpm check:no-build-output    # 生成物がコミットされていないこと（原則1）
+
+pnpm build:tokens             # dist/ に4形式を出力する（生成物はコミットしない）
+pnpm check:tokens-standalone  # tokens.css が単体で成立すること（原則4）
+pnpm check:tailwind-adapter   # アダプタが期待どおりのユーティリティを出すこと
 ```
+
+`check:tokens-standalone` と `check:tailwind-adapter` は `dist/` を読むので、
+先に `pnpm build:tokens` が要る。CI はその順で走らせている。
 
 CI はこれら全部と、`main` への PR が `develop` からのみであることを検査する。
 
