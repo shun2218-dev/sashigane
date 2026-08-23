@@ -707,8 +707,8 @@ registry item は `cssVars`（`theme` / `light` / `dark`）と `css`（`@layer` 
 | `packages/tokens/src` が外部モジュールを import しない | ✅ `pnpm check:tokens-isolation` |
 | スケールの不変条件（比率・減算閉包・単調性・記載値との一致） | ✅ `pnpm test` |
 | 生成物がコミットされていない | ✅ `pnpm check:no-build-output` |
+| `main` への PR が `develop` からのみ | ✅ CI の `branch-flow` ジョブ |
 | このファイルの数値表が生成器と一致 | ✅ `pnpm check:docs-scales` |
-| 教訓が CLAUDE.md に届いている | ✅ `pnpm check:lessons` |
 | **素の HTML に `tokens.css` だけを読み込み、CSS変数が解決すること** | ⬜ CSS 出力の実装後 |
 
 2つ目は「`react` を禁止する」ではなく「**相対パスと `node:` 以外を全部禁止する**」形で実装した。

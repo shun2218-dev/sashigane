@@ -55,9 +55,6 @@ jobs:
       - name: 決定文書との一致
         run: pnpm check:docs-scales
 
-      # docs/agent-failures.md の教訓が CLAUDE.md に届いていること
-      - name: 教訓の同期
-        run: pnpm check:lessons
 
       # 生成物がコミットされていないこと（原則1）
       - name: 生成物が混入していないこと

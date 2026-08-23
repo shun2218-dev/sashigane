@@ -8,14 +8,24 @@
  *
  * 教訓3「機械的に検査できるものは、文書ではなく検査にする」の適用。
  *
- * 検査できる範囲: decisions.md の表に書かれた数値。
+ * 検査できる範囲: decisions.md の表の数値と、README の概要表の数値。
  * 検査できない範囲: 表以外の本文に埋め込まれた数値、および表の「意味」。
  *   規則の説明文が値と食い違っていても、この検査は通る（教訓5）。
  */
 import { readFileSync } from 'node:fs';
-import { fontSize, leadingFamilies, lineHeight, root } from '../packages/tokens/src/index.ts';
+import {
+  durationLoop,
+  durationTransition,
+  fontSize,
+  leadingFamilies,
+  lineHeight,
+  radius,
+  root,
+  spacing,
+} from '../packages/tokens/src/index.ts';
 
 const doc = readFileSync('docs/decisions.md', 'utf8');
+const readme = readFileSync('README.md', 'utf8');
 const errors = [];
 
 /**
@@ -66,6 +76,30 @@ if (lhRows.length !== fontSize.length) {
   }
 }
 
+/* ---------- README の概要表 ---------- */
+/*
+ * README にも値を書いている（利用者が最初に見る場所なので、
+ * リンクだけにせず実際の値を出す判断をした）。
+ * decisions.md だけを検査していると README が黙って古くなるため、ここも見る。
+ */
+const readmeExpectations = [
+  ['spacing', spacing.join(', ')],
+  ['radius', radius.join(', ')],
+  ['font-size の下端', fontSize[0].toFixed(2)],
+  ['font-size の上端', fontSize.at(-1).toFixed(2)],
+  ['font-size の段数', `（${fontSize.length}段）`],
+  ['duration 遷移の下端', String(Math.round(durationTransition[0]))],
+  ['duration 遷移の上端', String(Math.round(durationTransition.at(-1)))],
+  ['duration ループの下端', String(Math.round(durationLoop[0]))],
+  ['duration ループの上端', String(Math.round(durationLoop.at(-1)))],
+];
+
+for (const [label, text] of readmeExpectations) {
+  if (!readme.includes(text)) {
+    errors.push(`README.md に ${label} の記載が見つかりません: 「${text}」`);
+  }
+}
+
 /* ---------- 結果 ---------- */
 if (errors.length) {
   console.error('docs/decisions.md の数値表が生成器の出力と一致しません。\n');
@@ -79,3 +113,4 @@ if (errors.length) {
 
 console.log(`✓ font-size 表 ${fsRows.length} 行が生成器と一致`);
 console.log(`✓ line-height 表 ${lhRows.length} 行 × ${Object.keys(leadingFamilies).length} 系統が生成器と一致`);
+console.log(`✓ README の概要表 ${readmeExpectations.length} 項目が生成器と一致`);
