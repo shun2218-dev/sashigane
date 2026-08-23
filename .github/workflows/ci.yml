@@ -38,12 +38,7 @@ jobs:
 
       # 生成物がコミットされていないこと（原則1）
       - name: 生成物が混入していないこと
-        run: |
-          if git ls-files | grep -E '^(packages/[^/]+/dist/|apps/[^/]+/public/r/)'; then
-            echo "生成物がコミットされています。原則1 に反します。" >&2
-            exit 1
-          fi
-          echo "✓ 生成物は含まれていない"
+        run: node scripts/check-no-build-output.mjs
 
   # pnpm verify:coverage は観測対象4本のローカル clone を前提とするため CI では動かせない。
   # スケールを変更したら手元で実行し、docs/verification.md を更新すること。

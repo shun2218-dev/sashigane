@@ -14,7 +14,8 @@
     "check:lessons": "node scripts/check-lessons-sync.mjs",
     "test": "vitest run",
     "typecheck": "tsc -b --pretty false packages/tokens",
-    "check:tokens-isolation": "node scripts/check-tokens-isolation.mjs"
+    "check:tokens-isolation": "node scripts/check-tokens-isolation.mjs",
+    "check:no-build-output": "node scripts/check-no-build-output.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.2",
