@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+*.log
+
+# 生成物はコミットしない（原則1）
+packages/*/dist/
+apps/*/public/r/
+
+# ビルド成果物
+.next/
+storybook-static/

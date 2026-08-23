@@ -1,0 +1,26 @@
+#!/bin/sh
+# main への直接 push を機械的に防ぐ。
+# 理由: 開発プロセス上、変更は必ず Issue → branch → PR を通す。
+# 人間・AIエージェントを問わず、速度を理由にこの手順を飛ばさないための強制。
+#
+# 意図的に迂回する必要がある場合のみ:
+#   SASHIGANE_ALLOW_MAIN_PUSH=1 git push
+# 迂回した場合は docs/agent-failures.md に理由を記録すること。
+
+protected="main"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    "refs/heads/$protected")
+      if [ "$SASHIGANE_ALLOW_MAIN_PUSH" = "1" ]; then
+        echo "pre-push: SASHIGANE_ALLOW_MAIN_PUSH=1 のため $protected への push を許可します" >&2
+        exit 0
+      fi
+      echo "pre-push: $protected への直接 push は禁止されています。" >&2
+      echo "          branch を切って PR を出してください。" >&2
+      exit 1
+      ;;
+  esac
+done
+
+exit 0
