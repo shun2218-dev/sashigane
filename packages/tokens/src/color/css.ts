@@ -27,7 +27,11 @@ const primitives = (p: Palette): string[] => [
  * セマンティック。明色モードと暗色モードで**参照する段を変えるだけ**（決定5-2）。
  * 色を反転しているのではない。
  */
-const semanticFor = (mode: 'light' | 'dark', seriesCount: number): string[] => {
+const semanticFor = (
+  mode: 'light' | 'dark',
+  /** 系列 i が使う段。色覚特性下で見分けられるように色相ごとに変える（決定5-8） */
+  seriesSteps: readonly number[],
+): string[] => {
   const surface = mode === 'light' ? [50, 100, 200] : [950, 900, 800];
   const text = mode === 'light' ? [900, 600, 500] : [100, 300, 400];
   const border = mode === 'light' ? [200, 300] : [800, 700];
@@ -51,15 +55,13 @@ const semanticFor = (mode: 'light' | 'dark', seriesCount: number): string[] => {
       `  --sg-color-${n}: var(--sg-${n}-${textStep});`,
       `  --sg-color-${n}-mark: var(--sg-${n}-${markStep});`,
     ]),
-    ...Array.from(
-      { length: seriesCount },
-      (_, i) => `  --sg-color-chart-${i + 1}: var(--sg-series-${i + 1}-${markStep});`,
+    ...seriesSteps.map(
+      (step, i) => `  --sg-color-chart-${i + 1}: var(--sg-series-${i + 1}-${step});`,
     ),
   ];
 };
 
 export const toCssVariables = (palette: Palette): string => {
-  const series = palette.categorical.length;
   return [
     '/* sashigane — generatePalette() の出力。手で編集した場合は verifyPalette() で検査すること */',
     ':root {',
@@ -67,17 +69,17 @@ export const toCssVariables = (palette: Palette): string => {
     ...primitives(palette),
     '',
     '  /* セマンティック（明色モード） */',
-    ...semanticFor('light', series),
+    ...semanticFor('light', palette.categoricalSteps.light),
     '}',
     '',
     '@media (prefers-color-scheme: dark) {',
     '  :root {',
-    ...semanticFor('dark', series).map((l) => `  ${l}`),
+    ...semanticFor('dark', palette.categoricalSteps.dark).map((l) => `  ${l}`),
     '  }',
     '}',
     '',
     '[data-theme="dark"] {',
-    ...semanticFor('dark', series),
+    ...semanticFor('dark', palette.categoricalSteps.dark),
     '}',
   ].join('\n');
 };
