@@ -14,7 +14,7 @@
       "Bash(gh pr diff:*)",
       "Bash(pnpm scales)",
       "Bash(pnpm verify:coverage)",
-      "Bash(node scripts/metrics/:*)"
+      "Bash(node scripts/metrics/*)"
     ]
   }
 }
