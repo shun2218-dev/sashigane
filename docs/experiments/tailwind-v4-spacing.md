@@ -218,6 +218,64 @@ inline なしだと、利用側が Tailwind 側の `--color-danger` を上書き
 
 ---
 
+## 追加実験（自己レビュー中に実施）
+
+### 7. リセットを書かないと素の Tailwind の値が残るか
+
+アダプタの写像だけを書き、名前空間のリセットを書かない場合:
+
+```
+生成: .bg-red-500 .rounded-2xl .shadow-lg .leading-tight .text-body
+```
+
+**残る。** `bg-red-500` が書けてしまう時点で「トークンが唯一の正」は成立しない。
+→ アダプタは所有する名前空間をすべて `initial` でリセットする必要がある（決定3-3）。
+
+### 8. サイズと行高のペアを構造的に強制できるか
+
+```css
+@theme inline {
+  --text-body: var(--sg-font-size-3);
+  --text-body--line-height: var(--sg-line-height-3);
+}
+```
+```css
+.text-body {
+  font-size: var(--sg-font-size-3);
+  line-height: var(--tw-leading, var(--sg-line-height-3));
+}
+```
+
+ペアで出力されるが `var(--tw-leading, …)` はフォールバック構造なので、
+このままでは `leading-*` で上書きできる。
+
+| リセット | 生成されるユーティリティ |
+|---|---|
+| なし | `.text-body .leading-tight .leading-7` |
+| `--leading-*: initial` のみ | `.text-body .leading-7` ← 動的生成が残る |
+| `--leading-*` + `--spacing: initial` | `.text-body` ← **上書き手段が消滅** |
+
+`leading-tight` は名前付き、`leading-7` は `--spacing` 由来の動的生成なので、両方を止める必要がある。
+
+**陰性対照:** `--leading-*: initial` を外すと `leading-tight` が復活することを確認した。
+（教訓2「ゼロ件の結果には、該当ケースを1件作って検査の発火を確かめる」の実践）
+
+→ **決定1-4「行高のオーバーライド不可」が、lint ではなく構造として Tailwind 上でも成立する。**
+
+### 9. 素の Tailwind v4.3.3 の既定値（写像先の確認）
+
+```
+radius: xs=2 sm=4 md=6 lg=8 xl=12 2xl=16 3xl=24 4xl=32   (px)
+text:   xs=12 sm=14 base=16 lg=18 xl=20 2xl=24 3xl=30     (px)
+```
+
+我々の radius `0/4/8/12/16` は `none/sm/lg/xl/2xl` と**値まで一致する。**
+我々の font-size は `base`(16) と `xl`(20) しか一致しない。
+
+→ 名前空間ごとに写像方針を変える必要がある（決定3-3）。
+
+---
+
 ## 結論
 
 | 問い | 答え |
@@ -229,6 +287,8 @@ inline なしだと、利用側が Tailwind 側の `--color-danger` を上書き
 | アダプタ方式は成立するか | **する。** `--sg-*` を `@theme inline` に写像できる |
 | `--sg-*` の差し替えに追随するか | **する。** ユーティリティが `var(--sg-*)` を直接参照する |
 | 抜け道は残るか | **残る。** 任意値記法 `p-[20px]` は生成される → lint で塞ぐ |
+| リセットは要るか | **要る。** 書かないと素の Tailwind の値が残る |
+| 行高のペアを強制できるか | **できる。** `--leading-*` と `--spacing` の両方を initial にする |
 
 決定は [decisions.md 決定3-1・3-2](../decisions.md) に反映した。
 
