@@ -149,24 +149,35 @@ describe('status の色相（決定5-4）', () => {
   });
 });
 
-describe('彩度はセット単位で揃える（決定5-3 改訂）', () => {
-  it('同じセット内では段ごとに彩度が一致する', () => {
+describe('彩度の決め方（決定5-3 再改訂）', () => {
+  it('識別色はセット内で段ごとに彩度が一致する', () => {
+    // 系列は互いに対等であるべきで、特定の系列だけ強く見える理由がない
     for (const { H, pal } of palettes) {
       for (const step of steps) {
-        const statusC = statusNames.map((n) => pal.status[n].byStep[step]!.C);
-        expect(new Set(statusC.map((c) => c.toFixed(9))).size, `primary=${H}°`).toBe(1);
         const catC = pal.categorical.map((r) => r.byStep[step]!.C);
         expect(new Set(catC.map((c) => c.toFixed(9))).size, `primary=${H}°`).toBe(1);
       }
     }
   });
 
-  it('primary は単独なので、セット共通より彩度を高く取れる', () => {
-    // 揃える相手がいないことの利益。全ランプ共通にすると #e879f9 が #875a8d になる
-    const pal = generatePalette(hexToOklch('#e879f9'));
-    const primaryC = pal.primary.byStep[500]!.C;
-    const statusC = pal.status.danger.byStep[500]!.C;
-    expect(primaryC).toBeGreaterThan(statusC);
+  it('status は色相ごとに彩度が異なる', () => {
+    // セット共通にしていたとき、共通値を引き下げるのは warning（黄系）だけで、
+    // 実際に損をするのは danger だけだった。#a84b53 は危険色として弱い
+    for (const { H, pal } of palettes) {
+      const cs = statusNames.map((n) => pal.status[n].byStep[500]!.C.toFixed(6));
+      expect(new Set(cs).size, `primary=${H}°`).toBeGreaterThan(1);
+    }
+  });
+
+  it('danger は warning より彩度が高く取れる', () => {
+    // 赤はこの明度で高い彩度を保てるが、黄は保てない。
+    // セット共通だと赤が黄に合わせて削られていた
+    for (const { H, pal } of palettes) {
+      expect(
+        pal.status.danger.byStep[500]!.C,
+        `primary=${H}°`,
+      ).toBeGreaterThan(pal.status.warning.byStep[500]!.C);
+    }
   });
 
   it('中間色は全定義色相の共通彩度の neutralRatio 倍', () => {
