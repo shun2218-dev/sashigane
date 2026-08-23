@@ -278,6 +278,57 @@ describe('識別色（決定5-5）', () => {
   });
 });
 
+describe('中性色の色相（決定5-6）', () => {
+  /**
+   * OKLab 上の距離。Oklch は OKLab の極座標なので、変換せずにそのまま計算できる。
+   * 尺度は決定5-8（色覚特性）で使っているものと同じ。
+   */
+  const distance = (a: { L: number; C: number; H: number }, b: { L: number; C: number; H: number }) => {
+    const xy = (c: typeof a) => [c.C * Math.cos((c.H * Math.PI) / 180), c.C * Math.sin((c.H * Math.PI) / 180)];
+    const [ax, ay] = xy(a);
+    const [bx, by] = xy(b);
+    return Math.hypot(a.L - b.L, ax! - bx!, ay! - by!);
+  };
+
+  it('中性色は primary の色相を受け継ぐ', () => {
+    for (const { H, pal } of palettes) {
+      expect(pal.neutral.hue, `primary=${H}°`).toBeCloseTo(H, 6);
+    }
+  });
+
+  /**
+   * **この決定が無害である条件そのものを検査する。**
+   *
+   * 決定5-6 は当初「観測した4本の中間色がすべて純グレーではなかった」を根拠にしていたが、
+   * 実測すると色相の一致まで支持していたのは1本だけだった
+   * （docs/experiments/neutral-hue.md）。
+   *
+   * それでも決定が正しいのは、**中性色の彩度が低く、色相の選択が
+   * 「グレーである」ことを変えない**ためである。
+   * 彩度を上げる変更が入るとこの前提は崩れるので、構造の側を検査する。
+   *
+   * 閾値に識別色の minDistance を借りているのは、**上限の主張だから**である。
+   * 「中性色の色相選択が生む差は、識別色として区別できる最小の差を決して上回らない」
+   * = 色相が情報を担う大きさにならない、という意味。
+   *
+   * **「見えない」という意味ではない。** 0.08 は隣り合う面の差が見えるかの閾ではなく、
+   * 実際 0.018 程度から隣接比較では見える（目視の記録は実験記録に置いた）。
+   */
+  it('色相の選択が識別色として区別できる大きさに届かない', () => {
+    for (const { H, pal } of palettes) {
+      for (const s of steps) {
+        const c = pal.neutral.byStep[s]!;
+        // 最も遠い選択（180° 反対）でも識別閾（決定5-5 の minDistance）未満に収まる
+        const opposite = { L: c.L, C: c.C, H: (c.H + 180) % 360 };
+        expect(
+          distance(c, opposite),
+          `primary=${H}° の中性色 段${s}（C=${c.C.toFixed(4)}）`,
+        ).toBeLessThan(cfg.categorical.minDistance);
+      }
+    }
+  });
+});
+
 describe('status は色だけでは判別できない（決定5-9）', () => {
   /*
    * これは「良い値」を検査するテストではない。**既知の限界を可視化するためのもの。**
