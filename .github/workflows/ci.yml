@@ -56,6 +56,12 @@ jobs:
         run: pnpm check:docs-scales
 
 
+      # ドキュメントサイトがビルドできること
+      # 型が通ってもビルドが壊れる要因（アセット解決、import 経路、Vite 設定）は
+      # typecheck では検出できない
+      - name: apps/docs のビルド
+        run: pnpm --filter @sashigane/docs build
+
       # 生成物がコミットされていないこと（原則1）
       - name: 生成物が混入していないこと
         run: node scripts/check-no-build-output.mjs
