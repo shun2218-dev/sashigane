@@ -49,7 +49,24 @@ Tailwind を使う場合は、`--sg-*` を Tailwind の名前空間に写像す�
 | border-width | px 固定 | `1, 2, 3` |
 | elevation | 高さ `h` から影と明度差分を導出 | `h = 0〜3` |
 
-色（OKLCH）は未実装。
+### 色
+
+**primary を1色選ぶと、パレット全体が生成されます。**
+
+```ts
+import { generatePalette, hexToOklch } from '@sashigane/tokens';
+
+const palette = generatePalette(hexToOklch('#3b82f6'));
+palette.warnings; // 再現できない色・見分けにくい組み合わせを教えます
+```
+
+生成されるもの: primary / 中間色 / status 4色 / 識別色 5色 の各11段。
+
+**コントラストは構造的に保証されます。** 明色の面に対し段 500 が 4.5:1、
+暗色の面に対し段 400 が 4.5:1 を、**どの色相を選んでも**満たします
+（全360色相で検証済み）。暗色モードは色を反転せず、参照する段を変えるだけです。
+
+CSS の出力とテーマビルダーは未実装。
 
 ## 開発
 
