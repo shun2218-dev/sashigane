@@ -139,3 +139,9 @@ pnpm verify:coverage   # 実需要に対するカバー率を出す（観測対�
 
 ガードレールを追加するときは、必ず [docs/agent-failures.md](./docs/agent-failures.md) に
 理由を書いてから追加する。**ルールが先にあってはならない。**
+
+---
+
+## ライセンス
+
+[MIT](./LICENSE)
