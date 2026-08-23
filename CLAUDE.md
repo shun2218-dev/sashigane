@@ -128,9 +128,15 @@ Storybook のストーリー3状態（**通常 / 空 / エッジケース**）�
 ## よく使うコマンド
 
 ```bash
-pnpm scales            # スケールを表示し、不変条件を検査する
-pnpm verify:coverage   # 実需要に対するカバー率を出す（観測対象4本がローカルに必要）
-pnpm check:lessons     # agent-failures.md の教訓がこのファイルに届いているか検査する
+pnpm test                     # スケールの不変条件を検査する（decisions.md との一致を含む）
+pnpm typecheck
+pnpm check:tokens-isolation   # packages/tokens が単体で成立していることを検査する（原則4）
+pnpm check:lessons            # agent-failures.md の教訓がこのファイルに届いているか検査する
+
+pnpm scales                   # スケールを表示する（人が目で見るためのもの。検査ではない）
+pnpm verify:coverage          # 実需要に対するカバー率（観測対象4本のローカル clone が必要）
 ```
 
-`scales.mjs` が import 時に不変条件を検査するため、**これらが正常終了すること自体が検査の合格**を意味する。
+CI は `verify:coverage` を除く全部を走らせる。
+`verify:coverage` は観測対象4本のローカル clone を前提とするため CI では動かない。
+**スケールを変更したら手元で実行し、`docs/verification.md` の数値を更新すること。**

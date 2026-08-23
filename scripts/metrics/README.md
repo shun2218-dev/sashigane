@@ -2,35 +2,25 @@
 
 ## 設計検証（docs/verification.md の根拠）
 
+**スケールの正は `packages/tokens` にある。** ここのスクリプトは import する側であり、
+値をリテラルで持たない（理由は `docs/agent-failures.md` の記録を参照）。
+
 | ファイル | 役割 |
 |---|---|
-| `scales.mjs` | **スケールの単一の正。** 生成規則と、それが期待値を生成することの自己検査 |
 | `observed.mjs` | 既存4プロジェクトから実値を抽出する |
-| `generate-scales.mjs` | スケールを表示する（`scales.mjs` の整形出力） |
+| `generate-scales.mjs` | スケールを表示する。**人が目で見るためのもので、検査ではない** |
 | `verify-coverage.mjs` | 実測値に対するスケールのカバー率を計算する |
 
 ```bash
-pnpm scales            # スケールを表示し、不変条件を検査する
+pnpm scales            # スケールを表示する
 pnpm verify:coverage   # 実需要に対するカバー率を出す
 ```
 
-`scales.mjs` は import された時点で不変条件を検査し、
-規則が `docs/decisions.md` の値を生成しない場合は例外を投げる。
-**したがってスクリプトが正常終了すること自体が検査の合格を意味する。**
-
-検査している不変条件:
-
-- `spacing` / `radius` / `duration` が期待どおりの値の並びになること
-- `font-size` の隣接比がアンカーを境に厳密に 1.125 / 1.25 であること
-- `radius` が減算について閉じていること（`内側 = 外側 − padding` が成立する）
-- `spacing` の隣接比が 3/2 と 4/3 を交互に取ること
-- `line-height` が全段で単調減少すること
+**不変条件の検査は `packages/tokens/test/scales.test.ts` が担当する（`pnpm test`）。**
+`docs/decisions.md` に記載した値との一致もそこで検証している。
 
 スケールの規則を変更したら `pnpm verify:coverage` を再実行し、
-`docs/verification.md` の数値を更新すること。
-
-**他のスクリプトはスケールをリテラルで持たない。** 必ず `scales.mjs` から import する。
-（理由は `docs/agent-failures.md` の 2026-08-23 の記録を参照）
+`docs/verification.md` の数値を更新すること。**これは CI では動かない**（下記）。
 
 ### 前提
 

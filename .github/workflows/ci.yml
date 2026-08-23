@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # 型検査
+      - name: typecheck
+        run: pnpm typecheck
+
+      # スケールの不変条件（docs/decisions.md との一致を含む）
+      - name: test
+        run: pnpm test
+
+      # 原則4: トークン層が単体で成立すること
+      - name: packages/tokens の独立性
+        run: pnpm check:tokens-isolation
+
+      # docs/agent-failures.md の教訓が CLAUDE.md に届いていること
+      - name: 教訓の同期
+        run: pnpm check:lessons
+
+      # 生成物がコミットされていないこと（原則1）
+      - name: 生成物が混入していないこと
+        run: |
+          if git ls-files | grep -E '^(packages/[^/]+/dist/|apps/[^/]+/public/r/)'; then
+            echo "生成物がコミットされています。原則1 に反します。" >&2
+            exit 1
+          fi
+          echo "✓ 生成物は含まれていない"
+
+  # pnpm verify:coverage は観測対象4本のローカル clone を前提とするため CI では動かせない。
+  # スケールを変更したら手元で実行し、docs/verification.md を更新すること。

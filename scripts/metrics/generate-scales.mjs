@@ -1,15 +1,15 @@
 /**
  * スケールを生成して表示する。
- * 値は scripts/metrics/scales.mjs から来る。ここでは整形するだけ。
+ * 値は @sashigane/tokens から来る。ここでは整形するだけ。
  *
- * scales.mjs は import された時点で不変条件を自己検査するため、
- * このスクリプトが正常終了すること自体が検査の合格を意味する。
+ * 不変条件の検査は packages/tokens/test/scales.test.ts が担当する（pnpm test）。
+ * このスクリプトは人が値を目で確認するためのものであり、検査ではない。
  */
 import {
   root, base, spacing, radius, radiusFull,
   fontSize, fontSizeAnchor, lineHeight, leadingFamilies,
   durationTransition, durationLoop, borderWidth, elevation,
-} from './scales.mjs';
+} from '../../packages/tokens/src/index.ts';
 
 const f = (v, d = 4) => v.toFixed(d).padStart(d + 4);
 

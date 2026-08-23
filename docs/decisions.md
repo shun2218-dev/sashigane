@@ -701,15 +701,20 @@ registry item は `cssVars`（`theme` / `light` / `dark`）と `css`（`@layer` 
 
 原則4「依存は一方通行」の証明として、以下を機械的に検査する。
 
-1. `packages/tokens/package.json` の `dependencies` が空であること
-2. `packages/tokens/src` に `react` / `@sashigane/ui` からの import が無いこと
-3. **素の HTML に `tokens.css` だけを読み込み、CSS変数が解決すること**
-   — React も Tailwind も無い環境で成立することの実証
-4. スケールの不変条件
-   - `font-size[n+1] / font-size[n] === ratio`
-   - radius の減算閉包
-   - line-height の単調減少
-   - spacing の隣接比が `3/2` と `4/3` を交互に取ること
+| 検査 | 実装 |
+|---|---|
+| `packages/tokens/package.json` の `dependencies` が空 | ✅ `pnpm check:tokens-isolation` |
+| `packages/tokens/src` が外部モジュールを import しない | ✅ `pnpm check:tokens-isolation` |
+| スケールの不変条件（比率・減算閉包・単調性・記載値との一致） | ✅ `pnpm test` |
+| 生成物がコミットされていない | ✅ CI の grep |
+| 教訓が CLAUDE.md に届いている | ✅ `pnpm check:lessons` |
+| **素の HTML に `tokens.css` だけを読み込み、CSS変数が解決すること** | ⬜ CSS 出力の実装後 |
+
+2つ目は「`react` を禁止する」ではなく「**相対パスと `node:` 以外を全部禁止する**」形で実装した。
+禁止リスト方式だと、リストに無い依存が入ったときに黙って通る（教訓4「静かに失敗するものを疑う」）。
+
+`pnpm verify:coverage` は観測対象4本のローカル clone を前提とするため **CI では動かせない。**
+スケールを変更したら手元で実行し、`docs/verification.md` を更新する。
 
 ---
 

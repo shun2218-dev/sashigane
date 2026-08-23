@@ -4,7 +4,7 @@
  *
  * スケールを変更したら再実行し、docs/verification.md を更新すること。
  */
-import * as S from './scales.mjs';
+import * as S from '../../packages/tokens/src/index.ts';
 import { collect, sorted, sourcesOf } from './observed.mjs';
 
 const { observed, missing } = collect();
