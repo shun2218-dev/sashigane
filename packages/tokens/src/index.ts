@@ -7,4 +7,5 @@
 export * from './scales.ts';
 export * from './color/oklch.ts';
 export * from './color/palette.ts';
+export * from './color/css.ts';
 export { default as tokens } from './tokens.json' with { type: 'json' };
