@@ -1,0 +1,14 @@
+{
+  "name": "sashigane",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
+    "scales": "node scripts/metrics/generate-scales.mjs",
+    "verify:coverage": "node scripts/metrics/verify-coverage.mjs"
+  }
+}

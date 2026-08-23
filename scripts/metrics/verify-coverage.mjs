@@ -1,24 +1,72 @@
-const near=(v,a)=>a.reduce((x,y)=>Math.abs(y-v)<Math.abs(x-v)?y:x);
-const dev=(v,a)=>Math.abs((near(v,a)-v)/v*100);
-const cov=(vals,scale,tol)=>{const ok=vals.filter(v=>dev(v,scale)<=tol);return `${ok.length}/${vals.length} (${(ok.length/vals.length*100).toFixed(0)}%)  外れ: ${vals.filter(v=>dev(v,scale)>tol).join(', ')||'なし'}`;};
+/**
+ * 生成スケールが実需要を覆えるかを照合する。
+ * docs/verification.md に載せた数値はこのスクリプトの出力である。
+ *
+ * スケールを変更したら再実行し、docs/verification.md を更新すること。
+ */
+import * as S from './scales.mjs';
+import { collect, sorted, sourcesOf } from './observed.mjs';
 
-const FS=[9.5,10.5,11,11.5,12,12.5,13,13.5,14,14.5,15,16,16.5,17,18,19,20,21,22,24,26,27,30,32,34,36,38,40,42,48,54,66,74,76,100,132];
-const cur=[11.24,12.64,14.22,16,20,25,31.25,39.06];
-const ext=[...cur,48.83,61.04,76.29];
-console.log('font-size 現行8段  ±5%:', cov(FS,cur,5));
-console.log('font-size 拡張11段 ±5%:', cov(FS,ext,5));
-console.log('font-size 拡張11段 ±8%:', cov(FS,ext,8));
-console.log('font-size 拡張(132除く) ±8%:', cov(FS.filter(v=>v!==132),ext,8));
+const { observed, missing } = collect();
+if (missing.length) {
+  console.error('観測対象が見つかりません:\n  ' + missing.join('\n  '));
+  process.exit(1);
+}
 
-const SP=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,20,22,24,26,28,30,32,34,36,38,40,44,48,52,56,64,90,96,110];
-const sp=[0,4,8,12,16,24,32,48,64,96];
-console.log('\nspacing 現行 ±12%:', cov(SP,sp,12));
-console.log('spacing 現行 ±20%:', cov(SP,sp,20));
-console.log('spacing 4px以上のみ ±20%:', cov(SP.filter(v=>v>=4),sp,20));
+const near = (v, arr) => arr.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a));
+const devPct = (v, arr) => (v === 0 ? 0 : Math.abs((near(v, arr) - v) / v) * 100);
 
-// 行送り3系統のあてはめ
-const obs=[[132,0.82],[54,1.0],[42,1.0],[38,1.05],[32,1.05],[26,1.15]];
-console.log('\n=== display系統 a=0.8, b=10 ===');
-for(const [s,o] of obs){const f=0.8+10/s;console.log(`  ${String(s).padStart(4)}px 実測${o}  式${f.toFixed(3)}  差${((f-o)/o*100).toFixed(1)}%`);}
-console.log('=== prose系統 a=1.2, b=8 ===');
-for(const [s,o] of [[16,1.8],[13.5,1.8],[15,1.6],[13.5,1.6],[12.5,1.65],[12.5,1.7]]){const f=1.2+8/s;console.log(`  ${String(s).padStart(4)}px 実測${o}  式${f.toFixed(3)}  差${((f-o)/o*100).toFixed(1)}%`);}
+const coverage = (values, scale, tol) => {
+  const miss = values.filter((v) => devPct(v, scale) > tol);
+  return {
+    hit: values.length - miss.length,
+    total: values.length,
+    pct: ((values.length - miss.length) / values.length) * 100,
+    miss,
+  };
+};
+
+const line = (label, c) =>
+  `  ${label.padEnd(28)} ${String(c.hit).padStart(2)}/${String(c.total).padEnd(2)} (${c.pct.toFixed(0).padStart(3)}%)` +
+  (c.miss.length ? `  外れ: ${c.miss.join(', ')}` : '');
+
+/* ---------- spacing ---------- */
+const sp = sorted(observed.spacing);
+const spPositive = sp.filter((v) => v > 0);
+console.log('## spacing   スケール:', JSON.stringify(S.spacing));
+console.log(line('全値 ±20%', coverage(spPositive, S.spacing, 20)));
+console.log(line('4px 以上 ±20%', coverage(spPositive.filter((v) => v >= 4), S.spacing, 20)));
+console.log(line('完全一致', coverage(sp, S.spacing, 0.001)));
+console.log('  ※ 4px 未満は border-width の責務（決定1-7）');
+
+/* ---------- font-size ---------- */
+const fs = sorted(observed.fontSize);
+/** 改訂前の8段は、改訂後11段の先頭8段と同一（上方向を3段足しただけ） */
+const original8 = S.fontSize.slice(0, 8);
+console.log('\n## font-size   スケール:', S.fontSize.map((v) => v.toFixed(2)).join(', '));
+console.log(line('改訂前8段 ±5%', coverage(fs, original8, 5)));
+console.log(line('改訂後11段 ±5%', coverage(fs, S.fontSize, 5)));
+console.log(line('改訂後11段 ±8%', coverage(fs, S.fontSize, 8)));
+console.log('  ※ 132px は clamp() の可変域の端であり段ではない');
+
+/* ---------- radius ---------- */
+const rd = sorted(observed.radius);
+const radiusScale = [...S.radius, S.radiusFull, 999];
+console.log('\n## radius   スケール:', JSON.stringify(S.radius), `+ full`);
+console.log(line('完全一致', coverage(rd, radiusScale, 0.001)));
+
+/* ---------- duration ---------- */
+const du = sorted(observed.duration);
+const transition = du.filter((v) => v <= 500);
+const loop = du.filter((v) => v > 500);
+console.log('\n## duration');
+console.log('  遷移スケール:', S.durationTransition.map((v) => v.toFixed(1)).join(', '));
+console.log(line('遷移域(≤500ms) ±10%', coverage(transition, S.durationTransition, 10)));
+console.log('  ループスケール:', S.durationLoop.map((v) => v.toFixed(1)).join(', '));
+console.log(line('ループ域(>500ms) ±10%', coverage(loop, S.durationLoop, 10)));
+
+/* ---------- 導出値の検証 ---------- */
+console.log('\n## line-height   実測（系統ごとの当てはめは docs/verification.md 参照）');
+console.log(' ', sorted(observed.lineHeight).map((v) => `${v}[${sourcesOf(observed.lineHeight, v)}]`).join(' '));
+console.log('\n## letter-spacing   実測（サイズと大文字化の2要因、決定1-9）');
+console.log(' ', sorted(observed.letterSpacing).map((v) => `${v}[${sourcesOf(observed.letterSpacing, v)}]`).join(' '));

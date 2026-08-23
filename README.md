@@ -109,6 +109,24 @@ ichirizuka は `dependencies` が `next` / `react` / `react-dom` のみという
 
 ---
 
+## セットアップ
+
+```bash
+pnpm install
+```
+
+`prepare` スクリプトが `core.hooksPath` を `.githooks` に向ける。
+**これを実行するまで pre-push フックは有効にならない。**
+`core.hooksPath` は `.git/config` に保存され追跡対象外のため、
+clone しただけではフックが存在しないのと同じになる。
+
+```bash
+pnpm scales            # スケールを表示し、不変条件を検査する
+pnpm verify:coverage   # 実需要に対するカバー率を出す（観測対象4本がローカルに必要）
+```
+
+---
+
 ## 開発プロセス
 
 人間・AI エージェント共通。速度を理由に飛ばさない。

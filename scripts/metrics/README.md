@@ -2,22 +2,41 @@
 
 ## 設計検証（docs/verification.md の根拠）
 
-| スクリプト | 役割 |
+| ファイル | 役割 |
 |---|---|
-| `extract-observed-values.mjs` | 既存4プロジェクトから実値を抽出し、生成スケールの最近傍と比較する |
-| `generate-scales.mjs` | decisions.md の規則からスケールを生成し、不変条件を検証する |
+| `scales.mjs` | **スケールの単一の正。** 生成規則と、それが期待値を生成することの自己検査 |
+| `observed.mjs` | 既存4プロジェクトから実値を抽出する |
+| `generate-scales.mjs` | スケールを表示する（`scales.mjs` の整形出力） |
 | `verify-coverage.mjs` | 実測値に対するスケールのカバー率を計算する |
 
-スケールの規則を変更したら `generate-scales.mjs` → `verify-coverage.mjs` の順に再実行し、
-`docs/verification.md` の数値を更新する。
+```bash
+pnpm scales            # スケールを表示し、不変条件を検査する
+pnpm verify:coverage   # 実需要に対するカバー率を出す
+```
 
-**注意:** これらは実装前の設計検証用に書いた暫定スクリプトである。
-Phase 1 で `packages/tokens` の生成器とテストに正式に組み込み、
-生成器の出力と `docs/decisions.md` の記載値が一致することを CI で検証する
-（理由は `docs/agent-failures.md` の 2026-08-23 の記録を参照）。
+`scales.mjs` は import された時点で不変条件を検査し、
+規則が `docs/decisions.md` の値を生成しない場合は例外を投げる。
+**したがってスクリプトが正常終了すること自体が検査の合格を意味する。**
 
-`extract-observed-values.mjs` は `~/ghq/github.com/shun2218-dev/` 配下に
-ichirizuka / pylabo / holosphere / pdf-merge-app が存在することを前提にしている。
+検査している不変条件:
+
+- `spacing` / `radius` / `duration` が期待どおりの値の並びになること
+- `font-size` の隣接比がアンカーを境に厳密に 1.125 / 1.25 であること
+- `radius` が減算について閉じていること（`内側 = 外側 − padding` が成立する）
+- `spacing` の隣接比が 3/2 と 4/3 を交互に取ること
+- `line-height` が全段で単調減少すること
+
+スケールの規則を変更したら `pnpm verify:coverage` を再実行し、
+`docs/verification.md` の数値を更新すること。
+
+**他のスクリプトはスケールをリテラルで持たない。** 必ず `scales.mjs` から import する。
+（理由は `docs/agent-failures.md` の 2026-08-23 の記録を参照）
+
+### 前提
+
+`observed.mjs` は `~/ghq/github.com/shun2218-dev/` 配下に
+ichirizuka / pylabo / holosphere / pdf-merge-app が存在することを前提としている。
+**CI では動かない。** 見つからない場合は該当パスを報告して終了する。
 
 ## 開発プロセスの計測（Phase 1 で実装）
 
