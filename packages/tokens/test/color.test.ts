@@ -278,6 +278,35 @@ describe('識別色（決定5-5）', () => {
   });
 });
 
+describe('status は色だけでは判別できない（決定5-9）', () => {
+  /*
+   * これは「良い値」を検査するテストではない。**既知の限界を可視化するためのもの。**
+   *
+   * status 4色は色覚特性下で ΔE が 0.01 を下回り、2型色覚では
+   * danger・warning・success がほぼ同一の色になる。
+   * danger 25° と warning 70° は赤と黄で、色相を離せば意味が壊れる（決定5-4）。
+   *
+   * したがって status は**色以外の手がかり（アイコン・テキスト）を必須**とする。
+   * 色の識別性を上げることは補助にしかならない（WCAG 1.4.1）。
+   *
+   * この値が大きく変わったら、決定5-9 の前提が変わったということなので
+   * docs を更新すること。**通すために期待値を書き換えない。**
+   */
+  it('色覚特性下で status を色だけで判別することはできない', () => {
+    let worst = Number.POSITIVE_INFINITY;
+    for (const { pal } of palettes) {
+      worst = Math.min(
+        worst,
+        minPerceptualDistance(statusNames.map((n) => pal.status[n].byStep[500]!)),
+      );
+    }
+    // 識別色に課している 0.08 には遠く及ばない
+    expect(worst).toBeLessThan(0.02);
+    // 0 ではない（色は補助としては効いている）
+    expect(worst).toBeGreaterThan(0);
+  });
+});
+
 describe('編集後の検査（決定5-1）', () => {
   it('生成直後のパレットは警告を出さない', () => {
     for (const { H, pal } of palettes) {
