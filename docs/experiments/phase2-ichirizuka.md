@@ -210,12 +210,21 @@ ichirizuka では増加が teal であることに意味があり、**意味色�
 
 | 穴 | 扱い |
 |---|---|
-| 1 暗色モードを拒否できない | **トークン層を直した**（決定5-10）。適用は ichirizuka#34 |
-| 2 面の重なり方が逆 | Issue |
+| 1 暗色モードを拒否できない | **トークン層を直した**（決定5-10）。適用は [ichirizuka#35](https://github.com/shun2218-dev/ichirizuka/pull/35) |
+| 2 面の重なり方が逆 | [#29](https://github.com/shun2218-dev/sashigane/issues/29) |
 | 3 意図的に弱い注記 | 記録のみ。設計思想の衝突であり、変えるかどうかは別の判断 |
-| 4 中性色の色相 | Issue |
-| 5 `font-family` | Issue |
-| 6 密度の軸 | Issue |
-| 7 JS から値を読めない | Issue |
-| 8 連続カラースケール | Issue |
-| 9 生成物のヘッダ | Issue |
+| 4 中性色の色相 | [#33](https://github.com/shun2218-dev/sashigane/issues/33) |
+| 5 `font-family` | [#30](https://github.com/shun2218-dev/sashigane/issues/30) |
+| 6 密度の軸 | [#32](https://github.com/shun2218-dev/sashigane/issues/32) |
+| 7 JS から値を読めない | [#31](https://github.com/shun2218-dev/sashigane/issues/31) |
+| 8 連続カラースケール | [#31](https://github.com/shun2218-dev/sashigane/issues/31)（穴7 と同じ Issue） |
+| 9 生成物のヘッダ | [#34](https://github.com/shun2218-dev/sashigane/issues/34) |
+
+### 穴7 は実害が出た
+
+導入の途中で、**凡例と実データの色が食い違う不整合が実際に生まれた。**
+`.legend-ramp` は CSS のグラデーションなので新しい色に変わったが、
+`effortColor()` は RGB 直書きなので古いままだった。
+
+JS から値を読む手段が無いため、**3点を手で写して埋めるしかなかった。**
+穴が塞がるまで、利用側に二重管理が残り続ける。
