@@ -1096,6 +1096,7 @@ registry item は `cssVars`（`theme` / `light` / `dark`）と `css`（`@layer` 
 | **コンポーネントがプリミティブを参照していない**（原則3） | ✅ `pnpm check:token-usage` |
 | Tailwind の任意値記法を使っていない（決定3-1 の残る穴） | ✅ `pnpm check:token-usage` |
 | `tokens.js` の値が `tokens.css` とずれていない（決定2-6） | ✅ `pnpm check:token-values` |
+| 生成した `tokens.d.ts` が型として成立し、プリミティブを引けない | ✅ `pnpm check:token-types` |
 | `apps/docs` がビルドできる | ✅ CI |
 
 `check:tokens-standalone` は静的検査である（外部依存の有無と、参照する変数がすべて定義済みか）。

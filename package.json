@@ -21,7 +21,8 @@
     "check:tailwind-adapter": "node scripts/check-tailwind-adapter.mjs",
     "check:scss": "node scripts/check-scss-compiles.mjs",
     "check:token-usage": "node scripts/check-token-usage.mjs",
-    "check:token-values": "node scripts/check-token-values.mjs"
+    "check:token-values": "node scripts/check-token-values.mjs",
+    "check:token-types": "node scripts/check-token-types.mjs"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.3.3",

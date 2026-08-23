@@ -64,10 +64,11 @@ pnpm check:scss               # tokens.scss が SCSS としてコンパイルで
 pnpm check:tailwind-adapter   # アダプタが期待どおりのユーティリティを出すこと
 pnpm check:token-usage        # プリミティブ参照と Tailwind 任意値記法を禁止する（原則3）
 pnpm check:token-values       # tokens.js の値が tokens.css とずれていないこと
+pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 ```
 
-`check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` `check:token-values` は
-`dist/` を読むので、
+`check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` `check:token-values`
+`check:token-types` は `dist/` を読むので、
 先に `pnpm build:tokens` が要る。CI はその順で走らせている。
 
 `check:token-usage` は実行のたびに、まず意図的な違反を含むフィクスチャへ検出器を当てる。
