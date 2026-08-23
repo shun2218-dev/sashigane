@@ -359,14 +359,50 @@ container 幅 / topbar 高さ / content 最小幅などのアプリ固有寸法�
 安定した軸から順に並べる。カテゴリ先頭にすると生成CSS・devtools補完・grep のすべてで同種がまとまる。
 state を末尾に置くのは、state だけが実行時に切り替わる軸だからである。
 
-### 決定 2-3: lint による層判別
+### 決定 2-3: lint による層判別 — **改訂（2026-08-24）**
+
+> **当初版の主張を撤回した。** 「`--sg-{category}-{数字}` はプリミティブ、
+> `--sg-{category}-{単語}` はセマンティック。**1つの正規表現で層を判別できる**」
+> と書いていたが、**自分の生成物に対して両方向に破れていた。**
+> 経緯は [agent-failures.md](./agent-failures.md) の 2026-08-24 の記録。
+
+| 種別 | 変数 | 何が起きるか |
+|---|---|---|
+| 偽陽性 | `--sg-text-heading-1` 〜 `-3`、`--sg-color-chart-1` 〜 `-5` | セマンティックなのに参照が禁止される |
+| 偽陰性 | `--sg-radius-full` | プリミティブなのに参照が素通りする |
+
+見出しレベルも系列番号も**本質的に数字**であり、名前を歪めてまで正規表現に合わせる理由がない。
+
+#### 改訂後の規則
+
+**層は名前の形ではなく、生成器が知っている事実で判定する。**
 
 ```
---sg-{category}-{数字}   → プリミティブ（コンポーネントからの参照禁止）
---sg-{category}-{単語}   → セマンティック（参照可）
+生成器 → dist/tokens.layers.json → lint が「セマンティックだけ」を許す
 ```
 
-**1つの正規表現で層を判別できる。** これが index 統一を選んだ実務上の理由でもある。
+`tokenLayers()`（`src/output/layers.ts`）が、各 `*Vars()` の出力した CSS 行から
+名前を取り出して2つの集合に分ける。手書きの一覧は作らない（決定2-6）。
+
+`scripts/check-token-usage.mjs` は**セマンティックの集合に載っている名前だけを許す。**
+表に無い `--sg-*` は、プリミティブでも打ち間違いでも等しく落ちる。
+禁止するものを列挙するのではなく、許すものを列挙する（教訓5）。
+
+#### index 統一（決定2-1）はそのまま
+
+判別が正規表現でできなくなっても、**「数字だけの名前は決して役割に見えない」**
+という決定2-1 の判断基準は変わらない。誤用がレビューで目に付くことに変わりはない。
+失われたのは「lint を正規表現1つで書ける」という実装上の利点だけである。
+
+#### 検査対象から外すもの
+
+`apps/docs/public/standalone.html` は除外する。
+`tokens.css` が単体で成立することを目で確かめる**検査用フィクスチャ**であり、
+コンポーネントではない。プリミティブが解決することを見るのが目的そのものである。
+
+加えて spacing / radius / duration のセマンティックは
+**実需要が観測されるまで定義しない**と決めており（原則3・原則7）、現時点で代替が無い。
+Phase 2（Issue #25）で ichirizuka に導入したときに、何が必要かが分かる。
 
 ### 決定 2-4: プレフィックスは `--sg-`
 
@@ -403,6 +439,7 @@ Phase 2 で ichirizuka の既存 `:root` に重ねる。無プレフィックス
 | `dist/theme.css` | Tailwind v4 `@theme inline` アダプタ | Tailwind v4 |
 | `dist/tokens.scss` | SCSS 変数 | なし |
 | `dist/index.d.ts` | TS 型 | なし |
+| `dist/tokens.layers.json` | 層の名前表。**配布物ではなく検査用**（決定2-3） | なし |
 
 ### なぜ Tailwind 用を分けるか
 
@@ -963,6 +1000,8 @@ registry item は `cssVars`（`theme` / `light` / `dark`）と `css`（`@layer` 
 | このファイルの数値表が生成器と一致 | ✅ `pnpm check:docs-scales` |
 | **素の HTML に `tokens.css` だけを読み込み、CSS変数が解決すること** | ✅ `pnpm check:tokens-standalone` |
 | 生成した Tailwind アダプタが期待どおりのユーティリティを出す | ✅ `pnpm check:tailwind-adapter` |
+| **コンポーネントがプリミティブを参照していない**（原則3） | ✅ `pnpm check:token-usage` |
+| Tailwind の任意値記法を使っていない（決定3-1 の残る穴） | ✅ `pnpm check:token-usage` |
 | `apps/docs` がビルドできる | ✅ CI |
 
 `check:tokens-standalone` は静的検査である（外部依存の有無と、参照する変数がすべて定義済みか）。

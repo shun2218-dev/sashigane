@@ -62,10 +62,15 @@ pnpm build:tokens             # dist/ に4形式を出力する（生成物は�
 pnpm check:tokens-standalone  # tokens.css が単体で成立すること（原則4）
 pnpm check:scss               # tokens.scss が SCSS としてコンパイルできること
 pnpm check:tailwind-adapter   # アダプタが期待どおりのユーティリティを出すこと
+pnpm check:token-usage        # プリミティブ参照と Tailwind 任意値記法を禁止する（原則3）
 ```
 
-`check:tokens-standalone` と `check:tailwind-adapter` は `dist/` を読むので、
+`check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` は `dist/` を読むので、
 先に `pnpm build:tokens` が要る。CI はその順で走らせている。
+
+`check:token-usage` は実行のたびに、まず意図的な違反を含むフィクスチャへ検出器を当てる。
+**発火しなければ検査自体が落ちる。** 0 件という結果を、検査が壊れている状態と
+区別できるようにするため（教訓2）。
 
 CI はこれら全部と、`main` への PR が `develop` からのみであることを検査する。
 

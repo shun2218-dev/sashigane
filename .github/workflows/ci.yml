@@ -72,6 +72,12 @@ jobs:
       - name: Tailwind アダプタ
         run: pnpm check:tailwind-adapter
 
+      # 原則3: コンポーネントはセマンティックしか参照できないこと
+      # 生成器が出す名前表（dist/tokens.layers.json）を許可リストとして使うため
+      # build:tokens の後に置く
+      - name: トークンの使い方
+        run: pnpm check:token-usage
+
       # ドキュメントサイトがビルドできること
       # 型が通ってもビルドが壊れる要因（アセット解決、import 経路、Vite 設定）は
       # typecheck では検出できない

@@ -19,7 +19,8 @@
     "build:tokens": "pnpm --filter @sashigane/tokens build",
     "check:tokens-standalone": "node scripts/check-tokens-standalone.mjs",
     "check:tailwind-adapter": "node scripts/check-tailwind-adapter.mjs",
-    "check:scss": "node scripts/check-scss-compiles.mjs"
+    "check:scss": "node scripts/check-scss-compiles.mjs",
+    "check:token-usage": "node scripts/check-token-usage.mjs"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.3.3",

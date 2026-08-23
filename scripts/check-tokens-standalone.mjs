@@ -10,11 +10,11 @@
  *   - 外部への依存（@import、@apply、Tailwind 固有の記法）
  *   - 未定義の変数を参照している var()
  *   - セマンティックが1件も無い（出力が空）
+ *   - 名前表（dist/tokens.layers.json）にあるセマンティックが tokens.css に無い
  *
  * 実ブラウザでの解決は apps/docs の /standalone.html で目視する。
  * 静的検査だけでは「解決する」を証明できない。
  */
-import { execSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 
 const path = 'packages/tokens/dist/tokens.css';
@@ -46,10 +46,27 @@ for (const name of referenced) {
   if (!defined.has(name)) errors.push(`未定義の変数を参照している: ${name}`);
 }
 
-/* ---------- 3. セマンティックが1つ以上あること（空の出力を通さない） ---------- */
-const semantic = [...defined].filter((n) => /^--sg-[a-z]+-[a-z]/.test(n));
+/* ---------- 3. セマンティックが1つ以上あること（空の出力を通さない） ----------
+ *
+ * 当初は名前の形（`--sg-{英字}-{英字}`）でセマンティックを数えていたが、
+ * `--sg-border-width-0` のようなプリミティブも数えてしまい 91 件と表示していた（実際は 40 件）。
+ * **層は名前の形から推測しない**（決定2-3 の改訂、docs/agent-failures.md 2026-08-24）。
+ * 生成器が出す名前表を使う。
+ */
+const LAYERS = 'packages/tokens/dist/tokens.layers.json';
+if (!existsSync(LAYERS)) {
+  console.error(`${LAYERS} がありません。先に pnpm build:tokens を実行してください。`);
+  process.exit(1);
+}
+const semantic = JSON.parse(readFileSync(LAYERS, 'utf8')).semantics;
 if (semantic.length === 0) {
   errors.push('セマンティックが1つも定義されていない。出力が空の可能性がある');
+}
+
+for (const name of semantic) {
+  if (!defined.has(name)) {
+    errors.push(`名前表にあるセマンティックが tokens.css に無い: ${name}`);
+  }
 }
 
 /* ---------- 結果 ---------- */
