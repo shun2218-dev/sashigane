@@ -8,7 +8,7 @@
  *   プリミティブ   --sg-{category}-{数字}   参照禁止
  *   セマンティック --sg-{category}-{単語}   参照可
  */
-import type { Palette, Ramp, StatusName } from './palette.ts';
+import type { Palette, Ramp } from './palette.ts';
 import { statusNames, steps } from './palette.ts';
 import { toCss } from './oklch.ts';
 
@@ -27,11 +27,14 @@ const primitives = (p: Palette): string[] => [
  * セマンティック。明色モードと暗色モードで**参照する段を変えるだけ**（決定5-2）。
  * 色を反転しているのではない。
  */
-const semanticFor = (mode: 'light' | 'dark'): string[] => {
+const semanticFor = (mode: 'light' | 'dark', seriesCount: number): string[] => {
   const surface = mode === 'light' ? [50, 100, 200] : [950, 900, 800];
   const text = mode === 'light' ? [900, 600, 500] : [100, 300, 400];
-  const accent = mode === 'light' ? 500 : 400;
   const border = mode === 'light' ? [200, 300] : [800, 700];
+  // 文字は 4.5:1 が要る段、マーク（線・点・フォーカスリング・チャート）は 3:1 で足りる段。
+  // 同じ段を使うとチャート系列が沈んで見分けられなくなる（決定5-7）
+  const textStep = mode === 'light' ? 500 : 400;
+  const markStep = mode === 'light' ? 400 : 300;
   return [
     `  --sg-color-bg-page: var(--sg-neutral-${surface[0]});`,
     `  --sg-color-bg-surface: var(--sg-neutral-${surface[1]});`,
@@ -41,32 +44,40 @@ const semanticFor = (mode: 'light' | 'dark'): string[] => {
     `  --sg-color-text-faint: var(--sg-neutral-${text[2]});`,
     `  --sg-color-border-subtle: var(--sg-neutral-${border[0]});`,
     `  --sg-color-border-default: var(--sg-neutral-${border[1]});`,
-    `  --sg-color-accent: var(--sg-primary-${accent});`,
-    `  --sg-color-border-focus: var(--sg-primary-${accent});`,
-    ...statusNames.map((n) => `  --sg-color-${n}: var(--sg-${n}-${accent});`),
+    `  --sg-color-accent: var(--sg-primary-${textStep});`,
+    `  --sg-color-accent-mark: var(--sg-primary-${markStep});`,
+    `  --sg-color-border-focus: var(--sg-primary-${markStep});`,
+    ...statusNames.flatMap((n) => [
+      `  --sg-color-${n}: var(--sg-${n}-${textStep});`,
+      `  --sg-color-${n}-mark: var(--sg-${n}-${markStep});`,
+    ]),
+    ...Array.from(
+      { length: seriesCount },
+      (_, i) => `  --sg-color-chart-${i + 1}: var(--sg-series-${i + 1}-${markStep});`,
+    ),
   ];
 };
 
-export const toCssVariables = (palette: Palette): string =>
-  [
+export const toCssVariables = (palette: Palette): string => {
+  const series = palette.categorical.length;
+  return [
     '/* sashigane — generatePalette() の出力。手で編集した場合は verifyPalette() で検査すること */',
     ':root {',
     '  /* プリミティブ（コンポーネントからの参照禁止） */',
     ...primitives(palette),
     '',
     '  /* セマンティック（明色モード） */',
-    ...semanticFor('light'),
+    ...semanticFor('light', series),
     '}',
     '',
     '@media (prefers-color-scheme: dark) {',
     '  :root {',
-    ...semanticFor('dark').map((l) => `  ${l}`),
+    ...semanticFor('dark', series).map((l) => `  ${l}`),
     '  }',
     '}',
     '',
     '[data-theme="dark"] {',
-    ...semanticFor('dark'),
+    ...semanticFor('dark', series),
     '}',
   ].join('\n');
-
-export type { StatusName };
+};
