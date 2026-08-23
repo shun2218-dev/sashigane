@@ -33,6 +33,15 @@ export const spacing: number[] = (() => {
     v = apply(ratios[i % ratios.length]!, v);
     out.push(v);
   }
+  // 比率の並びが max にちょうど着地しない設定だと、宣言と違う最大値を黙って返す。
+  // 教訓4「静かに失敗するものを疑う」より、生成器自身が検出する。
+  if (out.at(-1) !== tokens.spacing.max) {
+    throw new Error(
+      `spacing の最大値が tokens.json の宣言と一致しません: ` +
+        `宣言 ${tokens.spacing.max} / 生成 ${out.at(-1)}\n` +
+        `  alternatingRatios の並びが max にちょうど着地する必要があります。`,
+    );
+  }
   return out;
 })();
 

@@ -32,6 +32,10 @@ jobs:
       - name: packages/tokens の独立性
         run: pnpm check:tokens-isolation
 
+      # docs/decisions.md の数値表が生成器と一致すること
+      - name: 決定文書との一致
+        run: pnpm check:docs-scales
+
       # docs/agent-failures.md の教訓が CLAUDE.md に届いていること
       - name: 教訓の同期
         run: pnpm check:lessons

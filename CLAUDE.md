@@ -138,6 +138,8 @@ Storybook のストーリー3状態（**通常 / 空 / エッジケース**）�
 pnpm test                     # スケールの不変条件を検査する（decisions.md との一致を含む）
 pnpm typecheck
 pnpm check:tokens-isolation   # packages/tokens が単体で成立していることを検査する（原則4）
+pnpm check:docs-scales        # decisions.md の数値表が生成器と一致するか検査する
+pnpm check:no-build-output    # 生成物がコミットされていないか検査する（原則1）
 pnpm check:lessons            # agent-failures.md の教訓がこのファイルに届いているか検査する
 
 pnpm scales                   # スケールを表示する（人が目で見るためのもの。検査ではない）

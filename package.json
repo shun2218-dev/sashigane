@@ -15,7 +15,8 @@
     "test": "vitest run",
     "typecheck": "tsc -b --pretty false packages/tokens",
     "check:tokens-isolation": "node scripts/check-tokens-isolation.mjs",
-    "check:no-build-output": "node scripts/check-no-build-output.mjs"
+    "check:no-build-output": "node scripts/check-no-build-output.mjs",
+    "check:docs-scales": "node scripts/check-docs-scales.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.2",
