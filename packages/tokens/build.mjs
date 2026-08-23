@@ -6,7 +6,7 @@
  *
  * primary は既定値。利用者はテーマビルダーで選び直す（決定5-1）。
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -17,6 +17,7 @@ import {
   tokenLayers,
   toTokensCss,
   toTypeDefinitions,
+  toValuesJs,
 } from './src/index.ts';
 
 /**
@@ -29,6 +30,10 @@ const DEFAULT_PRIMARY = '#0ea5e9';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, 'dist');
+
+// 出力の顔ぶれが変わったときに古い生成物が残らないようにする。
+// 消えたはずのファイルが dist に居座ると、検査も利用側も嘘を見る
+rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
 
 const palette = generatePalette(hexToOklch(DEFAULT_PRIMARY));
@@ -41,7 +46,10 @@ const files = {
   'tokens.css': toTokensCss(palette),
   'theme.css': toThemeCss(palette),
   'tokens.scss': toScss(palette),
-  'index.d.ts': toTypeDefinitions(palette),
+  // CSS が原理的に届かない場所（OG 画像の生成など）のための値。
+  // 型は隣の tokens.d.ts が受け持つので、この2つはファイル名が対になっている
+  'tokens.js': toValuesJs(palette),
+  'tokens.d.ts': toTypeDefinitions(palette),
 
   // 配布物ではなく検査用。scripts/check-token-usage.mjs が
   // 「参照してよい名前の集合」として読む（原則3、決定2-3）。

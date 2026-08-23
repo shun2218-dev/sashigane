@@ -58,14 +58,16 @@ pnpm check:tokens-isolation   # packages/tokens が単体で成立している�
 pnpm check:docs-scales        # decisions.md の数値表が生成器と一致すること
 pnpm check:no-build-output    # 生成物がコミットされていないこと（原則1）
 
-pnpm build:tokens             # dist/ に4形式を出力する（生成物はコミットしない）
+pnpm build:tokens             # dist/ に出力する（生成物はコミットしない）
 pnpm check:tokens-standalone  # tokens.css が単体で成立すること（原則4）
 pnpm check:scss               # tokens.scss が SCSS としてコンパイルできること
 pnpm check:tailwind-adapter   # アダプタが期待どおりのユーティリティを出すこと
 pnpm check:token-usage        # プリミティブ参照と Tailwind 任意値記法を禁止する（原則3）
+pnpm check:token-values       # tokens.js の値が tokens.css とずれていないこと
 ```
 
-`check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` は `dist/` を読むので、
+`check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` `check:token-values` は
+`dist/` を読むので、
 先に `pnpm build:tokens` が要る。CI はその順で走らせている。
 
 `check:token-usage` は実行のたびに、まず意図的な違反を含むフィクスチャへ検出器を当てる。

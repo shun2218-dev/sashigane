@@ -78,6 +78,10 @@ jobs:
       - name: トークンの使い方
         run: pnpm check:token-usage
 
+      # 同じセマンティックが CSS と JS の2形式に出るので、値の一致を確かめる
+      - name: CSS と JS の値の一致
+        run: pnpm check:token-values
+
       # ドキュメントサイトがビルドできること
       # 型が通ってもビルドが壊れる要因（アセット解決、import 経路、Vite 設定）は
       # typecheck では検出できない

@@ -421,13 +421,62 @@ Phase 2 で ichirizuka の既存 `:root` に重ねる。無プレフィックス
 完全に依存するため、現段階では採らない。
 **v1 到達前に移行を検討する。**
 
-### 決定 2-6: 他形式への変換は機械的に行う
+### 決定 2-6: 他形式への変換は機械的に行う — **改訂（2026-08-24）**
 
 ```
---sg-color-bg-danger-hover  ↔  tokens.color.bg.danger.hover  ↔  bg-danger-hover
+--sg-color-bg-danger-hover  ↔  tokens['--sg-color-bg-danger-hover']  ↔  bg-danger-hover
 ```
 
 手書きのマッピング表は作らない。
+
+> **当初版の JS 側の形を撤回した。** `tokens.color.bg.danger.hover` のように
+> ハイフンで機械的にネストすると書いていたが、実際の名前に当てると
+> **40件中13件が衝突した。** 決定2-3 と同じ、1例からの一般化だった。
+
+#### 何が衝突したか
+
+値と入れ子が同じ名前を要求する組み合わせが13件ある。
+
+```
+color-danger    と color-danger-mark      → color.danger は文字列か、オブジェクトか
+text-body       と text-body-leading
+text-heading-1  と text-heading-1-leading
+```
+
+当初の例（`color-bg-danger-hover`）が成立するのは、
+**`--sg-color-bg-danger` が存在しないから**にすぎない。
+
+#### 改訂後の規則
+
+**CSS 変数名をそのまま鍵にする。**
+
+```js
+tokens.light['--sg-color-danger']   // '#ca003d'
+```
+
+- 衝突が原理的に起きない
+- `SemanticToken` 型とも、`var()` に渡す文字列とも一致する。**語彙が1つで済む**
+- `DEFAULT` のような、CSS 側に対応物の無いキーを発明しなくて済む
+
+書き味は `tokens.color.danger` に劣る。**それは受け入れる。**
+名前を2種類持つコストの方が高い。
+
+#### この出力の位置づけ
+
+**生成時点の写しであって、実行時のテーマ切り替えには追随しない。**
+CSS が届く場所では CSS 変数を使う。
+
+これは「CSS の代わり」ではなく「**CSS が原理的に到達できない場所**のための別経路」である。
+Phase 2 で観測した実需要は次の3つ（[experiments/phase2-ichirizuka.md](./experiments/phase2-ichirizuka.md)）。
+
+| | JS 側の色 | CSS が届かない理由 |
+|---|---|---|
+| ichirizuka | 心拍 → 色の補間 | 実行時に値を計算する |
+| holosphere | OG 画像の生成 | **サーバ側で描く。ブラウザもカスケードも無い** |
+| pylabo | 講座ごとの識別色 | データに色が紐づく |
+
+同じセマンティックが2形式に出るので**二重管理になる。**
+`pnpm check:token-values` が出力どうしを突き合わせて一致を検査する。
 
 ---
 
@@ -438,7 +487,8 @@ Phase 2 で ichirizuka の既存 `:root` に重ねる。無プレフィックス
 | `dist/tokens.css` | `--sg-*` の定義（プリミティブ + セマンティック） | なし |
 | `dist/theme.css` | Tailwind v4 `@theme inline` アダプタ | Tailwind v4 |
 | `dist/tokens.scss` | SCSS 変数 | なし |
-| `dist/index.d.ts` | TS 型 | なし |
+| `dist/tokens.js` | セマンティックの**解決済みの値**（決定2-6） | なし |
+| `dist/tokens.d.ts` | TS 型と `tokens.js` の宣言 | なし |
 | `dist/tokens.layers.json` | 層の名前表。**配布物ではなく検査用**（決定2-3） | なし |
 
 ### なぜ Tailwind 用を分けるか
@@ -1045,6 +1095,7 @@ registry item は `cssVars`（`theme` / `light` / `dark`）と `css`（`@layer` 
 | 生成した Tailwind アダプタが期待どおりのユーティリティを出す | ✅ `pnpm check:tailwind-adapter` |
 | **コンポーネントがプリミティブを参照していない**（原則3） | ✅ `pnpm check:token-usage` |
 | Tailwind の任意値記法を使っていない（決定3-1 の残る穴） | ✅ `pnpm check:token-usage` |
+| `tokens.js` の値が `tokens.css` とずれていない（決定2-6） | ✅ `pnpm check:token-values` |
 | `apps/docs` がビルドできる | ✅ CI |
 
 `check:tokens-standalone` は静的検査である（外部依存の有無と、参照する変数がすべて定義済みか）。
