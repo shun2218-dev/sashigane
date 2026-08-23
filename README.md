@@ -88,6 +88,7 @@ radius       = spacing スケールの 0〜16 の部分集合
 | [docs/roles.md](./docs/roles.md) | 既存4本から観測したセマンティック役割 |
 | [docs/verification.md](./docs/verification.md) | 生成スケールが実需要を覆えるかの検証 |
 | [docs/agent-failures.md](./docs/agent-failures.md) | ガードレール追加の理由 |
+| [docs/experiments/](./docs/experiments) | 仕様を推測せず実際に動かして確かめた記録 |
 
 ---
 
@@ -96,7 +97,7 @@ radius       = spacing スケールの 0〜16 の部分集合
 | Phase | 内容 | 状態 |
 |---|---|---|
 | 0 | 設計確定 | ✅ |
-| 1 | トークン層（生成スクリプト、lint、CI 検査） | |
+| 1 | トークン層（生成スクリプト、lint、CI 検査） | 進行中 |
 | 2 | **コンポーネントを1つも書かずに ichirizuka へトークンのみ導入** | |
 | 3 | コンポーネント3〜5個 | |
 | 4 | `registry:base`、エージェント向け Skill | |

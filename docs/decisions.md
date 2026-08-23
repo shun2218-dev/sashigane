@@ -426,23 +426,193 @@ Phase 2 で ichirizuka の既存 `:root` に重ねる。無プレフィックス
 **Tailwind 対応が生成されたアダプタ1枚に閉じ込められること自体が、
 トークン層が Tailwind 非依存であることの証明になる。**
 
-### 未解決: Tailwind v4 の動的 spacing
+### 決定 3-1: Tailwind v4 の動的 spacing を無効化する
 
-v4 の padding ユーティリティは `--spacing` の乗算で動的生成される。
+> 当初「未解決」として Phase 1 に持ち越した論点。
+> **実験（Tailwind v4.3.3）で確認し、決定に格上げした。** 実験記録は
+> [experiments/tailwind-v4-spacing.md](./experiments/tailwind-v4-spacing.md)。
+
+#### 問題
+
+v4 の spacing 系ユーティリティは `--spacing` の乗算で動的生成される。
 
 ```
 p-<number>  →  padding: calc(var(--spacing) * <number>);
 ```
 
-`--spacing: 4px` を定義すると **`p-5`（20px）も `p-7`（28px）も自動的に有効になる。**
-決定1-2 でスケールから除外した値が Tailwind 経由なら書けてしまう。
+`--spacing: 4px` を定義すると、**決定1-2 で除外した `p-5`(20px) `p-7`(28px) が
+自動的に有効になる**ことを実験1で確認した。
 
-対処候補（**どちらも公式ドキュメントに明記がない**）:
-- `--spacing: initial` で動的名前空間を無効化し、個別に定義する
-- Tailwind クラス名も検査する lint ルールを別途持つ
+#### 決定
 
-**Phase 1 で実際に動かして確認する。推測で設計しない。**
-結果は [agent-failures.md](./agent-failures.md) ではなくこのファイルに追記する。
+```css
+@theme inline {
+  --spacing: initial;        /* 動的名前空間を無効化する */
+
+  /* 名前は Tailwind の倍数規約に合わせる（決定3-3）。値は --sg-* から来る */
+  --spacing-0:  var(--sg-space-0);   /*  0px */
+  --spacing-1:  var(--sg-space-1);   /*  4px */
+  --spacing-2:  var(--sg-space-2);   /*  8px */
+  --spacing-3:  var(--sg-space-3);   /* 12px */
+  --spacing-4:  var(--sg-space-4);   /* 16px */
+  --spacing-6:  var(--sg-space-5);   /* 24px */
+  --spacing-8:  var(--sg-space-6);   /* 32px */
+  --spacing-12: var(--sg-space-7);   /* 48px */
+  --spacing-16: var(--sg-space-8);   /* 64px */
+  --spacing-24: var(--sg-space-9);   /* 96px */
+}
+```
+
+**プリミティブの index と Tailwind の番号は一致しない。** アダプタが翻訳する（決定3-3）。
+
+実験2で `--spacing: initial` により spacing ユーティリティが**一つも生成されなくなる**こと、
+実験3で名前付きの段を定義するとその段だけが生成され `p-5` は生成されないことを確認した。
+
+**スケール外の値は Tailwind から書けなくなる。lint ではなく構造で強制できる。**
+
+`--spacing-*: initial` という書き方も等価に機能する（実験4）。
+`--spacing: initial` の方が「動的乗算を止める」という意図が読み取りやすいため、こちらを採る。
+
+#### 残る穴: 任意値記法
+
+**任意値 `p-[20px]` `gap-[7px]` は依然として生成される。**
+
+```css
+.p-\[20px\] { padding: 20px; }
+```
+
+これは構造では塞げないため lint が必要。ただし**検査対象が任意値記法だけに狭まった**ため、
+ルールは「Tailwind クラスの `[...]` 記法を禁止する」という単純な形で済む。
+スケール外の数値クラスを列挙して弾く必要はない。
+
+### 決定 3-2: アダプタは `@theme inline` を使う
+
+実験5で、`--sg-*` を定義した CSS を `@import` した上で
+`@theme inline` に写像すると、ユーティリティが生成されることを確認した。
+
+```css
+@theme inline { --color-danger: var(--sg-color-bg-danger); }
+→ .bg-danger { background-color: var(--sg-color-bg-danger); }
+```
+
+`inline` の有無で出力が変わる（実験6）。
+
+| | ユーティリティが参照するもの |
+|---|---|
+| `@theme inline` | `var(--sg-color-bg-danger)` — **`--sg-*` を直接参照** |
+| `@theme`（inline なし） | `var(--color-danger)` — Tailwind の変数を経由（2段） |
+
+不透明度修飾子（`bg-danger/15`）は**どちらでも機能する**。
+`color-mix(in oklab, …)` に展開され、status の淡い背景（roles.md で観測した 12〜15% の帯）は
+アダプタ経由でそのまま表現できる。
+
+`inline` を採る理由は、**`--sg-*` を唯一のスイッチ点にするため**である。
+inline なしだと Tailwind 側の `--color-danger` を上書きしても効いてしまい、
+テーマ切り替えの入口が2つになる。
+
+---
+
+### 決定 3-3: アダプタは名前空間ごとに写像方針を変える
+
+> 自己レビューで発見した。当初 `--sg-space-5` をそのまま `--spacing-5` に写像するコード例を
+> 書いていたが、これは **`p-5` を 24px にしてしまう**（素の Tailwind では 20px）。
+> Tailwind の数値は index ではなく**基準の倍数**を表す規約である。
+
+#### 大原則: アダプタは所有する名前空間をすべてリセットする
+
+```css
+@theme inline {
+  --color-*: initial;
+  --spacing: initial;
+  --text-*: initial;
+  --leading-*: initial;
+  --tracking-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --ease-*: initial;
+  /* … 以降に写像を書く … */
+}
+```
+
+リセットを書かないと**素の Tailwind の値がそのまま残る。**
+実験で `bg-red-500` `rounded-2xl` `shadow-lg` `leading-tight` が生成されることを確認した。
+`bg-red-500` が書ける時点で「トークンが唯一の正」は成立しない。
+
+#### 写像方針は名前空間の性質によって3通りに分かれる
+
+**(1) 数値が倍数規約の名前空間 → 倍数で写像する（spacing）**
+
+我々のスケールは倍数に直すと `0,1,2,3,4,6,8,12,16,24` となり、
+**全段が素の Tailwind に存在する段と値まで一致する。**
+
+| `--sg-space-N`（index） | 値 | Tailwind 名 | 素の Tailwind |
+|---|---|---|---|
+| 0〜4 | 0/4/8/12/16px | `p-0`〜`p-4` | 一致 |
+| 5 | 24px | `p-6` | 一致 |
+| 6 | 32px | `p-8` | 一致 |
+| 7 | 48px | `p-12` | 一致 |
+| 8 | 64px | `p-16` | 一致 |
+| 9 | 96px | `p-24` | 一致 |
+
+`p-5`(20px) `p-7`(28px) は我々のスケールに無いので定義しない。**存在しない段は名前も存在しない。**
+
+**(2) 語彙が値と対応する名前空間 → 値が一致する名前だけに写像する（radius）**
+
+素の Tailwind v4.3.3: `xs=2 sm=4 md=6 lg=8 xl=12 2xl=16 3xl=24 4xl=32`(px)
+
+| `--sg-radius-N` | 値 | Tailwind 名 |
+|---|---|---|
+| 0 | 0 | `rounded-none` |
+| 1 | 4px | `rounded-sm` |
+| 2 | 8px | `rounded-lg` |
+| 3 | 12px | `rounded-xl` |
+| 4 | 16px | `rounded-2xl` |
+| — | — | `rounded-full` |
+
+`xs`(2) `md`(6) `3xl`(24) `4xl`(32) は対応する段が無いので**定義しない。**
+
+語彙が数値でないぶん、ずれても目立たず危険度が高い。
+**値が一致しない名前に写像してはならない。**
+
+**(3) 値が一致しない名前空間 → 素の語彙を捨てる（text）**
+
+素の Tailwind: `xs=12 sm=14 base=16 lg=18 xl=20 2xl=24 3xl=30`(px)
+我々: `11.24 / 12.64 / 14.22 / 16 / 20 / 25 / 31.25 / …`
+
+一致するのは `base`(16) と `xl`(20) だけ。`2xl` は 24 対 25、`3xl` は 30 対 31.25 でずれる。
+
+**t シャツ語彙を再利用してはならない。** セマンティック役割名を使う。
+
+```css
+--text-body: var(--sg-font-size-3);
+--text-caption: var(--sg-font-size-2);
+```
+
+これは決定1-4 とも整合する。文字サイズは常に行高とペアで使われるべきなので、
+プリミティブの段ではなくセマンティック役割が Tailwind に現れるのが正しい。
+
+#### 副産物: 決定1-4 の「オーバーライド不可」が Tailwind 上でも成立する
+
+`--text-*--line-height` を使うとサイズと行高がペアで出力される。
+
+```css
+--text-body: var(--sg-font-size-3);
+--text-body--line-height: var(--sg-line-height-3);
+```
+```css
+.text-body {
+  font-size: var(--sg-font-size-3);
+  line-height: var(--tw-leading, var(--sg-line-height-3));
+}
+```
+
+`var(--tw-leading, …)` はフォールバック構造なので、これだけでは `leading-*` で上書きできる。
+**`--leading-*: initial` と `--spacing: initial` を両方入れると上書き手段が消滅する**
+（`leading-tight` は名前付き、`leading-7` は `--spacing` 由来の動的生成なので、両方止める必要がある）。
+
+実験で陽性・陰性の両方向を確認した。
+
+---
 
 ---
 
