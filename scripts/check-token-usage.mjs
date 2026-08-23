@@ -18,6 +18,10 @@
  * 「セマンティックに載っている名前だけを許す」形で判定する。教訓5 の許可リスト方式。
  * 表に無い `--sg-*` は、プリミティブでも打ち間違いでも等しく落ちる。
  *
+ * **差し込み口（inputs）も許す**（決定2-7）。書体名を差すのは利用側の正当な行為で、
+ * これを落とすと `--sg-font-brand-*` が使えない。逆に書体スタックそのもの
+ * （`--sg-font-stack-*`）はプリミティブなので落ちる。役割を経由させるため。
+ *
  * ## 2 の判定方法
  *
  * 決定3-1 により `--spacing: initial` でスケール外の数値クラス（`p-5` 等）は
@@ -156,11 +160,11 @@ const classValues = (text) => {
 };
 
 /** 1. プリミティブ参照 / 表に無い名前 */
-const findTokenViolations = (text, semantics, primitives) => {
+const findTokenViolations = (text, allowed, primitives) => {
   const out = [];
   for (const m of text.matchAll(SG_NAME)) {
     const name = m[0];
-    if (semantics.has(name)) continue;
+    if (allowed.has(name)) continue;
     out.push({
       kind: primitives.has(name) ? 'primitive' : 'unknown',
       line: lineOf(text, m.index),
@@ -186,8 +190,8 @@ const findClassViolations = (text) => {
   return out;
 };
 
-const findAll = (text, semantics, primitives) => [
-  ...findTokenViolations(text, semantics, primitives),
+const findAll = (text, allowed, primitives) => [
+  ...findTokenViolations(text, allowed, primitives),
   ...findClassViolations(text),
 ];
 
@@ -203,11 +207,15 @@ if (!existsSync(LAYERS)) {
 const layers = JSON.parse(readFileSync(LAYERS, 'utf8'));
 const semantics = new Set(layers.semantics);
 const primitives = new Set(layers.primitives);
+const inputs = new Set(layers.inputs);
 
-if (semantics.size === 0 || primitives.size === 0) {
+if (semantics.size === 0 || primitives.size === 0 || inputs.size === 0) {
   console.error(`${LAYERS} の層が空です。生成器が壊れています。`);
   process.exit(1);
 }
+
+/** 消費側が書いてよい名前。セマンティック ∪ 差し込み口（決定2-7） */
+const allowed = new Set([...semantics, ...inputs]);
 
 /* ============================================================
    陰性対照 — 検出器が発火することを毎回確かめる（教訓2）
@@ -217,6 +225,8 @@ const FIXTURES = [
   // 落ちるべきもの
   { text: 'a { padding: var(--sg-space-3); }', expect: 'primitive' },
   { text: 'a { border-radius: var(--sg-radius-full); }', expect: 'primitive' },
+  // 決定1-11: 書体スタックはプリミティブ。役割（--sg-text-*-family）を経由させる
+  { text: 'a { font-family: var(--sg-font-stack-mono); }', expect: 'primitive' },
   { text: 'a { color: var(--sg-color-text-mutedd); }', expect: 'unknown' },
   { text: '<div class="p-[20px]">', expect: 'arbitrary' },
   { text: '<div class="[mask-type:luminance]">', expect: 'arbitrary' },
@@ -236,11 +246,14 @@ const FIXTURES = [
   { text: 'svg { fill: var(--sg-color-chart-1); }', expect: null },
   { text: '<div class="p-4 bg-danger hover:bg-danger/80 md:p-6">', expect: null },
   { text: 'const c = <b className={`p-4 ${extra}`} />', expect: null },
+  // 決定2-7: 差し込み口へ書体名を差すのは利用側の正当な行為
+  { text: ':root { --sg-font-brand-body-latin: var(--font-inter); }', expect: null },
+  { text: 'p { font-family: var(--sg-text-body-family); }', expect: null },
 ];
 
 const selfTestFailures = [];
 for (const f of FIXTURES) {
-  const found = findAll(f.text, semantics, primitives);
+  const found = findAll(f.text, allowed, primitives);
   const kinds = found.map((v) => v.kind);
   const ok = f.expect === null ? kinds.length === 0 : kinds.includes(f.expect);
   if (!ok) {
@@ -275,14 +288,16 @@ const violations = [];
 for (const file of files) {
   // 追跡されているが作業ツリーには無い（削除の途中など）。検査失敗ではなく飛ばす
   if (!existsSync(file)) continue;
-  for (const v of findAll(readFileSync(file, 'utf8'), semantics, primitives)) {
+  for (const v of findAll(readFileSync(file, 'utf8'), allowed, primitives)) {
     violations.push({ file, ...v });
   }
 }
 
 const MESSAGE = {
   primitive: 'プリミティブを参照しています。コンポーネントはセマンティックのみ参照できます（原則3）',
-  unknown: '生成器が出力しない名前です。打ち間違いか、消費側で独自に定義した変数です',
+  unknown:
+    '生成器が出力しない名前です。打ち間違いか、消費側で独自に定義した変数です' +
+    '（書体名を差す口は --sg-font-brand-* だけです）',
   arbitrary: 'Tailwind の任意値記法です。スケール外の値を書けてしまいます（決定3-1）',
 };
 
@@ -292,11 +307,15 @@ if (violations.length) {
     console.error(`  ✗ ${v.file}:${v.line}  ${v.what}`);
     console.error(`    ${MESSAGE[v.kind]}\n`);
   }
-  console.error(`許可されるのはセマンティック ${semantics.size} 個のみ（${LAYERS}）。`);
+  console.error(
+    `許可されるのはセマンティック ${semantics.size} 個と差し込み口 ${inputs.size} 個のみ（${LAYERS}）。`,
+  );
   process.exit(1);
 }
 
 console.log(`✓ 陰性対照 ${FIXTURES.length} 件が期待どおり発火した`);
-console.log(`✓ プリミティブ参照なし（許可: セマンティック ${semantics.size} 個）`);
+console.log(
+  `✓ プリミティブ参照なし（許可: セマンティック ${semantics.size} 個 + 差し込み口 ${inputs.size} 個）`,
+);
 console.log(`✓ Tailwind の任意値記法なし`);
 console.log(`\n${files.length} ファイルを検査（除外 ${EXCLUDED.length} 規則）`);

@@ -9,6 +9,7 @@ import {
   root, base, spacing, radius, radiusFull,
   fontSize, fontSizeAnchor, lineHeight, leadingFamilies,
   durationTransition, durationLoop, borderWidth, elevation,
+  fontStackNames, fontStack, numericVariant,
 } from '../../packages/tokens/src/index.ts';
 
 const f = (v, d = 4) => v.toFixed(d).padStart(d + 4);
@@ -43,3 +44,10 @@ console.log(' ', JSON.stringify(borderWidth));
 
 console.log('\n## elevation (高さ h)');
 console.log(' ', JSON.stringify(elevation));
+
+// 書体だけは「値」ではなく構造を見せる。差し込み口が未定義のときの姿である（決定1-11）
+console.log('\n## font-family (値ではなく構造。書体名は利用側が差す)');
+for (const stack of fontStackNames) {
+  console.log(`  ${stack.padEnd(8)}: ${fontStack(stack)}`);
+}
+console.log(`  数値      : font-variant-numeric: ${numericVariant}`);

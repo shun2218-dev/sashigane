@@ -13,8 +13,10 @@ import { describe, expect, it } from 'vitest';
 import {
   colorPrimitiveVars,
   colorSemanticVars,
+  fontInputNames,
   generatePalette,
   primitiveVars,
+  toTokensCss,
   tokenLayers,
   typographySemanticVars,
 } from '../src/index.ts';
@@ -79,5 +81,28 @@ describe('層の名前表', () => {
   it('単語で終わるプリミティブがセマンティック扱いされない', () => {
     expect(layers.primitives).toContain('--sg-radius-full');
     expect(layers.semantics).not.toContain('--sg-radius-full');
+  });
+
+  /* ---------- 第3の種別: 差し込み口（決定2-7） ---------- */
+
+  describe('差し込み口', () => {
+    it('空ではなく、他の2層と互いに素である', () => {
+      expect(layers.inputs.length).toBeGreaterThan(0);
+      const others = new Set([...layers.primitives, ...layers.semantics]);
+      expect(layers.inputs.filter((n) => others.has(n))).toEqual([]);
+    });
+
+    it('生成器が知っている口と過不足なく一致する', () => {
+      expect(layers.inputs).toEqual([...fontInputNames()].sort());
+    });
+
+    it('tokens.css に宣言が無く、かつ参照はされている', () => {
+      const css = toTokensCss(palette);
+      for (const name of layers.inputs) {
+        // 宣言すると var() のフォールバックが効かず、差していない口が空で解決される
+        expect(new RegExp(`^\\s*${name}\\s*:`, 'm').test(css), name).toBe(false);
+        expect(css, name).toContain(`var(${name},`);
+      }
+    });
   });
 });

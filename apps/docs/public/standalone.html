@@ -19,7 +19,7 @@
     color: var(--sg-color-text-default);
     font-size: var(--sg-text-body);
     line-height: var(--sg-text-body-leading);
-    font-family: system-ui, sans-serif;
+    font-family: var(--sg-text-body-family);
   }
   .card {
     background: var(--sg-color-bg-surface);
@@ -28,7 +28,16 @@
     padding: var(--sg-space-5);
     max-width: 40rem;
   }
-  h1 { font-size: var(--sg-text-heading-1); line-height: var(--sg-text-heading-1-leading); margin: 0 0 var(--sg-space-3); }
+  h1 { font-size: var(--sg-text-heading-1); line-height: var(--sg-text-heading-1-leading); font-family: var(--sg-text-heading-1-family); margin: 0 0 var(--sg-space-3); }
+  /* 書体だけの役割。サイズは caption、書体は numeric（決定1-11） */
+  .stats { font-size: var(--sg-text-caption); line-height: var(--sg-text-caption-leading); font-family: var(--sg-text-numeric-family); font-variant-numeric: var(--sg-text-numeric-variant); margin: 0 0 var(--sg-space-4); }
+  .stats div { display: block; }
+  /* 差し込み口（決定1-11）。**:root に差す。**
+     --sg-font-stack-* の var() は宣言された要素（:root）で置換されるので、
+     部分木に差しても届かない。実測は docs/experiments/font-family.md */
+  :root { --sg-font-brand-display-latin: Georgia; }
+  .branded { border-top: var(--sg-border-width-0) solid var(--sg-color-border-subtle); margin-top: var(--sg-space-4); padding-top: var(--sg-space-4); }
+  .branded h1 { font-size: var(--sg-text-heading-3); line-height: var(--sg-text-heading-3-leading); }
   p  { color: var(--sg-color-text-muted); margin: 0 0 var(--sg-space-4); }
   .badge { color: var(--sg-color-danger); border: var(--sg-border-width-0) solid var(--sg-color-danger-mark); border-radius: var(--sg-radius-full); padding: 0 var(--sg-space-3); }
   button { background: var(--sg-color-accent); color: var(--sg-color-bg-page); border: 0; border-radius: var(--sg-radius-2); padding: var(--sg-space-2) var(--sg-space-4); font: inherit; transition: opacity var(--sg-duration-2); }
@@ -38,8 +47,16 @@
   <div class="card">
     <h1>tokens.css だけで組んだページ</h1>
     <p>読み込んでいるのは tokens.css の1ファイルのみ。フレームワークは使っていない。</p>
+    <div class="stats">
+      <div>1,048,576</div>
+      <div>0,999,111</div>
+    </div>
     <button type="button">主ボタン</button>
     <span class="badge">danger</span>
+    <div class="branded">
+      <h1>見出しの口に Georgia を差した</h1>
+      <p>差したのは display の口だけなので、本文はこのまま。上の見出しも display なので一緒に変わる。順序（欧文 → 和文 → generic）はトークンが保証する。</p>
+    </div>
   </div>
 </body>
 </html>

@@ -28,6 +28,13 @@
  *
  * 鍵を CSS 変数名にすれば衝突が原理的に起きず、`SemanticToken` 型とも
  * `var()` に渡す文字列とも一致する。**語彙が1つで済む。**
+ *
+ * ## 書体の値について
+ *
+ * 書体スタックは `var(--sg-font-brand-*, 既定)` を含む（決定1-11）。
+ * JS には var() を解決する仕組みが無いので、**差し込み口が未定義のときの既定へ展開する。**
+ * 利用側が口へ書体名を差しても、この出力は追随しない。
+ * 上の「生成時点の写し」という制約が、書体では**差す前の姿**という形で現れる。
  */
 import type { Palette } from '../color/palette.ts';
 import { toHex, type Oklch } from '../color/oklch.ts';
@@ -51,6 +58,54 @@ const parseOklch = (value: string): Oklch | null => {
   return m ? { L: Number(m[1]), C: Number(m[2]), H: Number(m[3]) } : null;
 };
 
+/**
+ * `var(--x, 既定)` を既定へ展開する。**入れ子も展開する**（display は body の口へ落ちる）。
+ *
+ * JS 側に var() を残すと、値として使った先で静かに壊れる。
+ * フォールバックの無い var() は展開しようがないので**生成器が落ちる。**
+ * 「解決できなかったので素通しした」を成功として扱わない（教訓2）。
+ */
+export const expandVarFallbacks = (value: string): string => {
+  const at = value.indexOf('var(');
+  if (at === -1) return value;
+
+  let depth = 0;
+  let close = -1;
+  for (let i = at + 3; i < value.length; i++) {
+    if (value[i] === '(') depth += 1;
+    else if (value[i] === ')') {
+      depth -= 1;
+      if (depth === 0) {
+        close = i;
+        break;
+      }
+    }
+  }
+  if (close === -1) throw new Error(`var() の括弧が閉じていません: ${value}`);
+
+  // 第1引数（変数名）と残り（フォールバック）を、入れ子を跨がない最初のカンマで分ける
+  const inner = value.slice(at + 4, close);
+  let commaDepth = 0;
+  let comma = -1;
+  for (let i = 0; i < inner.length; i++) {
+    if (inner[i] === '(') commaDepth += 1;
+    else if (inner[i] === ')') commaDepth -= 1;
+    else if (inner[i] === ',' && commaDepth === 0) {
+      comma = i;
+      break;
+    }
+  }
+  if (comma === -1) {
+    throw new Error(
+      `フォールバックの無い var() は JS へ出せません: ${inner.trim()}\n` +
+        '  差し込み口には必ず既定値を持たせてください（決定1-11）。',
+    );
+  }
+
+  const fallback = expandVarFallbacks(inner.slice(comma + 1).trim());
+  return value.slice(0, at) + fallback + expandVarFallbacks(value.slice(close + 1));
+};
+
 /** プリミティブの名前 → 最終的な値。色は16進にする（canvas や OG 画像が oklch を解さない） */
 const primitiveValues = (palette: Palette): Map<string, string> => {
   const out = new Map<string, string>();
@@ -58,7 +113,7 @@ const primitiveValues = (palette: Palette): Map<string, string> => {
     const m = DECLARATION.exec(line);
     if (!m) continue;
     const oklch = parseOklch(m[2]!);
-    out.set(m[1]!, oklch ? toHex(oklch) : m[2]!);
+    out.set(m[1]!, oklch ? toHex(oklch) : expandVarFallbacks(m[2]!));
   }
   return out;
 };
@@ -107,6 +162,9 @@ export const toValuesJs = (palette: Palette): string => {
     '// 実行時のテーマ切り替えには追随しないので、CSS が届く場所では tokens.css の',
     '// CSS 変数を使うこと。これは OG 画像の生成やデータから色を計算する箇所のように、',
     '// **CSS 変数が原理的に到達できない場所**のための別経路である。',
+    '//',
+    '// 書体は「差し込み口が未定義のときの既定スタック」を出している。',
+    '// 利用側が --sg-font-brand-* へ書体名を差しても、この値は追随しない（決定1-11）。',
     '',
     'export const tokens = {',
     '  light: {',

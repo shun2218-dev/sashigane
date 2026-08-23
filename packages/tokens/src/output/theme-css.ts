@@ -16,7 +16,7 @@
 import type { Palette } from '../color/palette.ts';
 import { radius, spacing } from '../scales.ts';
 import { statusNames } from '../color/palette.ts';
-import { TEXT_ROLES } from './primitives.ts';
+import { FONT_ROLES, TEXT_ROLES } from './primitives.ts';
 
 /**
  * Tailwind の数値は index ではなく**基準の倍数**を表す規約（決定3-3）。
@@ -49,7 +49,23 @@ const RESET_NAMESPACES = [
   '--shadow-*',
   '--ease-*',
   '--animate-*',
+  '--font-*',
 ];
+
+/**
+ * Tailwind に出す書体の役割。**セマンティックの名前をそのまま使う。**
+ *
+ * サイズ役割は8つあるが、書体が違うのは body / display / label の3通りしかない。
+ * すべてを写像すると `font-heading-1` のような、サイズ役割と紛らわしいうえ
+ * 中身が `font-display` と同一のユーティリティが並ぶ。
+ * **roles.md が観測した5つの書体役割に一致させる。**
+ */
+const FONT_UTILITIES = [
+  { name: 'body', token: '--sg-text-body-family' },
+  { name: 'display', token: '--sg-text-display-family' },
+  { name: 'label', token: '--sg-text-label-family' },
+  ...FONT_ROLES.map((r) => ({ name: r.name, token: `--sg-text-${r.name}-family` })),
+] as const;
 
 export const toThemeCss = (palette: Palette): string =>
   [
@@ -80,6 +96,19 @@ export const toThemeCss = (palette: Palette): string =>
       `  --text-${r.name}: var(--sg-text-${r.name});`,
       `  --text-${r.name}--line-height: var(--sg-text-${r.name}-leading);`,
     ]),
+    '',
+    '  /* font-family — --text-* に書体を束ねる修飾子は無い（実測。',
+    '     docs/experiments/font-family.md）ので --font-* 名前空間へ写像する。',
+    '     tabular-nums も font-variant-numeric 修飾子が無いため feature-settings で出す */',
+    ...FONT_UTILITIES.map((f) => `  --font-${f.name}: var(${f.token});`),
+    ...FONT_ROLES.filter((r) => r.tabular).map(
+      (r) => `  --font-${r.name}--font-feature-settings: var(--sg-font-feature-tabular);`,
+    ),
+    '',
+    '  /* preflight が html と code に当てる既定。--font-*: initial で素の Tailwind の',
+    '     スタックへ戻るため、ここで我々のセマンティックへ差し替える */',
+    '  --default-font-family: var(--sg-text-body-family);',
+    '  --default-mono-font-family: var(--sg-text-code-family);',
     '',
     '  /* color — セマンティックのみ写像する。プリミティブは Tailwind に出さない */',
     '  --color-page: var(--sg-color-bg-page);',
