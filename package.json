@@ -10,6 +10,7 @@
   "scripts": {
     "prepare": "git config core.hooksPath .githooks",
     "scales": "node scripts/metrics/generate-scales.mjs",
-    "verify:coverage": "node scripts/metrics/verify-coverage.mjs"
+    "verify:coverage": "node scripts/metrics/verify-coverage.mjs",
+    "check:lessons": "node scripts/check-lessons-sync.mjs"
   }
 }
