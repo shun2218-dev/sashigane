@@ -148,11 +148,23 @@ const buildRamp = (
   ),
 });
 
-/** 1つのパレットを構成する全ランプの色相を、彩度セットごとに束ねたもの */
+/**
+ * パレットを構成する色相を、彩度の決め方ごとに束ねたもの。
+ *
+ * primary と status は**それぞれ単独**で彩度を取る。
+ * status をセット内で揃えていた時期があったが、共通値を引き下げているのは
+ * warning（黄系）だけで、実際に損をするのは danger だけだった。
+ * `#a84b53` は危険を伝える色として弱い（決定5-3 の再改訂）。
+ *
+ * 識別色は**セット内で共通**のまま。系列は互いに対等であるべきで、
+ * 特定の系列だけ強く見える理由がない。
+ */
 interface HueSets {
-  primary: number[];
-  status: number[];
-  categorical: number[];
+  /** 単独で彩度を取る色相（primary と status） */
+  solo: number[];
+  /** セット内で彩度を揃える色相（識別色） */
+  shared: number[];
+  /** 中間色の彩度を決めるための全色相 */
   all: number[];
 }
 
@@ -165,12 +177,21 @@ interface HueSets {
  * （網羅テストが検出した）。
  */
 const resolveChroma = (lightness: readonly number[], hues: HueSets) => {
-  const chromaFor = (hs: readonly number[]) =>
-    lightness.map((L) => maxSafeChroma(L, hs));
+  const chromaFor = (hs: readonly number[]) => lightness.map((L) => maxSafeChroma(L, hs));
+  const shared = chromaFor(hues.shared);
   return {
-    primary: chromaFor(hues.primary),
-    status: chromaFor(hues.status),
-    categorical: chromaFor(hues.categorical),
+    /**
+     * 単独で彩度を取る色相 → その彩度。
+     *
+     * 色相をキーにした1つの Map にまとめてはならない。
+     * 識別色の1本目は primary と同じ色相なので、キーが衝突して
+     * **primary が識別色の（低い）彩度で上書きされる。**
+     * 同じ色相でも別のランプなら別の彩度を持つ。
+     */
+    solo: new Map<number, number[]>(hues.solo.map((h) => [h, chromaFor([h])])),
+    /** 識別色はセット内で共通の彩度 */
+    shared,
+    sharedHues: hues.shared,
     neutral: chromaFor(hues.all).map((c) => c * cfg.chroma.neutralRatio),
   };
 };
@@ -189,20 +210,17 @@ const marginFor = (
 ): number => {
   const c = resolveChroma(lightness, hues);
   const si = cfg.steps.indexOf(surfaceStep as Step);
-  const surface = { L: lightness[si]!, C: c.neutral[si]!, H: hues.primary[0]! };
+  const surface = { L: lightness[si]!, C: c.neutral[si]!, H: hues.solo[0]! };
   let margin = Number.POSITIVE_INFINITY;
   for (const req of reqs) {
     const i = cfg.steps.indexOf(req.step as Step);
-    for (const [set, chroma] of [
-      [hues.primary, c.primary],
-      [hues.status, c.status],
-      [hues.categorical, c.categorical],
-    ] as const) {
-      for (const H of set) {
-        const ratio = contrastBetween({ L: lightness[i]!, C: chroma[i]!, H }, surface);
-        margin = Math.min(margin, ratio - req.min);
-      }
-    }
+    // 各ランプを**実際に使う彩度**で評価する。
+    // 共通彩度で評価していた時期があり、彩度の決め方を変えた瞬間に保証が破れた
+    const check = (H: number, C: number) => {
+      margin = Math.min(margin, contrastBetween({ L: lightness[i]!, C, H }, surface) - req.min);
+    };
+    for (const [H, chroma] of c.solo) check(H, chroma[i]!);
+    for (const H of c.sharedHues) check(H, c.shared[i]!);
   }
   return margin;
 };
@@ -269,9 +287,8 @@ export const generatePalette = (primary: Oklch): Palette => {
   // primary は単独で使われるので揃える相手がおらず、色相ごとの最大を取れる。
   // 全ランプで共通にすると #e879f9 が #875a8d になり、ブランド色として機能しない。
   const hueSets: HueSets = {
-    primary: [primary.H],
-    status: statusList,
-    categorical,
+    solo: [primary.H, ...statusList],
+    shared: categorical,
     all: allHues,
   };
   const g = cfg.guarantees;
@@ -286,7 +303,7 @@ export const generatePalette = (primary: Oklch): Palette => {
   );
   const lightnesses = lightnessesFor(anchorL, bottomL);
   const chroma = resolveChroma(lightnesses, hueSets);
-  const { primary: primaryChroma, status: statusChroma, categorical: categoricalChroma, neutral: neutralChroma } = chroma;
+  const soloChroma = (h: number) => chroma.solo.get(h)!;
 
   // 入力の色が規則の出力でどれだけ再現できるかを確かめる
   const nearest = cfg.steps.reduce((best, s, i) =>
@@ -296,15 +313,15 @@ export const generatePalette = (primary: Oklch): Palette => {
       : best,
   );
   const nearestIndex = cfg.steps.indexOf(nearest as Step);
-  const dC = primary.C - primaryChroma[nearestIndex]!;
+  const dC = primary.C - soloChroma(primary.H)[nearestIndex]!;
   const dL = Math.abs(primary.L - lightnesses[nearestIndex]!);
   if (dC > cfg.warnings.primaryChromaExcess) {
     warnings.push({
       code: 'primary-chroma-unreachable',
       message:
         `選んだ色の彩度（${primary.C.toFixed(3)}）は、この明度で sRGB に収まる上限` +
-        `（${primaryChroma[nearestIndex]!.toFixed(3)}）を超えています。くすんだ色で生成されます。`,
-      detail: { requested: primary.C, available: primaryChroma[nearestIndex]!, step: nearest },
+        `（${soloChroma(primary.H)[nearestIndex]!.toFixed(3)}）を超えています。くすんだ色で生成されます。`,
+      detail: { requested: primary.C, available: soloChroma(primary.H)[nearestIndex]!, step: nearest },
     });
   }
   if (dL > cfg.warnings.primaryLightnessExcess) {
@@ -321,12 +338,12 @@ export const generatePalette = (primary: Oklch): Palette => {
     anchorLightness: anchorL,
     bottomLightness: bottomL,
     lightnesses,
-    primary: buildRamp(primary.H, lightnesses, primaryChroma),
-    neutral: buildRamp(primary.H, lightnesses, neutralChroma),
+    primary: buildRamp(primary.H, lightnesses, soloChroma(primary.H)),
+    neutral: buildRamp(primary.H, lightnesses, chroma.neutral),
     status: Object.fromEntries(
-      statusNames.map((n) => [n, buildRamp(statusHues[n], lightnesses, statusChroma)]),
+      statusNames.map((n) => [n, buildRamp(statusHues[n], lightnesses, soloChroma(statusHues[n]))]),
     ) as Record<StatusName, Ramp>,
-    categorical: categorical.map((h) => buildRamp(h, lightnesses, categoricalChroma)),
+    categorical: categorical.map((h) => buildRamp(h, lightnesses, chroma.shared)),
     warnings,
   };
 };
