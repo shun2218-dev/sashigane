@@ -961,7 +961,13 @@ registry item は `cssVars`（`theme` / `light` / `dark`）と `css`（`@layer` 
 | 生成物がコミットされていない | ✅ `pnpm check:no-build-output` |
 | `main` への PR が `develop` からのみ | ✅ CI の `branch-flow` ジョブ |
 | このファイルの数値表が生成器と一致 | ✅ `pnpm check:docs-scales` |
-| **素の HTML に `tokens.css` だけを読み込み、CSS変数が解決すること** | ⬜ CSS 出力の実装後 |
+| **素の HTML に `tokens.css` だけを読み込み、CSS変数が解決すること** | ✅ `pnpm check:tokens-standalone` |
+| 生成した Tailwind アダプタが期待どおりのユーティリティを出す | ✅ `pnpm check:tailwind-adapter` |
+| `apps/docs` がビルドできる | ✅ CI |
+
+`check:tokens-standalone` は静的検査である（外部依存の有無と、参照する変数がすべて定義済みか）。
+**実ブラウザでの解決は別途目視で確認した。** `apps/docs` を起動して `/standalone.html` を開くと、
+`tokens.css` 1枚だけで組んだページが表示される。
 
 2つ目は「`react` を禁止する」ではなく「**相対パスと `node:` 以外を全部禁止する**」形で実装した。
 禁止リスト方式だと、リストに無い依存が入ったときに黙って通る（教訓4「静かに失敗するものを疑う」）。

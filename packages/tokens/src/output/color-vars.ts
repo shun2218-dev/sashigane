@@ -8,15 +8,16 @@
  *   プリミティブ   --sg-{category}-{数字}   参照禁止
  *   セマンティック --sg-{category}-{単語}   参照可
  */
-import type { Palette, Ramp } from './palette.ts';
-import { statusNames, steps } from './palette.ts';
-import { toCss } from './oklch.ts';
+import type { Palette, Ramp } from '../color/palette.ts';
+import { statusNames, steps } from '../color/palette.ts';
+import { toCss } from '../color/oklch.ts';
 
 const rampVars = (prefix: string, ramp: Ramp): string[] =>
   steps.map((s) => `  --sg-${prefix}-${s}: ${toCss(ramp.byStep[s]!)};`);
 
 /** プリミティブ。コンポーネントからの参照は lint で禁止される */
-const primitives = (p: Palette): string[] => [
+export const colorPrimitiveVars = (p: Palette): string[] => [
+  '  /* 色 — primary から生成（決定5-1）。段は保証境界に解かれている（決定5-2） */',
   ...rampVars('neutral', p.neutral),
   ...rampVars('primary', p.primary),
   ...statusNames.flatMap((n) => rampVars(n, p.status[n])),
@@ -61,25 +62,6 @@ const semanticFor = (
   ];
 };
 
-export const toCssVariables = (palette: Palette): string => {
-  return [
-    '/* sashigane — generatePalette() の出力。手で編集した場合は verifyPalette() で検査すること */',
-    ':root {',
-    '  /* プリミティブ（コンポーネントからの参照禁止） */',
-    ...primitives(palette),
-    '',
-    '  /* セマンティック（明色モード） */',
-    ...semanticFor('light', palette.categoricalSteps.light),
-    '}',
-    '',
-    '@media (prefers-color-scheme: dark) {',
-    '  :root {',
-    ...semanticFor('dark', palette.categoricalSteps.dark).map((l) => `  ${l}`),
-    '  }',
-    '}',
-    '',
-    '[data-theme="dark"] {',
-    ...semanticFor('dark', palette.categoricalSteps.dark),
-    '}',
-  ].join('\n');
-};
+/** 色のセマンティック。モードで**参照する段を変えるだけ**（決定5-2） */
+export const colorSemanticVars = (mode: 'light' | 'dark', palette: Palette): string[] =>
+  semanticFor(mode, palette.categoricalSteps[mode]);

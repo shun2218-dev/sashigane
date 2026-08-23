@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>tokens.css 単体成立の確認</title>
+<!--
+  原則4（依存は一方通行）の実証ページ。
+  トークン層が React も Tailwind も知らずに成立することを目で確かめるためのもの。
+  pnpm --filter @sashigane/docs dev で起動し /standalone.html を開く。
+  tokens.css は dev / build の前に packages/tokens から生成してコピーされる（生成物なので追跡しない）。
+-->
+<!-- 読み込むのはこれ1つだけ。React も Tailwind も無い -->
+<link rel="stylesheet" href="/tokens.css">
+<style>
+  body {
+    margin: 0;
+    padding: var(--sg-space-6);
+    background: var(--sg-color-bg-page);
+    color: var(--sg-color-text-default);
+    font-size: var(--sg-text-body);
+    line-height: var(--sg-text-body-leading);
+    font-family: system-ui, sans-serif;
+  }
+  .card {
+    background: var(--sg-color-bg-surface);
+    border: var(--sg-border-width-0) solid var(--sg-color-border-default);
+    border-radius: var(--sg-radius-3);
+    padding: var(--sg-space-5);
+    max-width: 40rem;
+  }
+  h1 { font-size: var(--sg-text-heading-1); line-height: var(--sg-text-heading-1-leading); margin: 0 0 var(--sg-space-3); }
+  p  { color: var(--sg-color-text-muted); margin: 0 0 var(--sg-space-4); }
+  .badge { color: var(--sg-color-danger); border: var(--sg-border-width-0) solid var(--sg-color-danger-mark); border-radius: var(--sg-radius-full); padding: 0 var(--sg-space-3); }
+  button { background: var(--sg-color-accent); color: var(--sg-color-bg-page); border: 0; border-radius: var(--sg-radius-2); padding: var(--sg-space-2) var(--sg-space-4); font: inherit; transition: opacity var(--sg-duration-2); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>tokens.css だけで組んだページ</h1>
+    <p>読み込んでいるのは tokens.css の1ファイルのみ。フレームワークは使っていない。</p>
+    <button type="button">主ボタン</button>
+    <span class="badge">danger</span>
+  </div>
+</body>
+</html>
