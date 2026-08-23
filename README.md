@@ -84,6 +84,7 @@ radius       = spacing スケールの 0〜16 の部分集合
 
 | ファイル | 内容 |
 |---|---|
+| [CLAUDE.md](./CLAUDE.md) | エージェント向けの規則。**作業前に必ず読む** |
 | [docs/decisions.md](./docs/decisions.md) | 設計決定。生成規則・値・退けた案・改訂履歴 |
 | [docs/roles.md](./docs/roles.md) | 既存4本から観測したセマンティック役割 |
 | [docs/verification.md](./docs/verification.md) | 生成スケールが実需要を覆えるかの検証 |
