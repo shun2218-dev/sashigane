@@ -6,6 +6,25 @@ on:
   pull_request:
 
 jobs:
+  # リリース線への PR は develop からのみ許す。
+  # branch protection は「PR を経由すること」しか要求せず、head を制約しない。
+  # 作業ブランチから直接 main へ PR を出せてしまうため、ここで塞ぐ（docs/branching.md）。
+  branch-flow:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: main への PR は develop からのみ
+        run: |
+          if [ "$HEAD_REF" != "develop" ]; then
+            echo "main への PR は develop からのみ許可されています。" >&2
+            echo "  この PR の head: $HEAD_REF" >&2
+            echo "  作業ブランチはまず develop へマージしてください（docs/branching.md）。" >&2
+            exit 1
+          fi
+          echo "✓ head は develop"
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+
   verify:
     runs-on: ubuntu-latest
     steps:

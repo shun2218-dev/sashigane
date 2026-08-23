@@ -31,6 +31,10 @@ develop へマージ
 
 **リリースするときだけ `develop` → `main` の PR を出す。**
 
+作業ブランチから直接 `main` へ PR を出すことは CI が拒否する。
+branch protection は「PR を経由すること」しか要求せず head を制約しないため、
+`branch-flow` ジョブで塞いでいる。
+
 ## 保護は二層ある
 
 ### 1. pre-push フック（手元）
@@ -48,7 +52,7 @@ develop へマージ
 |---|---|
 | PR 経由の変更のみ | 必須 |
 | 必要な承認数 | 0（開発者が1人のため。自分の PR は承認できない） |
-| 必要なステータスチェック | `verify`（CI） |
+| 必要なステータスチェック | `verify`（CI）。`main` は `branch-flow` も |
 | 管理者にも適用 | **する**（`enforce_admins: true`） |
 | force push / 削除 | 禁止 |
 
