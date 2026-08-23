@@ -76,6 +76,13 @@ grep が外れていて「生成されない」と**逆の結論**を出しか�
 
 **エラーにならない仕組みほど、意図どおり動いていることを能動的に確かめる。**
 
+### 5. 検査は「禁止するもの」ではなく「許可するもの」を列挙する
+
+禁止リスト方式は、リストに無いものを黙って通す。
+**列挙し忘れたケースがあることに、検査が緑である限り気づけない。**
+
+許可リストにできない場合は、**検査が原理的に見逃す範囲を検査自身のコメントに書く。**
+
 ### （前提）仕様は記憶で書かない。動かして確かめる
 
 **shadcn CLI と Tailwind v4 は仕様変更が速い。** 訓練データの記憶は当てにならない。
@@ -128,9 +135,17 @@ Storybook のストーリー3状態（**通常 / 空 / エッジケース**）�
 ## よく使うコマンド
 
 ```bash
-pnpm scales            # スケールを表示し、不変条件を検査する
-pnpm verify:coverage   # 実需要に対するカバー率を出す（観測対象4本がローカルに必要）
-pnpm check:lessons     # agent-failures.md の教訓がこのファイルに届いているか検査する
+pnpm test                     # スケールの不変条件を検査する（decisions.md との一致を含む）
+pnpm typecheck
+pnpm check:tokens-isolation   # packages/tokens が単体で成立していることを検査する（原則4）
+pnpm check:docs-scales        # decisions.md の数値表が生成器と一致するか検査する
+pnpm check:no-build-output    # 生成物がコミットされていないか検査する（原則1）
+pnpm check:lessons            # agent-failures.md の教訓がこのファイルに届いているか検査する
+
+pnpm scales                   # スケールを表示する（人が目で見るためのもの。検査ではない）
+pnpm verify:coverage          # 実需要に対するカバー率（観測対象4本のローカル clone が必要）
 ```
 
-`scales.mjs` が import 時に不変条件を検査するため、**これらが正常終了すること自体が検査の合格**を意味する。
+CI は `verify:coverage` を除く全部を走らせる。
+`verify:coverage` は観測対象4本のローカル clone を前提とするため CI では動かない。
+**スケールを変更したら手元で実行し、`docs/verification.md` の数値を更新すること。**
