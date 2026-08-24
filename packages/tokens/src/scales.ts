@@ -158,12 +158,23 @@ export const fontInputName = (stack: FontStack, slot: FontSlot): string =>
  * 2 が要るのは、**利用側が body だけ差したときに見出しが system-ui へ残らないようにする**ため。
  * 観測4本のうち専用の見出し書体を持つのは1本だけで、既定は「本文に従う」が正しい。
  */
-const slotValue = (stack: FontStack, slot: FontSlot): string => {
+const slotValue = (stack: FontStack, slot: FontSlot, seen: FontStack[] = []): string => {
+  // 未知の名前と循環は、放っておくと TypeError か無限再帰になる。
+  // 生成器の他の箇所（spacing の max 不一致）と同じく、何が食い違ったかを名指しして落とす
+  if (!(stack in tokens.fontFamily.stacks)) {
+    throw new Error(
+      `書体スタック ${stack} は存在しません（inheritsFrom: ${[...seen, stack].join(' → ')}）`,
+    );
+  }
+  if (seen.includes(stack)) {
+    throw new Error(`書体スタックの継承が循環しています: ${[...seen, stack].join(' → ')}`);
+  }
+
   const def = tokens.fontFamily.stacks[stack];
   const fallback =
     'defaults' in def
       ? def.defaults[slot]
-      : slotValue(def.inheritsFrom as FontStack, slot);
+      : slotValue(def.inheritsFrom as FontStack, slot, [...seen, stack]);
   if (!fallback) {
     // 教訓4。var(--x, ) は「空」を返し、font-family: , system-ui となって
     // 宣言ごと無効になる。**エラーにならないので生成器が落とす**

@@ -5,9 +5,17 @@
  * こちらは「**我々が生成したアダプタが期待どおりのユーティリティを出すか**」の回帰テストで、
  * 目的が違う。仕様が変わればここが落ちる。
  *
- * 検査できる範囲: 生成されるユーティリティの有無。
+ * 検査できる範囲: 生成されるユーティリティの有無と、写像が参照する名前の実在。
  * 検査できない範囲: 実ブラウザでの見え方、任意値記法（p-[20px]）の抑止は
  *   構造では不可能で lint の担当（決定3-1）。
+ *
+ * ## 名前の実在を見る理由（自己レビュー B1）
+ *
+ * アダプタの写像は**手書きの `--sg-*` 名**である（色10件 + status/chart + 書体7件）。
+ * 1文字誤ると `.font-body { font-family: var(--sg-text-body-familyy) }` が生成され、
+ * **未定義の変数なので宣言が無効になり、継承した書体で表示される。**
+ * Tailwind は何も言わず、ユーティリティ自体は存在するので上の検査も通る。
+ * 「それらしく見える」ため目視でも気づけない（教訓4）。
  */
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -82,6 +90,42 @@ const EXPECTATIONS = [
 ];
 
 const failures = [];
+
+/* ---------- 写像が参照する --sg-* がすべて実在すること（自己レビュー B1） ----------
+ *
+ * 許すのは tokens.css が宣言している名前と、利用側が差す口（決定2-7）の2種。
+ * 口は宣言が無いのが正常なので、名前表から取る。
+ */
+let mappedNames = 0;
+{
+  const themeCss = readFileSync(join(dist, 'theme.css'), 'utf8');
+  const tokensCss = readFileSync(join(dist, 'tokens.css'), 'utf8');
+  const layersPath = join(dist, 'tokens.layers.json');
+  if (!existsSync(layersPath)) {
+    console.error(`${layersPath} がありません。先に pnpm build:tokens を実行してください。`);
+    process.exit(1);
+  }
+  const known = new Set([
+    ...[...tokensCss.matchAll(/^\s*(--sg-[a-z0-9-]+)\s*:/gm)].map((m) => m[1]),
+    ...JSON.parse(readFileSync(layersPath, 'utf8')).inputs,
+  ]);
+  const referenced = new Set(
+    [...themeCss.matchAll(/var\(\s*(--sg-[a-z0-9-]+)/g)].map((m) => m[1]),
+  );
+  mappedNames = referenced.size;
+  if (referenced.size === 0) {
+    failures.push('theme.css が --sg-* を1つも参照していない。@theme inline の写像が空');
+  }
+  for (const name of referenced) {
+    if (!known.has(name)) {
+      failures.push(
+        `theme.css が tokens.css に無い ${name} を参照している。` +
+          '未定義の変数は宣言を無効にするだけで、エラーにならない',
+      );
+    }
+  }
+}
+
 for (const [cls, expected, why] of EXPECTATIONS) {
   const actual = has(cls);
   if (actual !== expected) {
@@ -122,5 +166,6 @@ if (failures.length) {
   for (const f of failures) console.error(`  ✗ ${f}`);
   process.exit(1);
 }
+console.log(`✓ 写像が参照する --sg-* ${mappedNames} 件がすべて実在する`);
 console.log(`✓ ${EXPECTATIONS.length} 件のユーティリティが期待どおり`);
 console.log('✓ セマンティックが --sg-* を直接参照している（@theme inline）');
