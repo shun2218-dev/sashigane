@@ -16,6 +16,7 @@
 import type { Palette } from '../color/palette.ts';
 import { radius, spacing } from '../scales.ts';
 import { statusNames } from '../color/palette.ts';
+import { outputHeader } from './header.ts';
 import { FONT_ROLES, TEXT_ROLES } from './primitives.ts';
 
 /**
@@ -69,8 +70,11 @@ const FONT_UTILITIES = [
 
 export const toThemeCss = (palette: Palette): string =>
   [
-    '/* sashigane — Tailwind v4 用アダプタ。生成物。手で編集しない。',
-    '   tokens.css を先に読み込むこと。値はすべて --sg-* を参照する。 */',
+    ...outputHeader('block', 'Tailwind v4 用アダプタ。', palette, [
+      'tokens.css を先に読み込むこと。値はすべて --sg-* を参照する。',
+      'ここが所有する名前空間は initial でリセットされる。素の Tailwind の',
+      '色・間隔・角丸・書体は出てこない（決定3-1・3-3）。',
+    ]),
     '@import "tailwindcss";',
     '',
     '@theme inline {',
@@ -97,8 +101,8 @@ export const toThemeCss = (palette: Palette): string =>
       `  --text-${r.name}--line-height: var(--sg-text-${r.name}-leading);`,
     ]),
     '',
-    '  /* font-family — --text-* に書体を束ねる修飾子は無い（実測。',
-    '     docs/experiments/font-family.md）ので --font-* 名前空間へ写像する。',
+    '  /* font-family — --text-* に書体を束ねる修飾子は無い（実測。上記 docs の',
+    '     experiments/font-family.md）ので --font-* 名前空間へ写像する。',
     '     tabular-nums も font-variant-numeric 修飾子が無いため feature-settings で出す */',
     ...FONT_UTILITIES.map((f) => `  --font-${f.name}: var(${f.token});`),
     ...FONT_ROLES.filter((r) => r.tabular).map(

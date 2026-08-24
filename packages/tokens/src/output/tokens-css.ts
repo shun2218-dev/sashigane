@@ -6,6 +6,7 @@
  */
 import type { Palette } from '../color/palette.ts';
 import { colorPrimitiveVars, colorSemanticVars } from './color-vars.ts';
+import { outputHeader } from './header.ts';
 import { primitiveVars, typographySemanticVars } from './primitives.ts';
 
 /**
@@ -19,10 +20,12 @@ const colorScheme = (mode: 'light' | 'dark'): string[] => [`  color-scheme: ${mo
 
 export const toTokensCss = (palette: Palette): string =>
   [
-    '/* sashigane — 生成物。手で編集しない。',
-    '   規則と根拠は docs/decisions.md を参照。',
-    '   --sg-{category}-{数字} はプリミティブで、コンポーネントからの参照は禁止（原則3）。',
-    '   --sg-font-brand-* だけは利用側が定義する差し込み口である（決定1-11・2-7）。 */',
+    ...outputHeader('block', 'CSS 変数。これ1つでフレームワーク非依存に動く。', palette, [
+      '--sg-{カテゴリ}-{数字} はプリミティブ。コンポーネントからの参照は禁止（原則3）。',
+      '使ってよいのは役割の名前（--sg-color-bg-page、--sg-text-body など）。',
+      '--sg-font-brand-* だけは逆で、**利用側が定義する**差し込み口である（決定1-11・2-7）。',
+      ':root に書くと、書体スタックの欧文の位置に差し込まれる。',
+    ]),
     ':root {',
     ...primitiveVars(),
     '',

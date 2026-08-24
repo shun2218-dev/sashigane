@@ -17,6 +17,7 @@
  */
 import type { Palette } from '../color/palette.ts';
 import { colorSemanticVars } from './color-vars.ts';
+import { outputHeader } from './header.ts';
 import { typographySemanticVars } from './primitives.ts';
 
 const nameOf = (line: string): string | null => {
@@ -29,7 +30,9 @@ export const toTypeDefinitions = (palette: Palette): string => {
     .map(nameOf)
     .filter((v): v is string => v !== null);
   return [
-    '// sashigane — 生成物。手で編集しない。',
+    ...outputHeader('line', 'tokens.js に対する型。', palette, [
+      '参照してよいトークン名だけを出す。プリミティブは含めない（原則3）。',
+    ]),
     '',
     '/**',
     ' * 参照してよいトークン名。',

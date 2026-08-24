@@ -9,6 +9,7 @@
  */
 import type { Palette } from '../color/palette.ts';
 import { colorSemanticVars } from './color-vars.ts';
+import { outputHeader } from './header.ts';
 import { typographySemanticVars } from './primitives.ts';
 
 const toScssVar = (line: string): string | null => {
@@ -18,9 +19,11 @@ const toScssVar = (line: string): string | null => {
 
 export const toScss = (palette: Palette): string =>
   [
-    '// sashigane — 生成物。手で編集しない。',
-    '// tokens.css を先に読み込むこと。値は CSS 変数を参照するので、',
-    '// 暗色モードの切り替えが実行時に効く。',
+    ...outputHeader('line', 'SCSS 変数。', palette, [
+      'tokens.css を先に読み込むこと。値は CSS 変数を参照するので、',
+      '暗色モードの切り替えが実行時に効く。コンパイル時に焼き込まない。',
+      '出すのはセマンティックだけ（原則3）。',
+    ]),
     '',
     ...[...typographySemanticVars(), ...colorSemanticVars('light', palette)]
       .map(toScssVar)
