@@ -116,3 +116,89 @@ export const elevation: number[] = Array.from(
   { length: tokens.elevation.maxHeight + 1 },
   (_, i) => i,
 );
+
+/* ============================================================
+   font-family — root から導出できない次元（決定1-11）
+   ============================================================ */
+
+/**
+ * スタックの中で書体名を差せる位置。順序がそのままフォールバックの順序になる。
+ *
+ * 型は defaults の鍵から取る。JSON の `slots` は**順序**だけを持ち、
+ * 両者が食い違ったら生成器が落ちる（片方だけ足すと静かに欠ける。教訓4）。
+ */
+export type FontSlot = keyof typeof tokens.fontFamily.stacks.body.defaults;
+export const fontSlots: readonly FontSlot[] = (() => {
+  const declared = tokens.fontFamily.slots;
+  const known = Object.keys(tokens.fontFamily.stacks.body.defaults);
+  if (declared.length !== known.length || declared.some((s) => !known.includes(s))) {
+    throw new Error(
+      `fontFamily.slots が defaults の鍵と一致しません: ` +
+        `slots ${declared.join(', ')} / defaults ${known.join(', ')}`,
+    );
+  }
+  return declared as readonly FontSlot[];
+})();
+
+/** 書体スタックの種類。役割はここへ割り当てられる */
+export type FontStack = keyof typeof tokens.fontFamily.stacks;
+export const fontStackNames = Object.keys(tokens.fontFamily.stacks) as FontStack[];
+
+/** 利用側が書体名を差す口の名前。**トークンは宣言しない**（宣言すると var() のフォールバックが効かない） */
+export const fontInputName = (stack: FontStack, slot: FontSlot): string =>
+  `--sg-font-brand-${stack}-${slot}`;
+
+/**
+ * スタック1段分の CSS 値。`var(口, 既定)` の形で、既定は次の3通りのいずれか。
+ *
+ *   1. 自分の defaults        … body / mono
+ *   2. 継承元の口（入れ子）   … display は body に従う
+ *   3. （無い場合は生成器が落ちる。空フォールバックは font-family 宣言を丸ごと無効にする）
+ *
+ * 2 が要るのは、**利用側が body だけ差したときに見出しが system-ui へ残らないようにする**ため。
+ * 観測4本のうち専用の見出し書体を持つのは1本だけで、既定は「本文に従う」が正しい。
+ */
+const slotValue = (stack: FontStack, slot: FontSlot, seen: FontStack[] = []): string => {
+  // 未知の名前と循環は、放っておくと TypeError か無限再帰になる。
+  // 生成器の他の箇所（spacing の max 不一致）と同じく、何が食い違ったかを名指しして落とす
+  if (!(stack in tokens.fontFamily.stacks)) {
+    throw new Error(
+      `書体スタック ${stack} は存在しません（inheritsFrom: ${[...seen, stack].join(' → ')}）`,
+    );
+  }
+  if (seen.includes(stack)) {
+    throw new Error(`書体スタックの継承が循環しています: ${[...seen, stack].join(' → ')}`);
+  }
+
+  const def = tokens.fontFamily.stacks[stack];
+  const fallback =
+    'defaults' in def
+      ? def.defaults[slot]
+      : slotValue(def.inheritsFrom as FontStack, slot, [...seen, stack]);
+  if (!fallback) {
+    // 教訓4。var(--x, ) は「空」を返し、font-family: , system-ui となって
+    // 宣言ごと無効になる。**エラーにならないので生成器が落とす**
+    throw new Error(`書体スタック ${stack} の ${slot} に既定値がありません`);
+  }
+  return `var(${fontInputName(stack, slot)}, ${fallback})`;
+};
+
+/**
+ * 書体スタックの CSS 値。**欧文 → 和文 → generic の順序をトークン層が保証する。**
+ *
+ * 具体的な書体名は持たない。持てば、それはブランドの選択であってシステムの選択ではない。
+ */
+export const fontStack = (stack: FontStack): string =>
+  [...fontSlots.map((slot) => slotValue(stack, slot)), tokens.fontFamily.stacks[stack].generic].join(
+    ', ',
+  );
+
+/**
+ * 数字を等幅で出す指定。**同じ事実の2つの符号化**を持つ。
+ *
+ * CSS は font-variant-numeric、Tailwind は font-feature-settings を使う。
+ * Tailwind v4.3.3 に `--font-*--font-variant-numeric` 修飾子が無いため
+ * （実測: docs/experiments/font-family.md）、アダプタ側は feature を参照する。
+ */
+export const numericVariant = tokens.fontFamily.numeric.variant;
+export const numericFeature = tokens.fontFamily.numeric.feature;

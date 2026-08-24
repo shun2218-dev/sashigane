@@ -9,8 +9,9 @@
  * 検査は**生成器ではなく出力された CSS のテキストから**値を組み立てて突き合わせる。
  * 両方を palette から作ると同じコードを2回通すだけになり、ずれを検出できない。
  *
- * 16進への変換だけは packages/tokens の実装を借りる。ここで sRGB 変換を
- * 書き直すと、**変換の正しさを検査する検査**が要ることになり、正が2つになる。
+ * 16進への変換と var() フォールバックの展開だけは packages/tokens の実装を借りる。
+ * ここで sRGB 変換や CSS の入れ子解析を書き直すと、**その正しさを検査する検査**が
+ * 要ることになり、正が2つになる。
  *
  * 検査できないこと:
  *   - 変換そのものの誤り（上記の理由で共有している）
@@ -19,6 +20,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { toHex } from '../packages/tokens/src/color/oklch.ts';
+import { expandVarFallbacks } from '../packages/tokens/src/output/values.ts';
 
 const DIST = 'packages/tokens/dist';
 for (const f of ['tokens.css', 'tokens.js', 'tokens.layers.json']) {
@@ -49,7 +51,9 @@ const declarations = (block) => {
 const OKLCH = /^oklch\(([\d.]+) ([\d.]+) ([\d.]+)\)$/;
 const asValue = (raw) => {
   const m = OKLCH.exec(raw);
-  return m ? toHex({ L: Number(m[1]), C: Number(m[2]), H: Number(m[3]) }) : raw;
+  if (m) return toHex({ L: Number(m[1]), C: Number(m[2]), H: Number(m[3]) });
+  // 書体スタックは差し込み口を含む。JS 側は既定へ展開した姿を持つ（決定1-11）
+  return expandVarFallbacks(raw);
 };
 
 const root = declarations(blockAfter(css.indexOf(':root {')));

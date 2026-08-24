@@ -328,6 +328,83 @@ container 幅 / topbar 高さ / content 最小幅などのアプリ固有寸法�
 
 ---
 
+### 決定 1-11: font-family — 構造だけを規定し、書体名は差してもらう
+
+> **原則2「値は導出する」が適用できない次元。** `duration` と同じく例外として明示する。
+> ただし duration は独自のアンカーを持てたが、書体は**アンカーを決めることすらできない。**
+> 具体的な書体名はブランドの選択であって、システムの選択ではない。
+
+観測した4本すべてが3系統（見出し / 本文 / 数値）を持っており、実需要は明確にある
+（[roles.md](./roles.md)、[Issue #30](https://github.com/shun2218-dev/sashigane/issues/30)）。
+**決めたのは値ではなく「何をトークンにするか」である。**
+
+#### 3つのスタックと、6つの差し込み口
+
+```
+--sg-font-stack-body:    var(--sg-font-brand-body-latin, ui-sans-serif),
+                         var(--sg-font-brand-body-cjk, system-ui), sans-serif
+--sg-font-stack-display: var(--sg-font-brand-display-latin, var(--sg-font-brand-body-latin, …)),
+                         var(--sg-font-brand-display-cjk, var(--sg-font-brand-body-cjk, …)), sans-serif
+--sg-font-stack-mono:    var(--sg-font-brand-mono-latin, ui-monospace),
+                         var(--sg-font-brand-mono-cjk, monospace), monospace
+```
+
+トークンが保証するのは**順序**である。欧文 → 和文 → generic。
+日本語のUIでは欧文書体を先に置いて英数字をそちらに担当させるのが定石で、
+これは書体名を知らなくても規定できる、この次元で唯一システムが持てる知識である。
+
+| 決めたこと | なぜ |
+|---|---|
+| 口は欧文・和文の2つ | next/font は書体ごとに別の変数を出す。順序を利用側に委ねると保証が消える |
+| 既定値は必ず持つ | `var(--x, )` は空を返し、`font-family: , system-ui` で**宣言ごと無効になる**（教訓4） |
+| display の既定は body の口へ落ちる | 専用の見出し書体を持つのは観測4本のうち1本。本文だけ差したとき見出しが system 書体に残るのは事故 |
+| 口は**宣言しない** | 宣言するとフォールバックが効かなくなる。名前は `tokens.layers.json` が持つ（決定2-7） |
+
+**差し込み口は `:root` に書く。** `--sg-font-stack-*` の `var()` は宣言された要素で置換されるため、
+部分木で口を定義しても届かない。実測は [font-family.md](./experiments/font-family.md) の実験4。
+
+#### 役割は2種類ある
+
+サイズ役割（`caption` … `display`）に既定の書体を足したうえで、
+**サイズと直交する書体だけの役割**を別に持つ。
+
+```
+--sg-text-body-family        サイズ役割の書体（サイズ・行高と3点で対）
+--sg-text-numeric-family     サイズを持たない。段を持たないことが直交の印
+--sg-text-numeric-variant    tabular-nums。書体だけ当てても桁は揃わない
+--sg-text-code-family
+```
+
+`roles.md` の観測で `numeric` は eyebrow / 統計値 / 表ヘッダ / 凡例 / 目盛 と**全サイズ帯**に現れる。
+1つの段に固定すると実需要を表せない。利用側は「サイズは caption、書体は numeric」と重ねる。
+
+`label` は mono を既定にした。小さい大文字ラベルが mono で組まれているのは ichirizuka の観測による。
+
+#### 記録: 原則7 に対して弱いもの — 2件
+
+**1. `--sg-font-brand-mono-cjk` は実需要を観測していない。**
+3つのスタックで形を揃えるために先回りで持った。等幅の和文書体を差す需要が
+本当に現れるかは分かっていない。**現れなければ消す。**
+
+**2. `label` に mono を割り当てた根拠は観測1件。**
+「小さい大文字ラベルは mono」は ichirizuka だけの観測で、pylabo / holosphere は支持していない
+（自己レビュー N1）。他のサイズ役割の書体割り当てが「本文か見出しか」という
+構造から出ているのに対し、**これだけが1本のプロジェクトの趣味から来ている。**
+
+既定を body にする案もあった。退けたのは、`label` という役割自体が
+その観測から生まれたものだからである（[roles.md](./roles.md) のタイポグラフィ節）。
+役割は採るが書体は採らない、という切り分けの方が恣意的になる。
+
+**2本目で違う組み方を観測したら、そのときに割り当てを見直す。**
+
+#### 同じ事実の2つの符号化
+
+`tabular-nums`（`font-variant-numeric`）と `"tnum"`（`font-feature-settings`）の両方を持つ。
+Tailwind v4.3.3 に `--font-*--font-variant-numeric` 修飾子が無く、
+**アダプタ側は feature でしか書体と等幅数字を束ねられない**ため（実験2）。
+
+---
+
 ## 2. 命名規約
 
 ### 決定 2-1: プリミティブは index 統一
@@ -477,6 +554,32 @@ Phase 2 で観測した実需要は次の3つ（[experiments/phase2-ichirizuka.m
 
 同じセマンティックが2形式に出るので**二重管理になる。**
 `pnpm check:token-values` が出力どうしを突き合わせて一致を検査する。
+
+---
+
+### 決定 2-7: 層は3種類ある — プリミティブ / セマンティック / 入力
+
+決定2-3 は層を2つ（プリミティブ・セマンティック）としていた。**書体で3つ目が要った。**
+
+`--sg-font-brand-*` は利用側が**定義する**名前である（決定1-11）。
+参照してよい名前でも、参照を禁じる名前でもない。
+
+| 種別 | 誰が定義するか | 参照 | 例 |
+|---|---|---|---|
+| プリミティブ | 生成器 | 禁止 | `--sg-font-stack-body` |
+| セマンティック | 生成器 | 可 | `--sg-text-body-family` |
+| **入力** | **利用側** | （定義するもの） | `--sg-font-brand-body-latin` |
+
+`tokens.layers.json` に3つ目の集合を足し、`check-token-usage` は
+**セマンティック ∪ 入力**を許す。差すこと自体は正当な行為であり、
+「表に無い名前」として落とすと利用側が口を使えない。
+
+**入力は生成物の中に宣言が無い。** 宣言すると `var()` のフォールバックが効かないためで、
+他の2つのように出力行から名前を取り出せない。生成器が知っている事実として直接持つ
+（`fontInputNames()`）。手書きの一覧ではないので決定2-6 とは矛盾しない。
+
+`check:tokens-standalone` は「入力は宣言されていないこと」と
+「入力への参照は必ずフォールバックを伴うこと」を検査する。
 
 ---
 
@@ -677,6 +780,27 @@ inline なしだと Tailwind 側の `--color-danger` を上書きしても効い
 
 これは決定1-4 とも整合する。文字サイズは常に行高とペアで使われるべきなので、
 プリミティブの段ではなくセマンティック役割が Tailwind に現れるのが正しい。
+
+**(4) 修飾子が存在しない性質 → 別の名前空間へ出す（font-family）**
+
+`--text-*--font-family` は**無視される**（実測: [font-family.md](./experiments/font-family.md)）。
+書体は `--font-*` 名前空間へ出す。
+
+```css
+--font-*: initial;                                  /* font-sans / font-mono / font-serif を消す */
+--font-body: var(--sg-text-body-family);
+--font-numeric: var(--sg-text-numeric-family);
+--font-numeric--font-feature-settings: var(--sg-font-feature-tabular);
+--default-font-family: var(--sg-text-body-family);       /* preflight の html */
+--default-mono-font-family: var(--sg-text-code-family);  /* preflight の code */
+```
+
+出すのは `roles.md` が観測した5つの書体役割（body / display / label / numeric / code）だけ。
+サイズ役割は8つあるが書体は3通りしかなく、全部を写像すると
+`font-heading-1` のような**サイズ役割と紛らわしく中身が同一**のユーティリティが並ぶ。
+
+`--default-font-family` の差し替えを忘れると、preflight が素の Tailwind のスタックへ戻り
+**本文だけがトークンの外側に残る。エラーにならない**（教訓4）。検査に入れてある。
 
 #### 副産物: 決定1-4 の「オーバーライド不可」が Tailwind 上でも成立する
 
