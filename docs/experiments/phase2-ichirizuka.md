@@ -222,7 +222,7 @@ ichirizuka では増加が teal であることに意味があり、**意味色�
 | 5 `font-family` | [#30](https://github.com/shun2218-dev/sashigane/issues/30) → **対処した**（決定1-11・2-7） |
 | 6 密度の軸 | [#32](https://github.com/shun2218-dev/sashigane/issues/32) |
 | 7 JS から値を読めない | [#31](https://github.com/shun2218-dev/sashigane/issues/31) → **対処した**（決定2-6 の改訂） |
-| 8 連続カラースケール | [#36](https://github.com/shun2218-dev/sashigane/issues/36) |
+| 8 連続カラースケール | [#36](https://github.com/shun2218-dev/sashigane/issues/36) → **対処した**（決定5-11） |
 | 9 生成物のヘッダ | [#34](https://github.com/shun2218-dev/sashigane/issues/34) → **対処した**（決定3-4） |
 
 ### 穴7 は実害が出た

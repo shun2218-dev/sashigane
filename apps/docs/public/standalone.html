@@ -36,6 +36,9 @@
      --sg-font-stack-* の var() は宣言された要素（:root）で置換されるので、
      部分木に差しても届かない。実測は docs/experiments/font-family.md */
   :root { --sg-font-brand-display-latin: Georgia; }
+  /* 連続値の色帯（決定5-11）。11段を並べる。凡例のグラデーションはこれで足りる */
+  .band { display: flex; margin: 0 0 var(--sg-space-4); }
+  .band span { flex: 1; height: var(--sg-space-5); }
   .branded { border-top: var(--sg-border-width-0) solid var(--sg-color-border-subtle); margin-top: var(--sg-space-4); padding-top: var(--sg-space-4); }
   .branded h1 { font-size: var(--sg-text-heading-3); line-height: var(--sg-text-heading-3-leading); }
   p  { color: var(--sg-color-text-muted); margin: 0 0 var(--sg-space-4); }
@@ -50,6 +53,18 @@
     <div class="stats">
       <div>1,048,576</div>
       <div>0,999,111</div>
+    </div>
+    <div class="band">
+      <span style="background: var(--sg-color-sequential-1)"></span>
+      <span style="background: var(--sg-color-sequential-2)"></span>
+      <span style="background: var(--sg-color-sequential-3)"></span>
+      <span style="background: var(--sg-color-sequential-4)"></span>
+      <span style="background: var(--sg-color-sequential-5)"></span>
+      <span style="background: var(--sg-color-sequential-6)"></span>
+      <span style="background: var(--sg-color-sequential-7)"></span>
+      <span style="background: var(--sg-color-sequential-8)"></span>
+      <span style="background: var(--sg-color-sequential-9)"></span>
+      <span style="background: var(--sg-color-sequential-10)"></span>
     </div>
     <button type="button">主ボタン</button>
     <span class="badge">danger</span>

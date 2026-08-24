@@ -6,7 +6,7 @@
  * ここで見るのは、出力そのものが満たすべき性質。
  */
 import { describe, expect, it } from 'vitest';
-import { generatePalette, tokenLayers, tokenValues } from '../src/index.ts';
+import { generatePalette, steps, tokenLayers, tokenValues } from '../src/index.ts';
 
 const palette = generatePalette({ L: 0.6, C: 0.1, H: 220 });
 const values = tokenValues(palette);
@@ -51,9 +51,14 @@ describe('JS へ出す値', () => {
   });
 
   it('色は light と dark で必ず変わる（暗色ブロックが素通りしていない）', () => {
+    // 連続帯の中央だけは構造的に動かない。両モードが同じランプを逆向きに
+    // たどるので、真ん中の1本だけが同じ段を指す（決定5-11）。
+    // **一律に sequential を除外しない。** 動かないのは中央の1本だけで、
+    // 他が動かなくなったらそれは暗色ブロックの素通りである
+    const fixed = `--sg-color-sequential-${(steps.length - 1) / 2}`;
     const same = Object.entries(values.light).filter(
       ([name, v]) => name.startsWith('--sg-color-') && values.dark[name] === v,
     );
-    expect(same).toEqual([]);
+    expect(same.map(([n]) => n)).toEqual([fixed]);
   });
 });
