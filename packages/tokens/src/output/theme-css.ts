@@ -132,6 +132,11 @@ export const toThemeCss = (palette: Palette): string =>
     ...palette.categorical.map(
       (_, i) => `  --color-chart-${i + 1}: var(--sg-color-chart-${i + 1});`,
     ),
+    '',
+    '  /* 連続値の色帯。離散系列とは別の役割なので別の名前で出す（決定5-11） */',
+    ...palette.lightnesses.map(
+      (_, i) => `  --color-sequential-${i + 1}: var(--sg-color-sequential-${i + 1});`,
+    ),
     '}',
     '',
   ].join('\n');

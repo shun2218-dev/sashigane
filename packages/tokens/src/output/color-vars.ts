@@ -59,7 +59,26 @@ const semanticFor = (
     ...seriesSteps.map(
       (step, i) => `  --sg-color-chart-${i + 1}: var(--sg-series-${i + 1}-${step});`,
     ),
+    ...sequentialVars(mode),
   ];
+};
+
+/**
+ * 連続値の色帯（決定5-11）。**離散系列とは別の役割**である（roles.md）。
+ *
+ * 段は primary ランプをそのまま使い、**面に近い側から遠い側へ**並べる。
+ * 明色モードは薄い → 濃い、暗色モードはその逆で、色を反転しているのではなく
+ * 参照する段の順序を変えているだけである（決定5-2 と同じ形）。
+ *
+ * **色相は回さない。** 明度に沿って色相を回す案（viridis 相当）を測ったところ、
+ * 二色覚のもとで知覚明度の単調性が壊れた。連続帯は順序が読めることが目的なので、
+ * これは目的そのものを壊す。記録は docs/experiments/sequential.md。
+ */
+const sequentialVars = (mode: 'light' | 'dark'): string[] => {
+  const ordered = mode === 'light' ? steps : [...steps].reverse();
+  return ordered.map(
+    (step, i) => `  --sg-color-sequential-${i + 1}: var(--sg-primary-${step});`,
+  );
 };
 
 /** 色のセマンティック。モードで**参照する段を変えるだけ**（決定5-2） */
