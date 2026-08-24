@@ -86,6 +86,10 @@ jobs:
       - name: 生成した型定義
         run: pnpm check:token-types
 
+      # 原則6: 生成物は利用側リポジトリへ落ちる。落ちた先で意味を成すこと
+      - name: 生成物のヘッダ
+        run: pnpm check:output-header
+
       # ドキュメントサイトがビルドできること
       # 型が通ってもビルドが壊れる要因（アセット解決、import 経路、Vite 設定）は
       # typecheck では検出できない

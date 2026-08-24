@@ -1,3 +1,4 @@
+export * from './header.ts';
 export * from './primitives.ts';
 export * from './color-vars.ts';
 export * from './tokens-css.ts';

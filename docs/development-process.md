@@ -65,10 +65,11 @@ pnpm check:tailwind-adapter   # アダプタが期待どおりのユーティリ
 pnpm check:token-usage        # プリミティブ参照と Tailwind 任意値記法を禁止する（原則3）
 pnpm check:token-values       # tokens.js の値が tokens.css とずれていないこと
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
+pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
 ```
 
 `check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` `check:token-values`
-`check:token-types` は `dist/` を読むので、
+`check:token-types` `check:output-header` は `dist/` を読むので、
 先に `pnpm build:tokens` が要る。CI はその順で走らせている。
 
 `check:token-usage` は実行のたびに、まず意図的な違反を含むフィクスチャへ検出器を当てる。

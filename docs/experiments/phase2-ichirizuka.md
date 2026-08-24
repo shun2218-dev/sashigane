@@ -219,11 +219,11 @@ ichirizuka では増加が teal であることに意味があり、**意味色�
 | 2 面の重なり方が逆 | [#29](https://github.com/shun2218-dev/sashigane/issues/29) |
 | 3 意図的に弱い注記 | 記録のみ。設計思想の衝突であり、変えるかどうかは別の判断 |
 | 4 中性色の色相 | [#33](https://github.com/shun2218-dev/sashigane/issues/33) → **穴ではなかった**（[neutral-hue.md](./neutral-hue.md)） |
-| 5 `font-family` | [#30](https://github.com/shun2218-dev/sashigane/issues/30) |
+| 5 `font-family` | [#30](https://github.com/shun2218-dev/sashigane/issues/30) → **対処した**（決定1-11・2-7） |
 | 6 密度の軸 | [#32](https://github.com/shun2218-dev/sashigane/issues/32) |
 | 7 JS から値を読めない | [#31](https://github.com/shun2218-dev/sashigane/issues/31) → **対処した**（決定2-6 の改訂） |
 | 8 連続カラースケール | [#36](https://github.com/shun2218-dev/sashigane/issues/36) |
-| 9 生成物のヘッダ | [#34](https://github.com/shun2218-dev/sashigane/issues/34) |
+| 9 生成物のヘッダ | [#34](https://github.com/shun2218-dev/sashigane/issues/34) → **対処した**（決定3-4） |
 
 ### 穴7 は実害が出た
 

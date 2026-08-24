@@ -39,6 +39,7 @@
 import type { Palette } from '../color/palette.ts';
 import { toHex, type Oklch } from '../color/oklch.ts';
 import { colorPrimitiveVars, colorSemanticVars } from './color-vars.ts';
+import { outputHeader } from './header.ts';
 import { primitiveVars, typographySemanticVars } from './primitives.ts';
 
 export type Theme = 'light' | 'dark';
@@ -156,15 +157,15 @@ const entries = (map: Record<string, string>): string =>
 export const toValuesJs = (palette: Palette): string => {
   const values = tokenValues(palette);
   return [
-    '// sashigane — 生成物。手で編集しない。',
-    '//',
-    '// セマンティックの解決済みの値。**生成時点の写しである。**',
-    '// 実行時のテーマ切り替えには追随しないので、CSS が届く場所では tokens.css の',
-    '// CSS 変数を使うこと。これは OG 画像の生成やデータから色を計算する箇所のように、',
-    '// **CSS 変数が原理的に到達できない場所**のための別経路である。',
-    '//',
-    '// 書体は「差し込み口が未定義のときの既定スタック」を出している。',
-    '// 利用側が --sg-font-brand-* へ書体名を差しても、この値は追随しない（決定1-11）。',
+    ...outputHeader('line', 'セマンティックの解決済みの値。', palette, [
+      '**生成時点の写しである。** 実行時のテーマ切り替えには追随しないので、',
+      'CSS が届く場所では tokens.css の CSS 変数を使うこと。これは OG 画像の生成や',
+      'データから色を計算する箇所のように、**CSS 変数が原理的に到達できない場所**',
+      'のための別経路である。',
+      '',
+      '書体は「差し込み口が未定義のときの既定スタック」を出している。',
+      '利用側が --sg-font-brand-* へ書体名を差しても、この値は追随しない（決定1-11）。',
+    ]),
     '',
     'export const tokens = {',
     '  light: {',
