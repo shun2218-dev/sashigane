@@ -43,7 +43,7 @@ writeFileSync(
     shadow-lg ease-out
     font-body font-display font-label font-numeric font-code
     font-sans font-mono font-serif
-    bg-sequential-1 bg-sequential-11 bg-sequential-12
+    bg-sequential-1 bg-sequential-10 bg-sequential-11
   "></div>`,
 );
 writeFileSync(
@@ -89,8 +89,8 @@ const EXPECTATIONS = [
   ['font-mono', false, '素の Tailwind の書体'],
   ['font-serif', false, '素の Tailwind の書体'],
   ['bg-sequential-1', true, '連続値の色帯。離散系列とは別の役割（決定5-11）'],
-  ['bg-sequential-11', true, '帯の反対の端。段数は明度スケールと同じ11段'],
-  ['bg-sequential-12', false, '11段しかない。存在しない段は名前も存在しない'],
+  ['bg-sequential-10', true, '帯の反対の端。面の段を除いた10段'],
+  ['bg-sequential-11', false, '10段しかない。存在しない段は名前も存在しない'],
 ];
 
 const failures = [];

@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   colorSemanticVars,
+  contrastBetween,
   generatePalette,
   maxSafeChroma,
   oklchToLinearRgb,
@@ -82,19 +83,38 @@ const HUES = Array.from({ length: 36 }, (_, i) => i * 10);
 describe('連続値の色帯', () => {
   const palette = generatePalette({ L: 0.6, C: 0.1, H: 220 });
 
-  it('段数は明度スケールと一致する', () => {
-    expect(band('light', palette)).toHaveLength(steps.length);
-    expect(band('dark', palette)).toHaveLength(steps.length);
+  it('段数は明度スケールから面の1段を引いた数', () => {
+    expect(band('light', palette)).toHaveLength(steps.length - 1);
+    expect(band('dark', palette)).toHaveLength(steps.length - 1);
   });
 
-  it('暗色モードは同じランプを逆順にたどる（色を反転していない）', () => {
-    expect(band('dark', palette)).toEqual([...band('light', palette)].reverse());
+  it('帯の最小段が面と見分けられる（値が最小のセルが消えない）', () => {
+    // 面の段をそのまま帯に入れるとコントラストが 1.00 になり、
+    // 値が最小のセルとデータが無いセルが区別できない（自己レビュー B1）
+    for (const [mode, pageStep] of [
+      ['light', steps[0]!],
+      ['dark', steps.at(-1)!],
+    ] as const) {
+      const page = palette.neutral.byStep[pageStep]!;
+      const first = band(mode, palette)[0]!;
+      expect(contrastBetween(page, first), mode).toBeGreaterThan(1.1);
+    }
+  });
+
+  it('両モードとも同じランプを、面から遠ざかる向きにたどる（色を反転していない）', () => {
+    // 除く段がモードで違う（明色は 50、暗色は 950）ので、単純な逆順にはならない。
+    // 見るのは「同じ primary ランプの段を、面から遠い向きに並べている」こと
+    const expected = (order: readonly number[]) =>
+      order.slice(1).map((step) => palette.primary.byStep[step]!);
+    expect(band('light', palette)).toEqual(expected(steps));
+    expect(band('dark', palette)).toEqual(expected([...steps].reverse()));
   });
 
   it('帯は面に近い側から始まる（薄い＝小さい値）', () => {
-    // 明色の面は段 50 側、暗色の面は段 950 側にある（決定5-2）
-    expect(band('light', palette)[0]).toBe(palette.primary.byStep[50]);
-    expect(band('dark', palette)[0]).toBe(palette.primary.byStep[950]);
+    // 明色の面は段 50 側、暗色の面は段 950 側にある（決定5-2）。
+    // その1段内側から始まる
+    expect(band('light', palette)[0]).toBe(palette.primary.byStep[100]);
+    expect(band('dark', palette)[0]).toBe(palette.primary.byStep[900]);
   });
 
   it('陰性対照: 退けた多色相の帯を当てると、この検査は発火する', () => {
