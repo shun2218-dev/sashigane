@@ -5,6 +5,10 @@
  * 「原則3」の定義も無い。Phase 2 で ichirizuka にコミットした `app/tokens.css` が
  * 実際にその状態だった（docs/experiments/phase2-ichirizuka.md の穴9）。
  *
+ * 対象は **dist/ にあるもの全部**で、除外だけを理由つきで列挙する（教訓5）。
+ * 手書きの一覧にすると、次に足した出力が黙って検査を素通りする
+ * （自己レビュー B1 で、実際に素通りすることを確かめた）。
+ *
  * 検査できる範囲:
  *   - 全生成物が共通ヘッダで始まること（1つだけ書き忘れる、が起きる）
  *   - 規則の在り処が絶対 URL で書かれていること
@@ -17,17 +21,35 @@
  *   - ヘッダの説明が正しいか。文面の意味は機械では読めない
  *   - 「原則3」のような番号参照そのもの。ヘッダが在り処を説明していることで足りるとみなす
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { DOCS_URL } from '../packages/tokens/src/output/header.ts';
 
 const DIST = 'packages/tokens/dist';
-const FILES = ['tokens.css', 'theme.css', 'tokens.scss', 'tokens.js', 'tokens.d.ts'];
+if (!existsSync(DIST)) {
+  console.error(`${DIST} がありません。先に pnpm build:tokens を実行してください。`);
+  process.exit(1);
+}
 
-for (const f of FILES) {
-  if (!existsSync(`${DIST}/${f}`)) {
-    console.error(`${DIST}/${f} がありません。先に pnpm build:tokens を実行してください。`);
-    process.exit(1);
-  }
+/**
+ * 対象から外すもの。**理由の書けない除外を足さない。**
+ * 対象は dist の中身すべてであり、ここに列挙したものだけを引く。
+ * 新しく足した出力は自動的に検査に入る。
+ */
+const EXCLUDED = [
+  {
+    re: /^tokens\.layers\.json$/,
+    why:
+      '配布物ではなく検査用の名前表（scripts/check-token-usage.mjs が読む）。' +
+      'JSON にコメントは書けず、利用側リポジトリへも落ちない',
+  },
+];
+
+const FILES = readdirSync(DIST).filter((f) => !EXCLUDED.some((e) => e.re.test(f)));
+
+// 対象が無いのに緑を返すと、空の dist を検査した結果と区別がつかない（教訓2）
+if (FILES.length === 0) {
+  console.error(`${DIST} に検査対象がありません。生成が空か、除外が広すぎます。`);
+  process.exit(1);
 }
 
 /* ============================================================
@@ -115,5 +137,8 @@ if (violations.length) {
 }
 
 console.log(`✓ 陰性対照 ${FIXTURES.length} 件が期待どおり発火した`);
-console.log(`✓ 生成物 ${FILES.length} 件が共通ヘッダを持ち、規則の在り処を絶対 URL で示している`);
+console.log(
+  `✓ 生成物 ${FILES.length} 件が共通ヘッダを持ち、規則の在り処を絶対 URL で示している` +
+    `（dist の全ファイルが対象。除外 ${EXCLUDED.length} 規則）`,
+);
 console.log('✓ リポジトリ相対のパスと、生成のたびに変わる値が残っていない');
