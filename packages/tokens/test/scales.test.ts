@@ -26,6 +26,9 @@ import {
   breakpoint,
   breakpointNames,
   breakpointUnit,
+  densityLevels,
+  spaceRoles,
+  spaceStepFor,
 } from '../src/index.ts';
 
 /** 浮動小数の比較。比率の検証には十分に厳しい値を使う */
@@ -202,6 +205,48 @@ describe('breakpoint（決定1-10）', () => {
     const derived = new Set([...spacing, ...fontSize].map((v) => +v.toFixed(4)));
     for (const n of breakpointNames) {
       expect(derived.has(breakpoint(n) * root), n).toBe(false);
+    }
+  });
+});
+
+describe('密度の軸（決定1-12）', () => {
+  it('骨格の3役割だけを持つ', () => {
+    expect(spaceRoles).toEqual(['page', 'section', 'surface']);
+  });
+
+  it('既定の値が Phase 2 の実測と一致する', () => {
+    // holosphere の PageContainer / Card から観測した骨格の余白
+    expect(spacing[spaceStepFor('page', 'default')]).toBe(24); // px-6
+    expect(spacing[spaceStepFor('section', 'default')]).toBe(48); // py-12 / gap-12
+    expect(spacing[spaceStepFor('surface', 'default')]).toBe(24); // p-6
+  });
+
+  it('compact は既定の実測と一致する', () => {
+    expect(spacing[spaceStepFor('page', 'compact')]).toBe(16); // px-4
+    expect(spacing[spaceStepFor('section', 'compact')]).toBe(32); // py-8 / gap-8
+    expect(spacing[spaceStepFor('surface', 'compact')]).toBe(16); // p-4
+  });
+
+  it('comfortable は surface の実測と一致する', () => {
+    expect(spacing[spaceStepFor('surface', 'comfortable')]).toBe(32); // lg:p-8
+  });
+
+  it('密度が1段変わると、参照する段もちょうど1段動く', () => {
+    for (const role of spaceRoles) {
+      const steps = densityLevels.map((d) => spaceStepFor(role, d));
+      for (let i = 1; i < steps.length; i++) {
+        expect(steps[i]! - steps[i - 1]!, `${role} ${densityLevels[i]}`).toBe(1);
+      }
+    }
+  });
+
+  it('参照する段はすべてスケールの中にある', () => {
+    for (const role of spaceRoles) {
+      for (const d of densityLevels) {
+        const i = spaceStepFor(role, d);
+        expect(i, `${role} ${d}`).toBeGreaterThanOrEqual(0);
+        expect(i, `${role} ${d}`).toBeLessThan(spacing.length);
+      }
     }
   });
 });

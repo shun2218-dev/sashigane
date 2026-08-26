@@ -11,6 +11,9 @@ import {
   breakpoint,
   breakpointNames,
   breakpointUnit,
+  spaceRoles,
+  spaceStepFor,
+  type DensityLevel,
   durationLoop,
   durationTransition,
   elevation,
@@ -161,3 +164,12 @@ export const typographySemanticVars = (): string[] => [
 ];
 
 export { FONT_ROLES, TEXT_ROLES };
+
+/**
+ * 骨格の余白のセマンティック（決定1-12）。
+ *
+ * **密度で動くのはここだけ**である。コンポーネント内部の余白は動かない。
+ * 実測では、ブレークポイントで動く余白は全体の約 4.5% しかなかった。
+ */
+export const spacingSemanticVars = (density: DensityLevel): string[] =>
+  spaceRoles.map((role) => `  --sg-space-${role}: var(--sg-space-${spaceStepFor(role, density)});`);

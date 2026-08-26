@@ -40,7 +40,11 @@ import type { Palette } from '../color/palette.ts';
 import { toHex, type Oklch } from '../color/oklch.ts';
 import { colorPrimitiveVars, colorSemanticVars } from './color-vars.ts';
 import { outputHeader } from './header.ts';
-import { primitiveVars, typographySemanticVars } from './primitives.ts';
+import {
+  primitiveVars,
+  spacingSemanticVars,
+  typographySemanticVars,
+} from './primitives.ts';
 
 export type Theme = 'light' | 'dark';
 export type TokenValues = Record<Theme, Record<string, string>>;
@@ -143,9 +147,15 @@ const resolve = (lines: string[], primitives: Map<string, string>): Record<strin
 export const tokenValues = (palette: Palette): TokenValues => {
   const primitives = primitiveValues(palette);
   const typography = resolve(typographySemanticVars(), primitives);
+  /*
+   * 骨格の余白は**既定の密度の値だけ**を出す（決定1-12）。
+   * 面が page の値だけを出すのと同じ理由で、CSS が届かない場所に
+   * 密度の切り替えは無い。テーマと違い、明色/暗色で値は変わらない。
+   */
+  const spacing = resolve(spacingSemanticVars('default'), primitives);
   return {
-    light: { ...typography, ...resolve(colorSemanticVars('light', palette), primitives) },
-    dark: { ...typography, ...resolve(colorSemanticVars('dark', palette), primitives) },
+    light: { ...typography, ...spacing, ...resolve(colorSemanticVars('light', palette), primitives) },
+    dark: { ...typography, ...spacing, ...resolve(colorSemanticVars('dark', palette), primitives) },
   };
 };
 

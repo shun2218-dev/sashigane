@@ -21,7 +21,12 @@
  */
 import type { Palette } from '../color/palette.ts';
 import { colorPrimitiveVars, colorSemanticVars } from './color-vars.ts';
-import { fontInputNames, primitiveVars, typographySemanticVars } from './primitives.ts';
+import {
+  fontInputNames,
+  primitiveVars,
+  spacingSemanticVars,
+  typographySemanticVars,
+} from './primitives.ts';
 
 export type TokenLayers = {
   /** コンポーネントからの参照は禁止（原則3） */
@@ -52,8 +57,10 @@ export const tokenLayers = (palette: Palette): TokenLayers => ({
   primitives: [...declaredNames(primitiveVars()), ...declaredNames(colorPrimitiveVars(palette))].sort(),
   // セマンティックの名前は light / dark で同一。値だけが切り替わる（決定5-7）。
   // 同一であることは packages/tokens/test/layers.test.ts が検査する。
+  // 骨格の余白は密度で値だけが変わる。名前は3段とも同一（決定1-12）
   semantics: [
     ...declaredNames(typographySemanticVars()),
+    ...declaredNames(spacingSemanticVars('default')),
     ...declaredNames(colorSemanticVars('light', palette)),
   ].sort(),
   inputs: [...fontInputNames()].sort(),

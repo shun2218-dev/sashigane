@@ -112,6 +112,30 @@ export const durationLoop = geometric(tokens.duration.loop);
 export const borderWidth: number[] = [...tokens.borderWidth.values];
 
 /**
+ * 密度の段（決定1-12）。**骨格の余白だけが動く。**
+ *
+ * `compact` は既定より1段浅く、`comfortable` は1段深い段を指す。
+ * ランプは変えず参照する段をずらすだけで、面の文脈（決定5-12）と同じ形である。
+ */
+export const densityLevels = ['compact', 'default', 'comfortable'] as const;
+export type DensityLevel = (typeof densityLevels)[number];
+
+export type SpaceRole = keyof typeof tokens.spacing.roles & string;
+export const spaceRoles: SpaceRole[] = Object.keys(tokens.spacing.roles).filter(
+  (k) => !k.startsWith('$'),
+) as SpaceRole[];
+
+/**
+ * 役割と密度から、参照する spacing の段（index）を解く。
+ * スケールの端は超えない。端で頭打ちになるのは、無い段を指すよりましである。
+ */
+export const spaceStepFor = (role: SpaceRole, density: DensityLevel): number => {
+  const base = tokens.spacing.roles[role] as number;
+  const shift = densityLevels.indexOf(density) - densityLevels.indexOf('default');
+  return Math.min(Math.max(base + shift, 0), spacing.length - 1);
+};
+
+/**
  * breakpoint（決定1-10）。**root から導出できない3つ目の次元。**
  *
  * 画面幅は組版ではなく機器の寸法で決まるので、`root = 16px` は何も言わない。
