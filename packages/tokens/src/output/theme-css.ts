@@ -14,7 +14,7 @@
  *   - `--leading-*: initial` と `--spacing: initial` の両方で行高の上書きを封じる（決定1-4）
  */
 import type { Palette } from '../color/palette.ts';
-import { radius, spacing } from '../scales.ts';
+import { breakpoint, breakpointNames, breakpointUnit, radius, spacing } from '../scales.ts';
 import { statusNames } from '../color/palette.ts';
 import { outputHeader } from './header.ts';
 import { FONT_ROLES, TEXT_ROLES } from './primitives.ts';
@@ -39,19 +39,20 @@ const RADIUS_NAME_BY_PX: Record<number, string> = {
   16: '2xl',
 };
 
-/** アダプタが所有する名前空間。書き漏らすと素の Tailwind の値が残る */
-const RESET_NAMESPACES = [
-  '--color-*',
-  '--spacing',
-  '--text-*',
-  '--leading-*',
-  '--tracking-*',
-  '--radius-*',
-  '--shadow-*',
-  '--ease-*',
-  '--animate-*',
-  '--font-*',
-];
+/**
+ * **すべての名前空間を1行で落とす。**
+ *
+ * 以前は所有する名前空間を10個列挙していた。**禁止リスト方式で、
+ * 列挙し忘れた9個が素の Tailwind の値のまま通っていた**（`--container-*`
+ * `--font-weight-*` `--breakpoint-*` `--blur-*` `--drop-shadow-*`
+ * `--text-shadow-*` `--inset-shadow-*` `--perspective-*` `--aspect-*`）。
+ * `max-w-6xl` が 72rem を素の Tailwind から取っていて、原則1 が成立していなかった。
+ *
+ * 教訓5 のとおり許可リスト方式に変える。`--*: initial` は
+ * **Tailwind が将来足す名前空間も含めて**落とすので、列挙し忘れが起こらない。
+ * 実験で `--*: initial` が全名前空間に効くことを確認済み。
+ */
+const RESET_NAMESPACES = ['--*'];
 
 /**
  * Tailwind に出す書体の役割。**セマンティックの名前をそのまま使う。**
@@ -72,14 +73,19 @@ export const toThemeCss = (palette: Palette): string =>
   [
     ...outputHeader('block', 'Tailwind v4 用アダプタ。', palette, [
       'tokens.css を先に読み込むこと。値はすべて --sg-* を参照する。',
-      'ここが所有する名前空間は initial でリセットされる。素の Tailwind の',
-      '色・間隔・角丸・書体は出てこない（決定3-1・3-3）。',
+      '名前空間は --*: initial で全部落としてから、我々のものだけを写像する。',
+      'テーマ由来の値は1つも残らない（決定3-1・3-3）。',
+      '写像していない名前空間（--container-* など）は利用側の責務である（決定1-10）。',
+      '',
+      '**テーマを参照しないユーティリティはここでは止まらない。**',
+      'duration-137 / z-42 / opacity-37 / rotate-17 などの素の数値と、',
+      'aspect-square のような静的ユーティリティは @theme の管轄外である。',
     ]),
     '@import "tailwindcss";',
     '',
     '@theme inline {',
-    '  /* 所有する名前空間をリセットする。',
-    '     書かないと素の Tailwind の値（bg-red-500 など）が残り、原則1 が成立しない */',
+    '  /* 名前空間を全部落とす。列挙すると書き漏らしたものが黙って通る（教訓5）。',
+    '     --* は Tailwind が将来足す名前空間にも効く */',
     ...RESET_NAMESPACES.map((ns) => `  ${ns}: initial;`),
     '',
     '  /* spacing — 名前は Tailwind の倍数規約に合わせる。値は --sg-* から来る */',
@@ -113,6 +119,19 @@ export const toThemeCss = (palette: Palette): string =>
     '     スタックへ戻るため、ここで我々のセマンティックへ差し替える */',
     '  --default-font-family: var(--sg-text-body-family);',
     '  --default-mono-font-family: var(--sg-text-code-family);',
+    '',
+    '  /* breakpoint — 決定1-10。--*: initial は sm: md: lg: xl: も落とすので、',
+    '     ここで写像しないと responsive variant が1つも書けなくなる。',
+    '',
+    '     **ここだけ var(--sg-*) を使わず値を直接書く。** 他と揃えて',
+    '     var() を渡すと @media (width >= var(--sg-breakpoint-sm)) が出る。',
+    '     これは無効な CSS で、ブラウザはメディアクエリごと無視する。',
+    '     ユーティリティ自体は生成されるので「出たか」だけを見る検査は通り、',
+    '     見た目も「レスポンシブが効いていない」だけなので気づきにくい（教訓4）。',
+    '     メディアクエリは静的に評価されるため、そもそも実行時に切り替えられない */',
+    ...breakpointNames.map(
+      (n) => `  --breakpoint-${n}: ${breakpoint(n)}${breakpointUnit};`,
+    ),
     '',
     '  /* color — セマンティックのみ写像する。プリミティブは Tailwind に出さない */',
     '',

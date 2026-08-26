@@ -23,6 +23,9 @@ import {
   radiusFull,
   root,
   spacing,
+  breakpoint,
+  breakpointNames,
+  breakpointUnit,
 } from '../src/index.ts';
 
 /** 浮動小数の比較。比率の検証には十分に厳しい値を使う */
@@ -176,5 +179,29 @@ describe('border-width / elevation', () => {
 
   it('elevation は h = 0〜3', () => {
     expect(elevation).toEqual([0, 1, 2, 3]);
+  });
+});
+
+describe('breakpoint（決定1-10）', () => {
+  it('4段。2xl は持たない（観測に現れないので原則7 に従う）', () => {
+    expect(breakpointNames).toEqual(['sm', 'md', 'lg', 'xl']);
+  });
+
+  it('値は決定1-10 の表と一致する', () => {
+    expect(breakpointNames.map((n) => breakpoint(n))).toEqual([40, 48, 64, 80]);
+    expect(breakpointUnit).toBe('rem');
+  });
+
+  it('単調増加する', () => {
+    const v = breakpointNames.map((n) => breakpoint(n));
+    for (let i = 1; i < v.length; i++) expect(v[i]!).toBeGreaterThan(v[i - 1]!);
+  });
+
+  it('root から導出していない — spacing / font-size のどの段とも一致しない', () => {
+    // 原則2 の例外であることを検査で示す。導出できるなら例外にする理由が無い
+    const derived = new Set([...spacing, ...fontSize].map((v) => +v.toFixed(4)));
+    for (const n of breakpointNames) {
+      expect(derived.has(breakpoint(n) * root), n).toBe(false);
+    }
   });
 });
