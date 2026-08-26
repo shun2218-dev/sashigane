@@ -63,7 +63,7 @@ const semanticFor = (
     ...(roles.series ?? []).map(
       (step, i) => `  --sg-color-chart-${i + 1}: var(--sg-series-${i + 1}-${step});`,
     ),
-    ...(depth === 0 ? sequentialVars(mode) : []),
+    ...sequentialVars(mode, roles.surface),
   ];
 };
 
@@ -74,18 +74,20 @@ const semanticFor = (
  * 明色モードは薄い → 濃い、暗色モードはその逆で、色を反転しているのではなく
  * 参照する段の順序を変えているだけである（決定5-2 と同じ形）。
  *
- * **面（bg-page）が使う段は帯に入れない。** 入れると帯の最小段が面と同じ明度になり
+ * **その面が使う段は帯に入れない。** 入れると帯の最小段が面と同じ明度になり
  * （コントラスト 1.00）、値が最小のセルとデータが無いセルが区別できなくなる。
  * 除くのは面の段だけなので、新しい定数は持ち込まない（自己レビュー B1）。
+ *
+ * **除く段は面ごとに変わる**（決定5-12）。page 固定にしていた時期は、カードの上で
+ * 帯の下端がちょうど 1.00 になっていた。段数は10のままなので名前の顔ぶれは変わらない。
  *
  * **色相は回さない。** 明度に沿って色相を回す案（viridis 相当）を測ったところ、
  * 二色覚のもとで知覚明度の単調性が壊れた。連続帯は順序が読めることが目的なので、
  * これは目的そのものを壊す。記録は docs/experiments/sequential.md。
  */
-const sequentialVars = (mode: 'light' | 'dark'): string[] => {
-  const pageStep = mode === 'light' ? steps[0]! : steps.at(-1)!;
+const sequentialVars = (mode: 'light' | 'dark', surfaceStep: number): string[] => {
   const ordered = (mode === 'light' ? steps : [...steps].reverse()).filter(
-    (s) => s !== pageStep,
+    (s) => s !== surfaceStep,
   );
   return ordered.map(
     (step, i) => `  --sg-color-sequential-${i + 1}: var(--sg-primary-${step});`,

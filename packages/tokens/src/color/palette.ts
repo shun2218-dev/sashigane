@@ -478,7 +478,26 @@ const meets = (
   ramps: readonly Ramp[],
 ): boolean => ramps.every((r) => contrastBetween(r.byStep[step]!, surface) >= min);
 
+/**
+ * 面ごとの割り当ては、系列色の順列（5! = 120通り）を面の数だけ解く。
+ * 出力生成では同じパレット・同じモードで何度も呼ばれるので memo 化する。
+ */
+const rolesCache = new WeakMap<Palette, Map<string, SurfaceRoles[]>>();
+
 export const surfaceRolesFor = (
+  palette: Palette,
+  mode: 'light' | 'dark',
+): SurfaceRoles[] => {
+  const cached = rolesCache.get(palette)?.get(mode);
+  if (cached) return cached;
+  const solved = solveSurfaceRoles(palette, mode);
+  const byMode = rolesCache.get(palette) ?? new Map();
+  byMode.set(mode, solved);
+  rolesCache.set(palette, byMode);
+  return solved;
+};
+
+const solveSurfaceRoles = (
   palette: Palette,
   mode: 'light' | 'dark',
 ): SurfaceRoles[] => {
