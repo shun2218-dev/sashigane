@@ -14,7 +14,14 @@
  *   - `--leading-*: initial` と `--spacing: initial` の両方で行高の上書きを封じる（決定1-4）
  */
 import type { Palette } from '../color/palette.ts';
-import { breakpoint, breakpointNames, breakpointUnit, radius, spacing } from '../scales.ts';
+import {
+  breakpoint,
+  breakpointNames,
+  breakpointUnit,
+  radius,
+  spaceRoles,
+  spacing,
+} from '../scales.ts';
 import { statusNames } from '../color/palette.ts';
 import { outputHeader } from './header.ts';
 import { FONT_ROLES, TEXT_ROLES } from './primitives.ts';
@@ -119,6 +126,10 @@ export const toThemeCss = (palette: Palette): string =>
     '     スタックへ戻るため、ここで我々のセマンティックへ差し替える */',
     '  --default-font-family: var(--sg-text-body-family);',
     '  --default-mono-font-family: var(--sg-text-code-family);',
+    '',
+    '  /* 骨格の余白（決定1-12）。密度で段が動くので、値ではなく役割で書く。',
+    '     p-surface / px-page / gap-section のように使う */',
+    ...spaceRoles.map((r) => `  --spacing-${r}: var(--sg-space-${r});`),
     '',
     '  /* breakpoint — 決定1-10。--*: initial は sm: md: lg: xl: も落とすので、',
     '     ここで写像しないと responsive variant が1つも書けなくなる。',

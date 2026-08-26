@@ -14,9 +14,11 @@
 <style>
   /* 面は data-sg-surface が塗る（決定5-12）。ここで background は書かない。
      書けるようにすると、塗っただけで前景が page 用のまま残る道ができてしまう */
+  /* 骨格の余白は役割で書く（決定1-12）。狭い画面では自動で1段詰まる。
+     data-sg-density を書けば固定できる。**Tailwind は要らない** */
   body {
     margin: 0;
-    padding: var(--sg-space-6);
+    padding: var(--sg-space-page);
     color: var(--sg-color-text-default);
     font-size: var(--sg-text-body);
     line-height: var(--sg-text-body-leading);
@@ -25,7 +27,7 @@
   .card {
     border: var(--sg-border-width-0) solid var(--sg-color-border-default);
     border-radius: var(--sg-radius-3);
-    padding: var(--sg-space-5);
+    padding: var(--sg-space-surface);
     max-width: 40rem;
   }
   h1 { font-size: var(--sg-text-heading-1); line-height: var(--sg-text-heading-1-leading); font-family: var(--sg-text-heading-1-family); margin: 0 0 var(--sg-space-3); }
@@ -40,7 +42,7 @@
   .band { display: flex; margin: 0 0 var(--sg-space-4); }
   .band span { flex: 1; height: var(--sg-space-5); }
   .well { border-radius: var(--sg-radius-2); padding: var(--sg-space-4); margin: 0 0 var(--sg-space-4); }
-  .branded { border-top: var(--sg-border-width-0) solid var(--sg-color-border-subtle); margin-top: var(--sg-space-4); padding-top: var(--sg-space-4); }
+  .branded { border-top: var(--sg-border-width-0) solid var(--sg-color-border-subtle); margin-top: var(--sg-space-section); padding-top: var(--sg-space-4); }
   .branded h1 { font-size: var(--sg-text-heading-3); line-height: var(--sg-text-heading-3-leading); }
   p  { color: var(--sg-color-text-muted); margin: 0 0 var(--sg-space-4); }
   .badge { color: var(--sg-color-danger); border: var(--sg-border-width-0) solid var(--sg-color-danger-mark); border-radius: var(--sg-radius-full); padding: 0 var(--sg-space-3); }

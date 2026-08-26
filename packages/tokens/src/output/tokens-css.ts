@@ -5,6 +5,7 @@
  * React も Tailwind も無い素の HTML で変数が解決することを CI が検査する。
  */
 import type { Palette } from '../color/palette.ts';
+import { breakpoint, breakpointUnit, densityLevels } from '../scales.ts';
 import {
   colorPrimitiveVars,
   colorSemanticVars,
@@ -12,7 +13,11 @@ import {
   surfaceNames,
 } from './color-vars.ts';
 import { outputHeader } from './header.ts';
-import { primitiveVars, typographySemanticVars } from './primitives.ts';
+import {
+  primitiveVars,
+  spacingSemanticVars,
+  typographySemanticVars,
+} from './primitives.ts';
 
 /**
  * ブラウザ自身が描くもの（スクロールバー、フォームコントロール、既定の選択色）へ
@@ -57,10 +62,28 @@ export const toTokensCss = (palette: Palette): string =>
     '  /* ここからセマンティック（参照可） */',
     ...typographySemanticVars(),
     '',
+    '  /* 骨格の余白。密度で動くのはここだけ（決定1-12） */',
+    ...spacingSemanticVars('default'),
+    '',
     ...colorSemanticVars('light', palette),
     ...colorScheme('light'),
     '}',
     '',
+    '/* 密度（決定1-12）。既定は画面幅に従い、data-sg-density で固定できる。',
+    '   テーマ（決定5-10）と同じ形で、メディアクエリより後に固定用を出して順序で勝たせる。',
+    `   狭い画面では1段浅い段を指す。境界は sm（${breakpoint('sm')}${breakpointUnit}）。 */`,
+    `@media (width < ${breakpoint('sm')}${breakpointUnit}) {`,
+    '  :root {',
+    ...spacingSemanticVars('compact').map((l) => `  ${l}`),
+    '  }',
+    '}',
+    '',
+    ...densityLevels.flatMap((level) => [
+      `[data-sg-density="${level}"] {`,
+      ...spacingSemanticVars(level),
+      '}',
+      '',
+    ]),
     '/* 面の文脈（決定5-12）。背景と前景を同時に決める。',
     '   保証が成立するのは面の1段目だけなので、深い面では役割が1段深い段を指す。',
     '   塗るだけの道は塞いである（Tailwind アダプタに bg-surface / bg-inset は無い）。 */',

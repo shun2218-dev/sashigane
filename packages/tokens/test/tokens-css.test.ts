@@ -11,7 +11,14 @@
  * 静的検査だけでは効くことを証明できない。
  */
 import { describe, expect, it } from 'vitest';
-import { colorSemanticVars, generatePalette, toTokensCss } from '../src/index.ts';
+import {
+  colorSemanticVars,
+  densityLevels,
+  generatePalette,
+  spaceRoles,
+  spacingSemanticVars,
+  toTokensCss,
+} from '../src/index.ts';
 
 const palette = generatePalette({ L: 0.6, C: 0.1, H: 220 });
 const css = toTokensCss(palette);
@@ -61,5 +68,47 @@ describe('tokens.css のテーマ切り替え', () => {
     expect(declarations(blockOf('[data-theme="dark"]')!.body)).toEqual(
       colorSemanticVars('dark', palette).map((l) => l.trim()),
     );
+  });
+});
+
+describe('tokens.css の密度（決定1-12）', () => {
+  it('3段すべての固定手段が出ている', () => {
+    for (const level of densityLevels) {
+      expect(css, level).toContain(`[data-sg-density="${level}"] {`);
+    }
+  });
+
+  it('固定用のブロックはメディアクエリより後にある（同じ詳細度なので順序で勝つ）', () => {
+    const media = css.indexOf('@media (width <');
+    expect(media, '密度のメディアクエリが無い').toBeGreaterThan(-1);
+    for (const level of densityLevels) {
+      expect(css.indexOf(`[data-sg-density="${level}"] {`), level).toBeGreaterThan(media);
+    }
+  });
+
+  it('固定用のブロックの中身が生成器と一致する', () => {
+    for (const level of densityLevels) {
+      const block = blockOf(`[data-sg-density="${level}"]`);
+      expect(block, level).not.toBeNull();
+      const declarations = block!.body
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.startsWith('--'));
+      expect(declarations, level).toEqual(
+        spacingSemanticVars(level).map((l) => l.trim()),
+      );
+    }
+  });
+
+  it('狭い画面の既定が compact と一致する（２つの経路が食い違わない）', () => {
+    const start = css.indexOf('@media (width <');
+    const body = css.slice(start, css.indexOf('\n}', start));
+    for (const line of spacingSemanticVars('compact')) {
+      expect(body, line.trim()).toContain(line.trim());
+    }
+  });
+
+  it('骨格の役割だけが出ている（コンポーネント内部の余白は密度で動かさない）', () => {
+    expect(spaceRoles).toEqual(['page', 'section', 'surface']);
   });
 });

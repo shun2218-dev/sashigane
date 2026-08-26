@@ -42,6 +42,7 @@ writeFileSync(
     blur-sm backdrop-blur-md drop-shadow-lg text-shadow-lg inset-shadow-sm
     perspective-normal aspect-video aspect-square
     sm:p-4 md:p-4 lg:p-4 xl:p-4 2xl:p-4
+    p-surface px-page gap-section p-page m-section
     text-body text-caption text-display text-lg text-2xl
     leading-tight leading-7 leading-normal
     rounded-sm rounded-lg rounded-xl rounded-2xl rounded-full rounded-md rounded-3xl
@@ -130,6 +131,13 @@ const EXPECTATIONS = [
   ['lg:p-4', true, 'breakpoint を写像している'],
   ['xl:p-4', true, 'breakpoint を写像している'],
   ['2xl:p-4', false, '4段しか持たない。存在しない段は名前も存在しない'],
+
+  /* 骨格の余白の役割（決定1-12）。密度で段が動くので、値ではなく役割で書く */
+  ['p-surface', true, '面の内側。密度で段が動く'],
+  ['px-page', true, 'ページの左右余白'],
+  ['gap-section', true, 'セクション間の縦リズム'],
+  ['p-page', true, 'spacing 名前空間なので方向を問わず使える'],
+  ['m-section', true, 'margin にも同じ役割が使える'],
 ];
 
 const failures = [];
