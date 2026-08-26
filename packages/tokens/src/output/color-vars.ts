@@ -8,8 +8,8 @@
  *   プリミティブ   --sg-{category}-{数字}   参照禁止
  *   セマンティック --sg-{category}-{単語}   参照可
  */
-import type { Palette, Ramp } from '../color/palette.ts';
-import { statusNames, steps } from '../color/palette.ts';
+import type { Palette, Ramp, SurfaceRoles } from '../color/palette.ts';
+import { statusNames, steps, surfaceRolesFor } from '../color/palette.ts';
 import { toCss } from '../color/oklch.ts';
 
 const rampVars = (prefix: string, ramp: Ramp): string[] =>
@@ -27,39 +27,43 @@ export const colorPrimitiveVars = (p: Palette): string[] => [
 /**
  * セマンティック。明色モードと暗色モードで**参照する段を変えるだけ**（決定5-2）。
  * 色を反転しているのではない。
+ *
+ * 面の深さでも段が変わる（決定5-12）。`depth` は 0 が page、1 が surface、2 が inset。
+ * **保証は面の1段目でしか成立しない**ため、深い面では役割が1段深い段を指す。
  */
 const semanticFor = (
   mode: 'light' | 'dark',
-  /** 系列 i が使う段。色覚特性下で見分けられるように色相ごとに変える（決定5-8） */
-  seriesSteps: readonly number[],
+  roles: SurfaceRoles,
+  /** 0 なら :root に出す全部。1 以上なら面の文脈で**上書きするものだけ** */
+  depth: number,
 ): string[] => {
-  const surface = mode === 'light' ? [50, 100, 200] : [950, 900, 800];
-  const text = mode === 'light' ? [900, 600, 500] : [100, 300, 400];
-  const border = mode === 'light' ? [200, 300] : [800, 700];
-  // 文字は 4.5:1 が要る段、マーク（線・点・フォーカスリング・チャート）は 3:1 で足りる段。
-  // 同じ段を使うとチャート系列が沈んで見分けられなくなる（決定5-7）
-  const textStep = mode === 'light' ? 500 : 400;
-  const markStep = mode === 'light' ? 400 : 300;
+  const surfaces =
+    depth === 0
+      ? [
+          `  --sg-color-bg-page: var(--sg-neutral-${mode === 'light' ? 50 : 950});`,
+          `  --sg-color-bg-surface: var(--sg-neutral-${mode === 'light' ? 100 : 900});`,
+          `  --sg-color-bg-inset: var(--sg-neutral-${mode === 'light' ? 200 : 800});`,
+        ]
+      : [];
   return [
-    `  --sg-color-bg-page: var(--sg-neutral-${surface[0]});`,
-    `  --sg-color-bg-surface: var(--sg-neutral-${surface[1]});`,
-    `  --sg-color-bg-inset: var(--sg-neutral-${surface[2]});`,
-    `  --sg-color-text-default: var(--sg-neutral-${text[0]});`,
-    `  --sg-color-text-muted: var(--sg-neutral-${text[1]});`,
-    `  --sg-color-text-faint: var(--sg-neutral-${text[2]});`,
-    `  --sg-color-border-subtle: var(--sg-neutral-${border[0]});`,
-    `  --sg-color-border-default: var(--sg-neutral-${border[1]});`,
-    `  --sg-color-accent: var(--sg-primary-${textStep});`,
-    `  --sg-color-accent-mark: var(--sg-primary-${markStep});`,
-    `  --sg-color-border-focus: var(--sg-primary-${markStep});`,
+    ...surfaces,
+    `  --sg-color-text-default: var(--sg-neutral-${roles.text.default});`,
+    `  --sg-color-text-muted: var(--sg-neutral-${roles.text.muted});`,
+    `  --sg-color-text-faint: var(--sg-neutral-${roles.text.faint});`,
+    `  --sg-color-border-subtle: var(--sg-neutral-${roles.border.subtle});`,
+    `  --sg-color-border-default: var(--sg-neutral-${roles.border.default});`,
+    `  --sg-color-accent: var(--sg-primary-${roles.colorText});`,
+    `  --sg-color-accent-mark: var(--sg-primary-${roles.colorMark});`,
+    `  --sg-color-border-focus: var(--sg-primary-${roles.colorMark});`,
     ...statusNames.flatMap((n) => [
-      `  --sg-color-${n}: var(--sg-${n}-${textStep});`,
-      `  --sg-color-${n}-mark: var(--sg-${n}-${markStep});`,
+      `  --sg-color-${n}: var(--sg-${n}-${roles.colorText});`,
+      `  --sg-color-${n}-mark: var(--sg-${n}-${roles.colorMark});`,
     ]),
-    ...seriesSteps.map(
+    // 段が足りない面では出さない。親の面の値をそのまま継承する（決定5-12）
+    ...(roles.series ?? []).map(
       (step, i) => `  --sg-color-chart-${i + 1}: var(--sg-series-${i + 1}-${step});`,
     ),
-    ...sequentialVars(mode),
+    ...(depth === 0 ? sequentialVars(mode) : []),
   ];
 };
 
@@ -88,6 +92,29 @@ const sequentialVars = (mode: 'light' | 'dark'): string[] => {
   );
 };
 
+/** 面の名前。重なりの順に並ぶ。tokens.css の `[data-sg-surface]` の値になる */
+export const surfaceNames = ['page', 'surface', 'inset'] as const;
+export type SurfaceName = (typeof surfaceNames)[number];
+
 /** 色のセマンティック。モードで**参照する段を変えるだけ**（決定5-2） */
 export const colorSemanticVars = (mode: 'light' | 'dark', palette: Palette): string[] =>
-  semanticFor(mode, palette.categoricalSteps[mode]);
+  semanticFor(mode, surfaceRolesFor(palette, mode)[0]!, 0);
+
+/**
+ * 面の文脈（決定5-12）。**背景と前景を同時に決める。**
+ *
+ * 塗るだけの道を残すと、塗った箇所の前景が page 用のまま残って保証が崩れ、
+ * しかも**エラーにならない**（教訓4）。そのため Tailwind アダプタからは
+ * `bg-surface` / `bg-inset` を落としてあり、面を作る方法はこれ1つである。
+ */
+export const surfaceContextVars = (
+  mode: 'light' | 'dark',
+  palette: Palette,
+  depth: number,
+): string[] => {
+  const roles = surfaceRolesFor(palette, mode)[depth]!;
+  return [
+    `  background-color: var(--sg-neutral-${roles.surface});`,
+    ...semanticFor(mode, roles, depth),
+  ];
+};

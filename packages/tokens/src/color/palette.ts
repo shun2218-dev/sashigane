@@ -436,3 +436,114 @@ export const contrastBetween = (fg: Oklch, bg: Oklch): number =>
     relativeLuminance(oklchToLinearRgb(fg)),
     relativeLuminance(oklchToLinearRgb(bg)),
   );
+
+/**
+ * 面ごとの、役割が参照する段（決定5-12）。
+ *
+ * **保証は面の1段目でしか成立しない**ことが Phase 2 の2本目で分かった
+ * （docs/experiments/phase2-holosphere.md）。端点を解く相手を深い面に変えても解は無い。
+ * 明色は濃いアンカーを、暗色は明るい段400を要求して両立しないためで、これは測って確かめた。
+ *
+ * ランプ自体は変えない。**面が1段深くなるごとに、役割が参照する段も深い側へずらす。**
+ * 必要な段はすべて既存の11段の中にある。
+ */
+export interface SurfaceRoles {
+  /** この面が使う中間色の段 */
+  surface: number;
+  text: { default: number; muted: number; faint: number };
+  border: { subtle: number; default: number };
+  /** 色つきランプのうち、文字に使う段（4.5:1） */
+  colorText: number;
+  /** 色つきランプのうち、マークに使う段（3:1）。決定5-7 */
+  colorMark: number;
+  /**
+   * 識別色の系列ごとの段。**面が深いと段が足りず null になる。**
+   *
+   * 暗色の inset では 3:1 を満たす段が4つしか残らず、5系列を配れない。
+   * null の面では変数を出さないので、親の面の値をそのまま継承する。
+   * **チャートを inset に載せることは保証しない**（決定5-12）。
+   */
+  series: number[] | null;
+}
+
+/** 面から遠ざかる向きに並べた段。明色は濃くなる向き、暗色は明るくなる向き */
+const awayFromSurface = (mode: 'light' | 'dark'): number[] =>
+  mode === 'light' ? [...cfg.steps] : [...cfg.steps].reverse();
+
+/** ランプのどれか1つでも要件を割ったら不合格。最悪ケースで判定する */
+const meets = (
+  step: number,
+  surface: Oklch,
+  min: number,
+  ramps: readonly Ramp[],
+): boolean => ramps.every((r) => contrastBetween(r.byStep[step]!, surface) >= min);
+
+export const surfaceRolesFor = (
+  palette: Palette,
+  mode: 'light' | 'dark',
+): SurfaceRoles[] => {
+  const g = cfg.guarantees;
+  const surfaces = mode === 'light' ? g.surfaces.light : g.surfaces.dark;
+  const order = awayFromSurface(mode);
+  const colored: Ramp[] = [palette.primary, ...statusNames.map((n) => palette.status[n])];
+  const neutral = [palette.neutral];
+  const baseSeries =
+    mode === 'light' ? cfg.categorical.lightSteps : cfg.categorical.darkSteps;
+
+  return surfaces.map((surfaceStep, depth) => {
+    const bg = palette.neutral.byStep[surfaceStep]!;
+    /** 面より外側にある段だけを候補にする。面より内側は必ず沈む */
+    const outward = order.slice(order.indexOf(surfaceStep) + 1);
+    const shallowest = (min: number, ramps: readonly Ramp[], after = -1): number =>
+      outward.find((s) => order.indexOf(s) > after && meets(s, bg, min, ramps)) ??
+      outward[outward.length - 1]!;
+
+    const faint = shallowest(g.textMin, neutral);
+    const muted = shallowest(g.textMin, neutral, order.indexOf(faint));
+    const colorText = shallowest(g.textMin, colored);
+
+    /**
+     * マークは文字の段より**1段明るい側**を取る（決定5-7）。明色でも暗色でも同じ向きで、
+     * 暗色ではコントラストがむしろ上がる。要件（3:1）を満たす最も浅い段ではない。
+     *
+     * 最小を満たす段を取ると明色で段500 になり、テーマビルダーで目視したとき
+     * チャート系列が全部くすんで見分けられなかった。このランプは明るい段ほど彩度が乗る。
+     * **数値では気づけなかった判断**なので、規則の側に残す。
+     */
+    const markStep = (textStep: number): number => {
+      const i = cfg.steps.indexOf(textStep as Step) - 1;
+      const candidate = cfg.steps[Math.max(i, 0)]!;
+      return meets(candidate, bg, g.markMin, colored) ? candidate : textStep;
+    };
+
+    /** 境界は装飾なので要件を持たない。面と一緒に深い側へずらす */
+    const shift = (step: number): number =>
+      order[Math.min(order.indexOf(step) + depth, order.length - 1)]!;
+
+    /**
+     * 系列色は面の深さだけ候補をずらして、色覚特性下の割り当てを解き直す（決定5-8）。
+     * ずらした候補がランプの端をはみ出す面では配れないので null を返す。
+     */
+    const shifted = baseSeries.map((s) => order.indexOf(s) + depth);
+    const series =
+      shifted.every((i) => i < order.length) && new Set(shifted).size === shifted.length
+        ? bestStepAssignment(
+            palette.categorical,
+            shifted.map((i) => order[i]!),
+          )
+        : null;
+
+    return {
+      surface: surfaceStep,
+      /** 文字の最も強い段は面によらず動かさない。どの面でも要件を満たす */
+      text: { default: mode === 'light' ? 900 : 100, muted, faint },
+      border: {
+        subtle: shift(mode === 'light' ? 200 : 800),
+        default: shift(mode === 'light' ? 300 : 700),
+      },
+      colorText,
+      colorMark: markStep(colorText),
+      series,
+    };
+  });
+};

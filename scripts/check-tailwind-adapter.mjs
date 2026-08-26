@@ -36,7 +36,7 @@ writeFileSync(
   `<div class="
     p-0 p-1 p-2 p-3 p-4 p-6 p-8 p-12 p-16 p-24
     p-5 p-7 p-9 p-20
-    bg-red-500 bg-blue-500 bg-accent bg-danger bg-page bg-surface
+    bg-red-500 bg-blue-500 bg-accent bg-danger bg-page bg-surface bg-inset
     text-body text-caption text-display text-lg text-2xl
     leading-tight leading-7 leading-normal
     rounded-sm rounded-lg rounded-xl rounded-2xl rounded-full rounded-md rounded-3xl
@@ -68,7 +68,9 @@ const EXPECTATIONS = [
   ['bg-blue-500', false, '素の Tailwind の色'],
   ['bg-accent', true, 'セマンティックの写像'],
   ['bg-danger', true, 'セマンティックの写像'],
-  ['bg-page', true, 'セマンティックの写像'],
+  ['bg-page', false, '面は写像しない。data-sg-surface で作る（決定5-12）'],
+  ['bg-surface', false, '面は写像しない。塗るだけの道を残すと保証が静かに崩れる'],
+  ['bg-inset', false, '面は写像しない'],
   ['text-body', true, 'セマンティック役割名（決定3-3）'],
   ['text-lg', false, '素の t シャツ語彙。値が一致しないので写像していない'],
   ['text-2xl', false, '素の t シャツ語彙'],
