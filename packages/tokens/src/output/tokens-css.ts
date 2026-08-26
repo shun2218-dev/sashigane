@@ -5,7 +5,12 @@
  * React も Tailwind も無い素の HTML で変数が解決することを CI が検査する。
  */
 import type { Palette } from '../color/palette.ts';
-import { colorPrimitiveVars, colorSemanticVars } from './color-vars.ts';
+import {
+  colorPrimitiveVars,
+  colorSemanticVars,
+  surfaceContextVars,
+  surfaceNames,
+} from './color-vars.ts';
 import { outputHeader } from './header.ts';
 import { primitiveVars, typographySemanticVars } from './primitives.ts';
 
@@ -17,6 +22,24 @@ import { primitiveVars, typographySemanticVars } from './primitives.ts';
  * 「利用側がテーマを固定できる」と言う以上、UA が描く部分も固定の対象に含まれる。
  */
 const colorScheme = (mode: 'light' | 'dark'): string[] => [`  color-scheme: ${mode};`];
+
+/**
+ * 面の文脈（決定5-12）。**背景と前景を同時に決めるので、面を作る方法はこれだけ**である。
+ *
+ * `scope` はテーマの限定子。空なら既定（明色）または `@media` の中で使う。
+ * 限定子があるときは「子孫」と「同じ要素」の両方を出す。
+ * `<html data-theme="dark" data-sg-surface="page">` のように同居しうるため。
+ */
+const surfaceBlocks = (
+  mode: 'light' | 'dark',
+  palette: Palette,
+  scope: string,
+): string[] =>
+  surfaceNames.flatMap((name, depth) => {
+    const attr = `[data-sg-surface="${name}"]`;
+    const selector = scope ? `${scope} ${attr}, ${scope}${attr}` : attr;
+    return [`${selector} {`, ...surfaceContextVars(mode, palette, depth), '}', ''];
+  });
 
 export const toTokensCss = (palette: Palette): string =>
   [
@@ -38,10 +61,16 @@ export const toTokensCss = (palette: Palette): string =>
     ...colorScheme('light'),
     '}',
     '',
+    '/* 面の文脈（決定5-12）。背景と前景を同時に決める。',
+    '   保証が成立するのは面の1段目だけなので、深い面では役割が1段深い段を指す。',
+    '   塗るだけの道は塞いである（Tailwind アダプタに bg-surface / bg-inset は無い）。 */',
+    ...surfaceBlocks('light', palette, ''),
     '@media (prefers-color-scheme: dark) {',
     '  :root {',
     ...[...colorSemanticVars('dark', palette), ...colorScheme('dark')].map((l) => `  ${l}`),
     '  }',
+    '',
+    ...surfaceBlocks('dark', palette, '').map((l) => (l ? `  ${l}` : l)),
     '}',
     '',
     '/* 明示的な指定は OS の設定より優先する。',
@@ -52,9 +81,11 @@ export const toTokensCss = (palette: Palette): string =>
     ...colorScheme('light'),
     '}',
     '',
+    ...surfaceBlocks('light', palette, '[data-theme="light"]'),
     '[data-theme="dark"] {',
     ...colorSemanticVars('dark', palette),
     ...colorScheme('dark'),
     '}',
     '',
+    ...surfaceBlocks('dark', palette, '[data-theme="dark"]'),
   ].join('\n');

@@ -21,6 +21,7 @@ import {
   resolveStatusHues,
   statusNames,
   steps,
+  surfaceRolesFor,
   verifyPalette,
   type Palette,
 } from '../src/index.ts';
@@ -74,6 +75,87 @@ describe('コントラスト保証（決定5-2）', () => {
     }
     expect(worst).toBeCloseTo(4.5, 2);
   });
+});
+
+describe('面ごとのコントラスト保証（決定5-12）', () => {
+  const surfaceNames = ['page', 'surface', 'inset'] as const;
+
+  for (const mode of ['light', 'dark'] as const) {
+    const surfaces = mode === 'light' ? g.surfaces.light : g.surfaces.dark;
+
+    surfaces.forEach((surfaceStep, depth) => {
+      const where = `${mode} / ${surfaceNames[depth]}(${surfaceStep})`;
+
+      it(`${where}: 文字の3段がすべて ${g.textMin}:1 以上 — 全360色相`, () => {
+        let worst = { ratio: Number.POSITIVE_INFINITY, H: -1, role: '' };
+        for (const { H, pal } of palettes) {
+          const roles = surfaceRolesFor(pal, mode)[depth]!;
+          const bg = pal.neutral.byStep[surfaceStep]!;
+          for (const [role, step] of Object.entries(roles.text)) {
+            const ratio = contrastBetween(pal.neutral.byStep[step]!, bg);
+            if (ratio < worst.ratio) worst = { ratio, H, role };
+          }
+        }
+        expect(worst.ratio, `最悪は primary=${worst.H}° の ${worst.role}`).toBeGreaterThanOrEqual(
+          g.textMin,
+        );
+      });
+
+      it(`${where}: 色つきの文字が ${g.textMin}:1、マークが ${g.markMin}:1 以上 — 全360色相`, () => {
+        let worstText = { ratio: Number.POSITIVE_INFINITY, H: -1 };
+        let worstMark = { ratio: Number.POSITIVE_INFINITY, H: -1 };
+        for (const { H, pal } of palettes) {
+          const roles = surfaceRolesFor(pal, mode)[depth]!;
+          const bg = pal.neutral.byStep[surfaceStep]!;
+          const colored = [pal.primary, ...statusNames.map((n) => pal.status[n]!)];
+          for (const ramp of colored) {
+            const t = contrastBetween(ramp.byStep[roles.colorText]!, bg);
+            if (t < worstText.ratio) worstText = { ratio: t, H };
+            const m = contrastBetween(ramp.byStep[roles.colorMark]!, bg);
+            if (m < worstMark.ratio) worstMark = { ratio: m, H };
+          }
+        }
+        expect(worstText.ratio, `文字の最悪は primary=${worstText.H}°`).toBeGreaterThanOrEqual(
+          g.textMin,
+        );
+        expect(worstMark.ratio, `マークの最悪は primary=${worstMark.H}°`).toBeGreaterThanOrEqual(
+          g.markMin,
+        );
+      });
+
+      it(`${where}: 系列色を配れるなら全系列が ${g.markMin}:1 以上 — 全360色相`, () => {
+        let worst = { ratio: Number.POSITIVE_INFINITY, H: -1 };
+        let assigned = 0;
+        for (const { H, pal } of palettes) {
+          const roles = surfaceRolesFor(pal, mode)[depth]!;
+          if (roles.series === null) continue;
+          assigned++;
+          const bg = pal.neutral.byStep[surfaceStep]!;
+          roles.series.forEach((step, i) => {
+            const ratio = contrastBetween(pal.categorical[i]!.byStep[step]!, bg);
+            if (ratio < worst.ratio) worst = { ratio, H };
+          });
+        }
+        // 配れない面（暗色の inset）は段が足りず null になる。そこは検査対象外
+        if (assigned === 0) return;
+        expect(worst.ratio, `最悪は primary=${worst.H}°`).toBeGreaterThanOrEqual(g.markMin);
+      });
+    });
+
+    it(`${mode}: 面が深くなるほど、文字の段は面から遠ざかる（弱くならない）`, () => {
+      for (const { H, pal } of palettes) {
+        const rows = surfaceRolesFor(pal, mode);
+        const away = (step: number) =>
+          mode === 'light' ? steps.indexOf(step) : steps.length - 1 - steps.indexOf(step);
+        for (let d = 1; d < rows.length; d++) {
+          expect(
+            away(rows[d]!.text.faint),
+            `primary=${H}° の faint が ${surfaceNames[d]} で浅くなった`,
+          ).toBeGreaterThanOrEqual(away(rows[d - 1]!.text.faint));
+        }
+      }
+    });
+  }
 });
 
 describe('sRGB 色域（決定5-3）', () => {

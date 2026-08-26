@@ -11,6 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   colorSemanticVars,
+  surfaceContextVars,
   contrastBetween,
   generatePalette,
   maxSafeChroma,
@@ -98,6 +99,35 @@ describe('連続値の色帯', () => {
       const page = palette.neutral.byStep[pageStep]!;
       const first = band(mode, palette)[0]!;
       expect(contrastBetween(page, first), mode).toBeGreaterThan(1.1);
+    }
+  });
+
+  it('帯の最小段が **どの面でも** 見分けられる（決定5-12）', () => {
+    // page 固定で除いていた時期は、カードの上で帯の下端がちょうど 1.00 になっていた。
+    // 除く段は面ごとに変わる
+    const surfaces = { light: [50, 100, 200], dark: [950, 900, 800] } as const;
+    for (const mode of ['light', 'dark'] as const) {
+      surfaces[mode].forEach((surfaceStep, depth) => {
+        const css = surfaceContextVars(mode, palette, depth).join('\n');
+        const first = /--sg-color-sequential-1:\s*var\(--sg-primary-(\d+)\)/.exec(css);
+        expect(first, `${mode} / 面${surfaceStep} に帯が出ていない`).not.toBeNull();
+        const ratio = contrastBetween(
+          palette.neutral.byStep[surfaceStep]!,
+          palette.primary.byStep[Number(first![1])]!,
+        );
+        expect(ratio, `${mode} / 面${surfaceStep}`).toBeGreaterThan(1.1);
+      });
+    }
+  });
+
+  it('段数は面が変わっても10のまま（名前の顔ぶれが変わらない）', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      for (const depth of [0, 1, 2]) {
+        const n = surfaceContextVars(mode, palette, depth).filter((l) =>
+          l.includes('--sg-color-sequential-'),
+        ).length;
+        expect(n, `${mode} / depth ${depth}`).toBe(steps.length - 1);
+      }
     }
   });
 
