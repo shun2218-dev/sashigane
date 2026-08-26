@@ -7,6 +7,7 @@ import {
   toCss,
   toTokensCss,
   toHex,
+  type Oklch,
   type Palette,
   type Ramp,
 } from '@sashigane/tokens';
@@ -38,6 +39,133 @@ const Swatches = ({ label, ramp }: { label: string; ramp: Ramp }) => (
     </div>
   </div>
 );
+
+/**
+ * **選んだ色がパレットのどこに入ったか**を示す。
+ *
+ * 決定5-1 は「受け継ぐのは色相のみ。L と C は規則が決める」と決めている。
+ * そのため `accent` として使われる段は、選んだ色そのものとは限らない。
+ *
+ * ここを見せていなかったとき、**「選んだ色が勝手に変わる」と読まれた。**
+ * 実際には色はパレットに入っており、変わっているのは
+ * 「どの段を accent という役割に割り当てるか」である。**両者を並べて見せる。**
+ */
+const InputPlacement = ({ palette, input }: { palette: Palette; input: Oklch }) => {
+  const nearest = steps.reduce((best, s) =>
+    Math.abs(palette.primary.byStep[s]!.L - input.L) <
+    Math.abs(palette.primary.byStep[best]!.L - input.L)
+      ? s
+      : best,
+  );
+  const near = palette.primary.byStep[nearest]!;
+  /*
+   * **モードごとに別々に判定する。** 片方で足りていても、もう片方で足りないことがある。
+   * 実際、明るい黄色は暗色の面では 13:1 を超えるが、明色の面では 1.25:1 しか無い。
+   * ひとまとめに「使える」と書くと、足りない側の数字を並べたまま反対のことを言うことになる。
+   */
+  const modes = (['light', 'dark'] as const).map((mode) => {
+    const surfaceStep = mode === 'light' ? g.lightSurfaceStep : g.darkSurfaceStep;
+    const reqs = mode === 'light' ? g.light : g.dark;
+    const page = palette.neutral.byStep[surfaceStep]!;
+    const ratio = contrastBetween(input, page);
+    const textReq = reqs.reduce((a, b) => (a.min >= b.min ? a : b));
+    const markReq = reqs.reduce((a, b) => (a.min <= b.min ? a : b));
+    return {
+      mode,
+      label: mode === 'light' ? '明色' : '暗色',
+      ratio,
+      textStep: textReq.step,
+      textMin: textReq.min,
+      markMin: markReq.min,
+      asText: ratio >= textReq.min,
+      asMark: ratio >= markReq.min,
+    };
+  });
+  const accentSteps = new Set(modes.map((m) => m.textStep));
+
+  return (
+    <section>
+      <h2>選んだ色はどこに入ったか</h2>
+      <div className="placement">
+        <span className="chip" style={{ background: toCss(input) }} />
+        <code>{toHex(input)}</code>
+        <span className="arrow">→</span>
+        <span className="chip" style={{ background: toCss(near) }} />
+        <code>
+          primary 段{nearest} {toHex(near)}
+        </code>
+        <span className="delta">
+          ΔL {Math.abs(input.L - near.L).toFixed(3)} / ΔC{' '}
+          {Math.abs(input.C - near.C).toFixed(3)} / ΔH{' '}
+          {Math.abs(input.H - near.H).toFixed(1)}°
+        </span>
+      </div>
+
+      <div className="ramp">
+        <div className="ramp-label">primary</div>
+        <div className="ramp-strip">
+          {steps.map((st) => {
+            const c = palette.primary.byStep[st]!;
+            return (
+              <div
+                key={st}
+                className={`swatch${st === nearest ? ' picked' : ''}${accentSteps.has(st) ? ' accent' : ''}`}
+                style={{ background: toCss(c) }}
+                title={`${st}\n${toHex(c)}`}
+              >
+                <span style={{ color: c.L > 0.6 ? '#000' : '#fff' }}>{st}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <p className="note">
+        枠が二重の段が<strong>選んだ色に最も近い段</strong>、下線の段が{' '}
+        <code>--sg-color-accent</code> が使う段です（
+        {modes.map((m) => `${m.label}は段${m.textStep}`).join('、')}）。
+      </p>
+
+      <table className="contrast">
+        <thead>
+          <tr>
+            <th>選んだ色を…</th>
+            <th>比</th>
+            <th>文字として</th>
+            <th>マークとして</th>
+          </tr>
+        </thead>
+        <tbody>
+          {modes.map((m) => (
+            <tr key={m.mode}>
+              <td>{m.label}の面に置くと</td>
+              <td>{m.ratio.toFixed(2)}:1</td>
+              <td className={m.asText ? 'ok' : 'ng'}>
+                {m.asText ? `使える（${m.textMin}:1 以上）` : `使えない（${m.textMin}:1 に届かない）`}
+              </td>
+              <td className={m.asMark ? 'ok' : 'ng'}>
+                {m.asMark ? `使える（${m.markMin}:1 以上）` : `使えない（${m.markMin}:1 に届かない）`}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <p className="explain">
+        <strong>色相は保たれています。</strong>変わるのは明度と彩度で、
+        これは規則が解いています（決定5-1）。
+        <code>--sg-color-accent</code> は<strong>文字の役割</strong>なので、
+        選んだ色そのものではなく 4.5:1 を満たす段を使います。
+        {modes.some((m) => !m.asText) && (
+          <>
+            {' '}
+            上の表で「使えない」となっている側では、
+            <strong>選んだ色を文字にすると読めません。</strong>
+          </>
+        )}
+      </p>
+    </section>
+  );
+};
 
 /** 保証している組み合わせが実際に何対1かを出す。表示できないものは表示しない */
 const GuaranteeTable = ({ palette }: { palette: Palette }) => {
@@ -163,6 +291,8 @@ export const ThemeBuilder = () => {
           <code>{hex}</code>
         </label>
       </header>
+
+      <InputPlacement palette={palette} input={hexToOklch(hex)} />
 
       {palette.warnings.length > 0 && (
         <section>
