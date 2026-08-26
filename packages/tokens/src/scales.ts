@@ -111,6 +111,21 @@ export const durationLoop = geometric(tokens.duration.loop);
 /** border-width: px 固定出力（決定1-7） */
 export const borderWidth: number[] = [...tokens.borderWidth.values];
 
+/**
+ * breakpoint（決定1-10）。**root から導出できない3つ目の次元。**
+ *
+ * 画面幅は組版ではなく機器の寸法で決まるので、`root = 16px` は何も言わない。
+ * 時間（決定1-6）・書体（決定1-11）と同じ例外として明示する。
+ *
+ * **CSS 変数はメディアクエリの中で使えない。** ここで出す値が効くのは
+ * Tailwind アダプタ（ビルド時に読まれる）で、素の CSS の利用者は値を直接書く。
+ */
+export type BreakpointName = keyof typeof tokens.breakpoint.steps;
+export const breakpointNames = Object.keys(tokens.breakpoint.steps) as BreakpointName[];
+export const breakpoint = (name: BreakpointName): number =>
+  tokens.breakpoint.steps[name];
+export const breakpointUnit = tokens.breakpoint.unit;
+
 /** elevation の高さ（決定1-8） */
 export const elevation: number[] = Array.from(
   { length: tokens.elevation.maxHeight + 1 },

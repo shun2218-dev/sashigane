@@ -37,6 +37,11 @@ writeFileSync(
     p-0 p-1 p-2 p-3 p-4 p-6 p-8 p-12 p-16 p-24
     p-5 p-7 p-9 p-20
     bg-red-500 bg-blue-500 bg-accent bg-danger bg-page bg-surface bg-inset
+    max-w-6xl max-w-md w-2xl min-w-md
+    font-medium font-bold font-light
+    blur-sm backdrop-blur-md drop-shadow-lg text-shadow-lg inset-shadow-sm
+    perspective-normal aspect-video aspect-square
+    sm:p-4 md:p-4 lg:p-4 xl:p-4 2xl:p-4
     text-body text-caption text-display text-lg text-2xl
     leading-tight leading-7 leading-normal
     rounded-sm rounded-lg rounded-xl rounded-2xl rounded-full rounded-md rounded-3xl
@@ -54,7 +59,9 @@ execFileSync('node_modules/.bin/tailwindcss', ['-i', join(dir, 'in.css'), '-o', 
   stdio: 'pipe',
 });
 const out = readFileSync(join(dir, 'out.css'), 'utf8');
-const has = (cls) => new RegExp(`^\\s*\\.${cls.replace(/[-]/g, '\\-')}\\s*\\{`, 'm').test(out);
+/** 生成された CSS 中のクラスセレクタ。`:` `.` `/` `[` は CSS 側でエスケープされる */
+const cssEscape = (cls) => cls.replace(/[-]/g, '\\-').replace(/[:./[\]()]/g, '\\\\$&');
+const has = (cls) => new RegExp(`^\\s*\\.${cssEscape(cls)}\\s*\\{`, 'm').test(out);
 
 /** [クラス, 生成されるべきか, 理由] */
 const EXPECTATIONS = [
@@ -93,6 +100,36 @@ const EXPECTATIONS = [
   ['bg-sequential-1', true, '連続値の色帯。離散系列とは別の役割（決定5-11）'],
   ['bg-sequential-10', true, '帯の反対の端。面の段を除いた10段'],
   ['bg-sequential-11', false, '10段しかない。存在しない段は名前も存在しない'],
+
+  /* ---- 列挙し忘れていた名前空間（#44）。--*: initial で落ちること ----
+   *
+   * 以前はリセットを10個手で並べており、ここに挙げた9つの名前空間が
+   * **素の Tailwind の値のまま通っていた。** 検査も手書きの期待値表だったので、
+   * 列挙していない名前空間は検査対象にすらならなかった（教訓5）。
+   */
+  ['max-w-6xl', false, '--container-*。素の Tailwind の 72rem が通っていた'],
+  ['max-w-md', false, '--container-*'],
+  ['w-2xl', false, '--container-*'],
+  ['min-w-md', false, '--container-*'],
+  ['font-bold', false, '--font-weight-*。太さはまだ決めていない（#53）'],
+  ['font-medium', false, '--font-weight-*'],
+  ['font-light', false, '--font-weight-*'],
+  ['blur-sm', false, '--blur-*。elevation と同じく未実装（決定1-8）'],
+  ['backdrop-blur-md', false, '--blur-*'],
+  ['drop-shadow-lg', false, '--drop-shadow-*'],
+  ['text-shadow-lg', false, '--text-shadow-*'],
+  ['inset-shadow-sm', false, '--inset-shadow-*'],
+  ['perspective-normal', false, '--perspective-*'],
+  ['aspect-video', false, '--aspect-*。媒体の比率であってトークンではない'],
+  ['aspect-square', true, '静的ユーティリティ（aspect-ratio: 1/1）。テーマ由来ではないので落ちない'],
+
+  /* breakpoint は写像する。--*: initial は responsive variant も落とすので、
+     写像しないと sm: が1つも書けなくなる（決定1-10） */
+  ['sm:p-4', true, 'breakpoint を写像している（決定1-10）'],
+  ['md:p-4', true, 'breakpoint を写像している'],
+  ['lg:p-4', true, 'breakpoint を写像している'],
+  ['xl:p-4', true, 'breakpoint を写像している'],
+  ['2xl:p-4', false, '4段しか持たない。存在しない段は名前も存在しない'],
 ];
 
 const failures = [];
@@ -127,6 +164,29 @@ let mappedNames = 0;
       failures.push(
         `theme.css が tokens.css に無い ${name} を参照している。` +
           '未定義の変数は宣言を無効にするだけで、エラーにならない',
+      );
+    }
+  }
+}
+
+/* ---------- breakpoint が静的な長さで出ていること（教訓4） ----------
+ *
+ * 他の名前空間と揃えて `--breakpoint-sm: var(--sg-breakpoint-sm)` と書くと、
+ * Tailwind は `@media (width >= var(--sg-breakpoint-sm))` を出す。
+ * **これは無効な CSS で、ブラウザはメディアクエリごと無視する。**
+ * ユーティリティ自体は生成されるので上の EXPECTATIONS は通ってしまい、
+ * 見た目も「レスポンシブが効かない」だけなので気づけない。
+ */
+{
+  const mediaQueries = [...out.matchAll(/@media\s*\([^)]*width[^)]*\)/g)].map((m) => m[0]);
+  if (mediaQueries.length === 0) {
+    failures.push('responsive variant のメディアクエリが1つも出ていない');
+  }
+  for (const q of mediaQueries) {
+    if (q.includes('var(')) {
+      failures.push(
+        `メディアクエリが CSS 変数を参照している: ${q}。` +
+          '無効な CSS なのでブラウザは無視する。--breakpoint-* は値を直接書くこと',
       );
     }
   }

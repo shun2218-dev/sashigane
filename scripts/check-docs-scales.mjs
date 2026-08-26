@@ -19,6 +19,9 @@ import {
   fontSize,
   leadingFamilies,
   lineHeight,
+  breakpoint,
+  breakpointNames,
+  breakpointUnit,
   radius,
   root,
   spacing,
@@ -92,6 +95,7 @@ const readmeExpectations = [
   ['duration 遷移の上端', String(Math.round(durationTransition.at(-1)))],
   ['duration ループの下端', String(Math.round(durationLoop[0]))],
   ['duration ループの上端', String(Math.round(durationLoop.at(-1)))],
+  ['breakpoint', breakpointNames.map((n) => breakpoint(n)).join(', ') + breakpointUnit],
 ];
 
 for (const [label, text] of readmeExpectations) {

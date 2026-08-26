@@ -8,6 +8,9 @@
  */
 import {
   borderWidth,
+  breakpoint,
+  breakpointNames,
+  breakpointUnit,
   durationLoop,
   durationTransition,
   elevation,
@@ -58,6 +61,11 @@ export const primitiveVars = (): string[] => [
   '  /* duration — 遷移とループは知覚上の制約が違う別スケール（決定1-6） */',
   ...durationTransition.map((v, i) => `  --sg-duration-${i}: ${ms(v)};`),
   ...durationLoop.map((v, i) => `  --sg-duration-loop-${i}: ${ms(v)};`),
+  '',
+  '  /* breakpoint — root から導出できない3つ目の次元（決定1-10）。',
+  '     **CSS 変数はメディアクエリの中では使えない。** ここは Tailwind アダプタと',
+  '     人が値を読むためのもので、素の CSS の利用者は値を直接書くことになる */',
+  ...breakpointNames.map((n) => `  --sg-breakpoint-${n}: ${breakpoint(n)}${breakpointUnit};`),
   '',
   '  /* border-width — px 固定。決定1-1 の例外（決定1-7） */',
   ...borderWidth.map((v, i) => `  --sg-border-width-${i}: ${v}px;`),

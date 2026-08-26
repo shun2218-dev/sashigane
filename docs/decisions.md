@@ -319,12 +319,58 @@ tracking = f(size) + (uppercase ? k : 0)
 
 ---
 
-### 決定 1-10: breakpoint
+### 決定 1-10: breakpoint — 値を確定した（2026-08-26）
 
 breakpoint はトークンに含める。密度の軸と直結するため。
 
 container 幅 / topbar 高さ / content 最小幅などのアプリ固有寸法は**含めない**。
 利用側の責務とする。
+
+#### 原則2 の3つ目の例外
+
+> **当初は「含める」とだけ決めて値を書いていなかった。**
+> [Issue #44](https://github.com/shun2218-dev/sashigane/issues/44) で
+> `--sg-breakpoint-*` が1つも生成されていないことが分かり、確定させた。
+
+**画面幅は `root = 16px` から導出できない。** 組版ではなく**機器の寸法**で決まるからで、
+`root` は画面幅について何も言わない。時間（決定1-6）・書体（決定1-11）と同じ例外として明示する。
+
+| 名前 | 値 |
+|---|---|
+| `sm` | `40rem`（640px） |
+| `md` | `48rem`（768px） |
+| `lg` | `64rem`（1024px） |
+| `xl` | `80rem`（1280px） |
+
+素の Tailwind v4 と同じ値を採る。**観測2本が実際にこの4段を使っている。**
+
+| | 使っているもの |
+|---|---|
+| holosphere | `sm:` 52 / `lg:` 31 / `md:` 13 / `xl:` 9 |
+| pdf-merge-app | `sm:` 31 / `md:` 25 / `lg:` 5 |
+| ichirizuka | 780px 単一（素の CSS） |
+| pylabo | 560 / 720 / 900px（素の CSS） |
+
+素の CSS の2本は値がばらばらで、原則2 のとおり値のソースにはしない。
+**4段という需要は Tailwind を使う2本が裏づけている。**
+同じ値を採ることで利用側の学習コストがゼロになる。
+
+`2xl` は持たない。観測に現れず、原則7 に従う。
+
+#### CSS 変数はメディアクエリの中で使えない
+
+```css
+@media (width >= var(--sg-breakpoint-sm)) { … }   /* 無効。ブラウザは無視する */
+```
+
+`--sg-breakpoint-*` を出してはいるが、**効くのは Tailwind アダプタ経由だけ**である。
+アダプタはビルド時に値を読むので、`@theme` には**値を直接書く**（決定3-3）。
+素の CSS の利用者は値を直接書くことになる。
+
+**これは実際にコンパイルして確かめた。** 他の名前空間と揃えて `var(--sg-breakpoint-sm)` を
+渡すと、Tailwind は上の無効なメディアクエリを出す。ユーティリティ自体は生成されるので
+「出たか」だけを見る検査は通り、**見た目も「レスポンシブが効かない」だけで気づきにくい**（教訓4）。
+`scripts/check-tailwind-adapter.mjs` がメディアクエリに `var(` が含まれないことを検査する。
 
 ---
 
@@ -708,18 +754,11 @@ inline なしだと Tailwind 側の `--color-danger` を上書きしても効い
 > 書いていたが、これは **`p-5` を 24px にしてしまう**（素の Tailwind では 20px）。
 > Tailwind の数値は index ではなく**基準の倍数**を表す規約である。
 
-#### 大原則: アダプタは所有する名前空間をすべてリセットする
+#### 大原則: 名前空間は1行で全部落とす（2026-08-26 改訂）
 
 ```css
 @theme inline {
-  --color-*: initial;
-  --spacing: initial;
-  --text-*: initial;
-  --leading-*: initial;
-  --tracking-*: initial;
-  --radius-*: initial;
-  --shadow-*: initial;
-  --ease-*: initial;
+  --*: initial;
   /* … 以降に写像を書く … */
 }
 ```
@@ -727,6 +766,31 @@ inline なしだと Tailwind 側の `--color-danger` を上書きしても効い
 リセットを書かないと**素の Tailwind の値がそのまま残る。**
 実験で `bg-red-500` `rounded-2xl` `shadow-lg` `leading-tight` が生成されることを確認した。
 `bg-red-500` が書ける時点で「トークンが唯一の正」は成立しない。
+
+> **改訂の経緯。** 当初は所有する名前空間を10個**列挙**していた。
+> [Issue #44](https://github.com/shun2218-dev/sashigane/issues/44) で
+> **列挙し忘れた9個が素の Tailwind の値のまま通っていた**ことが分かった。
+>
+> `--container-*` `--font-weight-*` `--breakpoint-*` `--blur-*` `--drop-shadow-*`
+> `--text-shadow-*` `--inset-shadow-*` `--perspective-*` `--aspect-*`
+>
+> `max-w-6xl` が 72rem を素の Tailwind から取っていた。**原則1 が成立していなかった。**
+>
+> 教訓5 がそのまま当たった例である。禁止リスト方式は、リストに無いものを黙って通す。
+> `--*: initial` は**Tailwind が将来足す名前空間にも効く**ので、列挙し忘れが起こらない。
+> 実験で全名前空間に効くことを確認した。
+
+#### 落としたまま写像しない名前空間
+
+`--*: initial` は所有していないものまで落とす。**落としたままにするものを明示する。**
+
+| 名前空間 | 扱い | 理由 |
+|---|---|---|
+| `--container-*` | 落とす | container 幅は利用側の責務（決定1-10）。必要なら利用側が `@theme` で足す |
+| `--aspect-*` | 落とす | 媒体の比率であってデザイントークンではない |
+| `--font-weight-*` | 落とす | **まだ決めていない**（[#53](https://github.com/shun2218-dev/sashigane/issues/53)） |
+| `--blur-*` / `--drop-shadow-*` / `--text-shadow-*` / `--inset-shadow-*` / `--perspective-*` | 落とす | 奥行きの表現。elevation が未実装なので写像先が無い（決定1-8） |
+| `--breakpoint-*` | **写像する** | 決定1-10。落としたままだと `sm:` が1つも書けない |
 
 #### 写像方針は名前空間の性質によって3通りに分かれる
 
