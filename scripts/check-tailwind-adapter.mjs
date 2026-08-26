@@ -186,8 +186,14 @@ let mappedNames = 0;
  * ここが落ちたら、決定1-10 が言う「利用側の責務」を果たす手段が無くなっている。
  */
 {
+  /*
+   * **主検査とは別のディレクトリに置く。** Tailwind は入力 CSS と同じ
+   * ディレクトリを自動走査するので、同居させると互いのフィクスチャを拾う。
+   * この検査を書く途中で、実際に自動走査による汚染へ2度引っかかった。
+   */
+  const consumerDir = mkdtempSync(join(tmpdir(), 'sashigane-tw-consumer-'));
   writeFileSync(
-    join(dir, 'consumer.html'),
+    join(consumerDir, 'consumer.html'),
     `<div class="
       p-4 p-5
       w-sidebar max-w-content
@@ -195,7 +201,7 @@ let mappedNames = 0;
     "></div>`,
   );
   writeFileSync(
-    join(dir, 'consumer.css'),
+    join(consumerDir, 'consumer.css'),
     `@import "${join(dist, 'tokens.css')}";\n` +
       `@import "${join(dist, 'theme.css')}" source(none);\n` +
       // 幅は --container-*、高さは --spacing-* に足す。
@@ -206,14 +212,14 @@ let mappedNames = 0;
       '  --spacing-chart: 21.25rem;\n' +
       '  --spacing-scroll: 16rem;\n' +
       '}\n' +
-      `@source "${join(dir, 'consumer.html')}";\n`,
+      `@source "${join(consumerDir, 'consumer.html')}";\n`,
   );
   execFileSync(
     'node_modules/.bin/tailwindcss',
-    ['-i', join(dir, 'consumer.css'), '-o', join(dir, 'consumer.out.css')],
+    ['-i', join(consumerDir, 'consumer.css'), '-o', join(consumerDir, 'consumer.out.css')],
     { stdio: 'pipe' },
   );
-  const consumerOut = readFileSync(join(dir, 'consumer.out.css'), 'utf8');
+  const consumerOut = readFileSync(join(consumerDir, 'consumer.out.css'), 'utf8');
   const consumerHas = (cls) =>
     new RegExp(`^\\s*\\.${cssEscape(cls)}\\s*\\{`, 'm').test(consumerOut);
 
