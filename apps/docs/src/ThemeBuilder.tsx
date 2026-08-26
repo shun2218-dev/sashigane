@@ -11,6 +11,7 @@ import {
   type Ramp,
 } from '@sashigane/tokens';
 import { useMemo, useState } from 'react';
+import { SamplePage } from './SamplePage.tsx';
 import tokens from '@sashigane/tokens/tokens.json' with { type: 'json' };
 
 const g = tokens.color.guarantees;
@@ -184,6 +185,8 @@ export const ThemeBuilder = () => {
           <Preview palette={palette} mode="dark" />
         </div>
       </section>
+
+      <SamplePage css={css} />
 
       <section>
         <h2>パレット</h2>
