@@ -177,6 +177,63 @@ let mappedNames = 0;
   }
 }
 
+/* ---------- 利用側がアプリ固有の寸法を足せること（決定1-10） ----------
+ *
+ * 決定1-10 は container 幅などのアプリ固有寸法を**利用側の責務**としている。
+ * `--*: initial` は素の Tailwind の名前も落とすので、
+ * **利用側が自分で名前を足す道が実際に通ることを確かめておく。**
+ *
+ * ここが落ちたら、決定1-10 が言う「利用側の責務」を果たす手段が無くなっている。
+ */
+{
+  writeFileSync(
+    join(dir, 'consumer.html'),
+    `<div class="
+      p-4 p-5
+      w-sidebar max-w-content
+      h-chart max-h-scroll
+    "></div>`,
+  );
+  writeFileSync(
+    join(dir, 'consumer.css'),
+    `@import "${join(dist, 'tokens.css')}";\n` +
+      `@import "${join(dist, 'theme.css')}" source(none);\n` +
+      // 幅は --container-*、高さは --spacing-* に足す。
+      // **高さ専用の名前空間は v4 に存在しない**（実測）
+      '@theme {\n' +
+      '  --container-content: 72rem;\n' +
+      '  --container-sidebar: 16rem;\n' +
+      '  --spacing-chart: 21.25rem;\n' +
+      '  --spacing-scroll: 16rem;\n' +
+      '}\n' +
+      `@source "${join(dir, 'consumer.html')}";\n`,
+  );
+  execFileSync(
+    'node_modules/.bin/tailwindcss',
+    ['-i', join(dir, 'consumer.css'), '-o', join(dir, 'consumer.out.css')],
+    { stdio: 'pipe' },
+  );
+  const consumerOut = readFileSync(join(dir, 'consumer.out.css'), 'utf8');
+  const consumerHas = (cls) =>
+    new RegExp(`^\\s*\\.${cssEscape(cls)}\\s*\\{`, 'm').test(consumerOut);
+
+  for (const cls of ['w-sidebar', 'max-w-content', 'h-chart', 'max-h-scroll']) {
+    if (!consumerHas(cls)) {
+      failures.push(
+        `利用側が @theme で足した ${cls} が生成されない。` +
+          'アプリ固有寸法を利用側の責務とする決定1-10 が成立しない',
+      );
+    }
+  }
+  // 足せることと、こちらの制約が緩むことは別である
+  if (consumerHas('p-5')) {
+    failures.push('利用側が寸法を足すと p-5 まで書けるようになっている（決定3-1 が壊れた）');
+  }
+  if (!consumerHas('p-4')) {
+    failures.push('利用側が @theme を足すとこちらの spacing が消える');
+  }
+}
+
 /* ---------- 出力の theme レイヤーに、我々が写像していない変数が無いこと ----------
  *
  * 上の EXPECTATIONS は「このクラスが出ないこと」を並べた**禁止リスト**である。
