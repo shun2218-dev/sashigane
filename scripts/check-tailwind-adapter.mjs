@@ -169,6 +169,44 @@ let mappedNames = 0;
   }
 }
 
+/* ---------- 出力の theme レイヤーに、我々が写像していない変数が無いこと ----------
+ *
+ * 上の EXPECTATIONS は「このクラスが出ないこと」を並べた**禁止リスト**である。
+ * 並べ忘れたものは検査対象にならない（教訓5）。
+ *
+ * こちらは許可リスト。Tailwind が出力する `@layer theme` の中身を、
+ * **アダプタが宣言した名前の集合と突き合わせる。**
+ * リセットが効いていなければ素の Tailwind の変数がここに現れる。
+ */
+{
+  const themeCss = readFileSync(join(dist, 'theme.css'), 'utf8');
+  const declared = new Set(
+    [...themeCss.matchAll(/^\s*(--[a-z0-9-]+(?:--[a-z0-9-]+)?)\s*:/gm)].map((m) => m[1]),
+  );
+  declared.delete('--*');
+  const layer = /@layer theme\s*\{([\s\S]*?)\n\}/.exec(out);
+  if (!layer) {
+    failures.push('出力に @layer theme が無い。アダプタの写像が空の可能性がある');
+  } else {
+    const emitted = [
+      ...new Set(
+        [...layer[1].matchAll(/(--[a-z0-9-]+(?:--[a-z0-9-]+)?)\s*:/g)].map((m) => m[1]),
+      ),
+    ];
+    for (const name of emitted) {
+      if (!declared.has(name)) {
+        failures.push(
+          `theme レイヤーに ${name} が出ている。アダプタは宣言していないので、` +
+            'リセットが効いていない（素の Tailwind の値が残っている）',
+        );
+      }
+    }
+    if (emitted.length === 0) {
+      failures.push('theme レイヤーが空。写像が1件も効いていない');
+    }
+  }
+}
+
 /* ---------- breakpoint が静的な長さで出ていること（教訓4） ----------
  *
  * 他の名前空間と揃えて `--breakpoint-sm: var(--sg-breakpoint-sm)` と書くと、

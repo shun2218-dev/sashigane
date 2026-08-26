@@ -792,6 +792,20 @@ inline なしだと Tailwind 側の `--color-danger` を上書きしても効い
 | `--blur-*` / `--drop-shadow-*` / `--text-shadow-*` / `--inset-shadow-*` / `--perspective-*` | 落とす | 奥行きの表現。elevation が未実装なので写像先が無い（決定1-8） |
 | `--breakpoint-*` | **写像する** | 決定1-10。落としたままだと `sm:` が1つも書けない |
 
+#### `@theme` の管轄外にあるもの
+
+`--*: initial` で落ちるのは**テーマ由来の値だけ**である。次は落ちない。
+
+- **素の数値ユーティリティ** — `duration-137` `z-42` `opacity-37` `rotate-17`
+  `order-9` `grid-cols-13` など。テーマを参照しないので `@theme` では止まらない。
+  `duration-137` は決定1-6 のスケールを素通りする。**`p-5` と同じ性質の穴**で、
+  対処は [#55](https://github.com/shun2218-dev/sashigane/issues/55) で検討する
+- **静的ユーティリティ** — `aspect-square`（`aspect-ratio: 1/1`）のように
+  値がユーティリティ側に埋まっているもの
+
+**「素の Tailwind の値が1つも出ない」とは言えない。** 言えるのは
+「テーマ由来の値は1つも残らない」までである。
+
 #### 写像方針は名前空間の性質によって3通りに分かれる
 
 **(1) 数値が倍数規約の名前空間 → 倍数で写像する（spacing）**

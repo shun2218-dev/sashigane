@@ -74,8 +74,12 @@ export const toThemeCss = (palette: Palette): string =>
     ...outputHeader('block', 'Tailwind v4 用アダプタ。', palette, [
       'tokens.css を先に読み込むこと。値はすべて --sg-* を参照する。',
       '名前空間は --*: initial で全部落としてから、我々のものだけを写像する。',
-      '素の Tailwind の値は1つも出てこない（決定3-1・3-3）。',
+      'テーマ由来の値は1つも残らない（決定3-1・3-3）。',
       '写像していない名前空間（--container-* など）は利用側の責務である（決定1-10）。',
+      '',
+      '**テーマを参照しないユーティリティはここでは止まらない。**',
+      'duration-137 / z-42 / opacity-37 / rotate-17 などの素の数値と、',
+      'aspect-square のような静的ユーティリティは @theme の管轄外である。',
     ]),
     '@import "tailwindcss";',
     '',
