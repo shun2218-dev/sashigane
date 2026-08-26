@@ -248,6 +248,15 @@ const FIXTURES = [
 
   // 通るべきもの
   { text: 'a { color: var(--sg-color-text-muted); }', expect: null },
+  /*
+   * 決定1-12 の骨格の余白。**名前表への足し忘れをここで捕まえる。**
+   * 実際、定義した直後は tokenLayers() に足し忘れており、参照すると unknown で
+   * 弾かれる状態だった。唯一の利用箇所が検査対象外のフィクスチャだったため、
+   * check:token-usage は緑のままだった（教訓2）。
+   */
+  { text: 'a { padding: var(--sg-space-surface); }', expect: null },
+  { text: 'a { padding-inline: var(--sg-space-page); }', expect: null },
+  { text: 'a { gap: var(--sg-space-section); }', expect: null },
   // 決定2-3 の正規表現が誤検出していた2件
   { text: 'h1 { font-size: var(--sg-text-heading-1); }', expect: null },
   { text: 'svg { fill: var(--sg-color-chart-1); }', expect: null },

@@ -19,6 +19,9 @@ import {
   toTokensCss,
   tokenLayers,
   typographySemanticVars,
+  densityLevels,
+  spaceRoles,
+  spacingSemanticVars,
 } from '../src/index.ts';
 
 const palette = generatePalette({ L: 0.6, C: 0.1, H: 220 });
@@ -44,6 +47,7 @@ describe('層の名前表', () => {
       countDeclarations(primitiveVars()) +
       countDeclarations(colorPrimitiveVars(palette)) +
       countDeclarations(typographySemanticVars()) +
+      countDeclarations(spacingSemanticVars('default')) +
       countDeclarations(colorSemanticVars('light', palette));
 
     expect(layers.primitives.length + layers.semantics.length).toBe(declared);
@@ -104,5 +108,29 @@ describe('層の名前表', () => {
         expect(css, name).toContain(`var(${name},`);
       }
     });
+  });
+});
+
+describe('骨格の余白の名前（決定1-12）', () => {
+  it('名前表のセマンティックに入っている', () => {
+    // 足し忘れると、定義した役割を参照した時点で lint に unknown で弾かれる。
+    // 実際に一度そうなった（唯一の利用箇所が検査対象外だったので緑のままだった）
+    for (const role of spaceRoles) {
+      expect(layers.semantics, role).toContain(`--sg-space-${role}`);
+    }
+  });
+
+  it('密度が変わっても名前は変わらない（値だけが切り替わる）', () => {
+    const names = (level: (typeof densityLevels)[number]) =>
+      spacingSemanticVars(level).map((l) => l.split(':')[0]!.trim());
+    for (const level of densityLevels) {
+      expect(names(level), level).toEqual(names('default'));
+    }
+  });
+
+  it('プリミティブの段とは別の名前である', () => {
+    for (const role of spaceRoles) {
+      expect(layers.primitives).not.toContain(`--sg-space-${role}`);
+    }
   });
 });
