@@ -1,9 +1,11 @@
 import {
   contrastBetween,
+  describePrimaryInput,
   generatePalette,
   hexToOklch,
   statusNames,
   steps,
+  surfaceRolesFor,
   toCss,
   toTokensCss,
   toHex,
@@ -50,54 +52,30 @@ const Swatches = ({ label, ramp }: { label: string; ramp: Ramp }) => (
  * 実際には色はパレットに入っており、変わっているのは
  * 「どの段を accent という役割に割り当てるか」である。**両者を並べて見せる。**
  */
-const InputPlacement = ({ palette, input }: { palette: Palette; input: Oklch }) => {
-  const nearest = steps.reduce((best, s) =>
-    Math.abs(palette.primary.byStep[s]!.L - input.L) <
-    Math.abs(palette.primary.byStep[best]!.L - input.L)
-      ? s
-      : best,
-  );
-  const near = palette.primary.byStep[nearest]!;
-  /*
-   * **モードごとに別々に判定する。** 片方で足りていても、もう片方で足りないことがある。
-   * 実際、明るい黄色は暗色の面では 13:1 を超えるが、明色の面では 1.25:1 しか無い。
-   * ひとまとめに「使える」と書くと、足りない側の数字を並べたまま反対のことを言うことになる。
-   */
-  const modes = (['light', 'dark'] as const).map((mode) => {
-    const surfaceStep = mode === 'light' ? g.lightSurfaceStep : g.darkSurfaceStep;
-    const reqs = mode === 'light' ? g.light : g.dark;
-    const page = palette.neutral.byStep[surfaceStep]!;
-    const ratio = contrastBetween(input, page);
-    const textReq = reqs.reduce((a, b) => (a.min >= b.min ? a : b));
-    const markReq = reqs.reduce((a, b) => (a.min <= b.min ? a : b));
-    return {
-      mode,
-      label: mode === 'light' ? '明色' : '暗色',
-      ratio,
-      textStep: textReq.step,
-      textMin: textReq.min,
-      markMin: markReq.min,
-      asText: ratio >= textReq.min,
-      asMark: ratio >= markReq.min,
-    };
-  });
+const InputPlacement = ({
+  palette,
+  input,
+  hex,
+}: { palette: Palette; input: Oklch; hex: string }) => {
+  // 判定はトークン側が持つ。ここで最近傍を計算し直すと、警告が使う判定と二重になる
+  const { nearestStep, nearest: near, delta, modes } = describePrimaryInput(palette, input);
   const accentSteps = new Set(modes.map((m) => m.textStep));
+  // 表示上の呼び方はこちらが持つ。トークン側は 'light' / 'dark' しか知らない
+  const label = (mode: 'light' | 'dark') => (mode === 'light' ? '明色' : '暗色');
 
   return (
     <section>
       <h2>選んだ色はどこに入ったか</h2>
       <div className="placement">
         <span className="chip" style={{ background: toCss(input) }} />
-        <code>{toHex(input)}</code>
+        <code>{hex}</code>
         <span className="arrow">→</span>
         <span className="chip" style={{ background: toCss(near) }} />
         <code>
-          primary 段{nearest} {toHex(near)}
+          primary 段{nearestStep} {toHex(near)}
         </code>
         <span className="delta">
-          ΔL {Math.abs(input.L - near.L).toFixed(3)} / ΔC{' '}
-          {Math.abs(input.C - near.C).toFixed(3)} / ΔH{' '}
-          {Math.abs(input.H - near.H).toFixed(1)}°
+          ΔL {delta.L.toFixed(3)} / ΔC {delta.C.toFixed(3)} / ΔH {delta.H.toFixed(1)}°
         </span>
       </div>
 
@@ -109,7 +87,7 @@ const InputPlacement = ({ palette, input }: { palette: Palette; input: Oklch }) 
             return (
               <div
                 key={st}
-                className={`swatch${st === nearest ? ' picked' : ''}${accentSteps.has(st) ? ' accent' : ''}`}
+                className={`swatch${st === nearestStep ? ' picked' : ''}${accentSteps.has(st) ? ' accent' : ''}`}
                 style={{ background: toCss(c) }}
                 title={`${st}\n${toHex(c)}`}
               >
@@ -122,7 +100,7 @@ const InputPlacement = ({ palette, input }: { palette: Palette; input: Oklch }) 
       <p className="note">
         枠が二重の段が<strong>選んだ色に最も近い段</strong>、下線の段が{' '}
         <code>--sg-color-accent</code> が使う段です（
-        {modes.map((m) => `${m.label}は段${m.textStep}`).join('、')}）。
+        {modes.map((m) => `${label(m.mode)}は段${m.textStep}`).join('、')}）。
       </p>
 
       <table className="contrast">
@@ -137,7 +115,7 @@ const InputPlacement = ({ palette, input }: { palette: Palette; input: Oklch }) 
         <tbody>
           {modes.map((m) => (
             <tr key={m.mode}>
-              <td>{m.label}の面に置くと</td>
+              <td>{label(m.mode)}の面に置くと</td>
               <td>{m.ratio.toFixed(2)}:1</td>
               <td className={m.asText ? 'ok' : 'ng'}>
                 {m.asText ? `使える（${m.textMin}:1 以上）` : `使えない（${m.textMin}:1 に届かない）`}
@@ -210,63 +188,98 @@ const GuaranteeTable = ({ palette }: { palette: Palette }) => {
   );
 };
 
-/** 生成した色が実際に使えるかを見るための、最小限の画面 */
-const Preview = ({ palette, mode }: { palette: Palette; mode: 'light' | 'dark' }) => {
+/**
+ * 面の上に一式を並べる。**面ごとに参照する段が変わる**（決定5-12）ので、
+ * 段は手で決めず `surfaceRolesFor` から取る。
+ */
+const SurfaceSample = ({
+  palette,
+  mode,
+  depth,
+  title,
+}: {
+  palette: Palette;
+  mode: 'light' | 'dark';
+  depth: number;
+  title: string;
+}) => {
+  const roles = surfaceRolesFor(palette, mode)[depth]!;
   const n = palette.neutral.byStep;
-  const bg = mode === 'light' ? n[50]! : n[950]!;
-  const surface = mode === 'light' ? n[100]! : n[900]!;
-  const text = mode === 'light' ? n[900]! : n[100]!;
-  const muted = mode === 'light' ? n[600]! : n[300]!;
-  const border = mode === 'light' ? n[300]! : n[700]!;
-  // 文字は 4.5:1 が要るので 500（明色）/ 400（暗色）。
-  // チャートの線や点は文字ではないので 3:1 で足り、1段明るい方を使える。
-  // 段500 で描いていたときは5系列が沈んで見分けにくかった。
-  const textStep = mode === 'light' ? 500 : 400;
-  const markStep = mode === 'light' ? 400 : 300;
-  const seriesSteps = mode === 'light' ? palette.categoricalSteps.light : palette.categoricalSteps.dark;
+  const seriesSteps = roles.series ?? palette.categoricalSteps[mode];
+  const onFill = mode === 'light' ? n[50]! : n[950]!;
+
   return (
-    <div className="preview" style={{ background: toCss(bg), color: toCss(text) }}>
-      <div
-        className="preview-card"
-        style={{ background: toCss(surface), borderColor: toCss(border) }}
-      >
-        <strong>カードの見出し</strong>
-        <p style={{ color: toCss(muted) }}>
-          補助的な説明文です。中間色が primary の色相で着色されているため、
-          アクセント色と並べても浮かないことを確かめます。
-        </p>
-        <div className="preview-row">
-          <button
-            type="button"
+    <>
+      <div className="sample-label" style={{ color: toCss(n[roles.text.muted]!) }}>
+        {title}
+        <span>
+          文字 段{roles.colorText} / マーク 段{roles.colorMark}
+        </span>
+      </div>
+      <strong style={{ color: toCss(n[roles.text.default]!) }}>カードの見出し</strong>
+      <p style={{ color: toCss(n[roles.text.muted]!) }}>
+        補助的な説明文です。中間色が primary の色相で着色されているため、
+        アクセント色と並べても浮かないことを確かめます。
+      </p>
+      <div className="preview-row">
+        <button
+          type="button"
+          style={{
+            background: toCss(palette.primary.byStep[roles.colorText]!),
+            color: toCss(onFill),
+          }}
+        >
+          主ボタン
+        </button>
+        {statusNames.map((st) => (
+          <span
+            key={st}
+            className="badge"
             style={{
-              background: toCss(palette.primary.byStep[textStep]!),
-              color: toCss(mode === 'light' ? n[50]! : n[950]!),
+              color: toCss(palette.status[st].byStep[roles.colorText]!),
+              borderColor: toCss(palette.status[st].byStep[roles.colorMark]!),
             }}
           >
-            主ボタン
-          </button>
-          {statusNames.map((s) => (
-            <span
-              key={s}
-              className="badge"
-              style={{
-                color: toCss(palette.status[s].byStep[textStep]!),
-                borderColor: toCss(palette.status[s].byStep[markStep]!),
-              }}
-            >
-              {s}
-            </span>
-          ))}
-        </div>
-        <div className="preview-row">
-          {palette.categorical.map((r, i) => (
-            <span key={r.hue} className="series">
-              {/* 系列ごとに段が違う。色相だけ変えると二色覚で潰れるため（決定5-8） */}
-              <i style={{ background: toCss(r.byStep[seriesSteps[i]!]!) }} />
-              系列{i + 1}
-            </span>
-          ))}
-        </div>
+            {st}
+          </span>
+        ))}
+      </div>
+      <div className="preview-row">
+        {palette.categorical.map((r, i) => (
+          <span key={r.hue} className="series" style={{ color: toCss(n[roles.text.muted]!) }}>
+            {/* 系列ごとに段が違う。色相だけ変えると二色覚で潰れるため（決定5-8） */}
+            <i style={{ background: toCss(r.byStep[seriesSteps[i]!]!) }} />
+            系列{i + 1}
+          </span>
+        ))}
+      </div>
+    </>
+  );
+};
+
+/**
+ * 生成した色が実際に使えるかを見るための、最小限の画面。
+ *
+ * **ページの地の上とカードの上の両方に同じ一式を並べる。**
+ * 面が変われば役割が指す段も変わる（決定5-12）ので、片方だけ見せると
+ * 「カードの外に置いたらどうなるのか」が分からない。
+ * 以前はカードの上だけを描き、しかも**ページ用の段を使っていた**ため、
+ * バッジの文字がカードに対して 3.82:1 と、保証している 4.5:1 を割っていた。
+ */
+const Preview = ({ palette, mode }: { palette: Palette; mode: 'light' | 'dark' }) => {
+  const n = palette.neutral.byStep;
+  const surfaces = palette.neutral.byStep;
+  const roles = surfaceRolesFor(palette, mode);
+  const page = surfaces[roles[0]!.surface]!;
+  const card = surfaces[roles[1]!.surface]!;
+  return (
+    <div className="preview" style={{ background: toCss(page) }}>
+      <SurfaceSample palette={palette} mode={mode} depth={0} title="ページの地の上" />
+      <div
+        className="preview-card"
+        style={{ background: toCss(card), borderColor: toCss(n[roles[1]!.border.default]!) }}
+      >
+        <SurfaceSample palette={palette} mode={mode} depth={1} title="カードの上" />
       </div>
     </div>
   );
@@ -292,7 +305,7 @@ export const ThemeBuilder = () => {
         </label>
       </header>
 
-      <InputPlacement palette={palette} input={hexToOklch(hex)} />
+      <InputPlacement palette={palette} input={hexToOklch(hex)} hex={hex} />
 
       {palette.warnings.length > 0 && (
         <section>
