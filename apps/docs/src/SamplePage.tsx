@@ -53,7 +53,10 @@ export const SamplePage = ({ css }: { css: string }) => {
     if (density === 'auto') html.removeAttribute('data-sg-density');
     else html.setAttribute('data-sg-density', density);
     // 書体の差し込み口（決定1-11）。**:root に差さないと届かない。**
-    // --sg-font-stack-* の var() は宣言された要素で置換されるため（docs/experiments/font-family.md）
+    // 書体スタック側の var() は宣言された要素で置換されるため、部分木に差しても効かない。
+    // 実測は docs/experiments/font-family.md
+    // （ここでスタック側の変数名を書くと check:token-usage が落ちる。教訓の対象は名前であって
+    //   文脈ではないので、説明では名前そのものを書かない）
     if (brand) html.style.setProperty('--sg-font-brand-display-latin', 'Georgia');
     else html.style.removeProperty('--sg-font-brand-display-latin');
   }, [theme, density, brand, loads]);

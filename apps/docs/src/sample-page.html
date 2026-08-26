@@ -354,19 +354,16 @@
     <h2 class="h1">規則が解いているもの</h2>
     <div class="grid cols-3" style="margin-top: var(--sg-space-5)">
       <article class="card stack" data-sg-surface="surface">
-        <span class="legend"><i style="background: var(--sg-color-chart-1)"></i></span>
         <h3 class="h3">面ごとの保証</h3>
         <p>面が深くなると、文字もアクセントも自動で1段深い段を指します。カードの上でも 4.5:1 を割りません。</p>
         <pre data-sg-surface="inset"><code>&lt;div data-sg-surface="surface"&gt;</code></pre>
       </article>
       <article class="card stack" data-sg-surface="surface">
-        <span class="legend"><i style="background: var(--sg-color-chart-2)"></i></span>
         <h3 class="h3">密度は文脈</h3>
         <p>骨格の余白だけが密度で動きます。<kbd>data-sg-density</kbd> で固定でき、既定は画面幅に従います。</p>
         <pre data-sg-surface="inset"><code>padding: var(--sg-space-page)</code></pre>
       </article>
       <article class="card stack" data-sg-surface="surface">
-        <span class="legend"><i style="background: var(--sg-color-chart-3)"></i></span>
         <h3 class="h3">書体は差し込み口</h3>
         <p>書体名はブランドの選択なので、システムは構造だけを持ちます。欧文 → 和文 → generic の順序は保証されます。</p>
         <pre data-sg-surface="inset"><code>--sg-font-brand-display-latin</code></pre>
@@ -447,7 +444,8 @@
         <p class="caption" style="margin-top: var(--sg-space-2)">数字は等幅で揃えています（決定1-11）。</p>
       </article>
 
-      <form class="card stack" data-sg-surface="surface" onsubmit="return false">
+      <!-- 送信させないのはボタンの型で解く。**このページに script は1つも置かない**（B1） -->
+      <form class="card stack" data-sg-surface="surface">
         <h3 class="h3">試してみる</h3>
         <label>
           <span class="label">プロジェクト名</span>
@@ -469,7 +467,7 @@
         </label>
         <p class="caption field-ok">保存しました。<kbd>⌘</kbd> <kbd>S</kbd> でいつでも上書きできます。</p>
         <div class="row">
-          <button class="btn btn-primary" type="submit">生成する</button>
+          <button class="btn btn-primary" type="button">生成する</button>
           <button class="btn btn-ghost" type="button">やめる</button>
         </div>
       </form>
