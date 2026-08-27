@@ -566,3 +566,76 @@ const solveSurfaceRoles = (
     };
   });
 };
+
+/**
+ * 選んだ色がパレットのどこに入り、その色を文字やマークとして使えるかを説明する。
+ *
+ * **テーマビルダーの表示のために作った関数だが、判定はここが持つ。**
+ * 表示側で最近傍の段を計算し直すと、`primary-lightness-shifted` の警告が使う
+ * 判定と二重になり、ずれても「警告は出ないのに表示は別の段を指す」という形でしか
+ * 現れない（決定2-3 の「生成器が知っている事実で判定する」と同じ理由）。
+ */
+export interface PrimaryInputPlacement {
+  /** 入力の明度に最も近い primary の段 */
+  nearestStep: number;
+  nearest: Oklch;
+  delta: { L: number; C: number; H: number };
+  /** モードごとの、入力そのものを前景に使えるかの判定 */
+  modes: {
+    mode: 'light' | 'dark';
+    surfaceStep: number;
+    ratio: number;
+    /** そのモードで accent（文字の役割）が使う段 */
+    textStep: number;
+    textMin: number;
+    markMin: number;
+    asText: boolean;
+    asMark: boolean;
+  }[];
+}
+
+export const describePrimaryInput = (
+  palette: Palette,
+  input: Oklch,
+): PrimaryInputPlacement => {
+  const nearestStep = cfg.steps.reduce((best, s) =>
+    Math.abs(palette.primary.byStep[s]!.L - input.L) <
+    Math.abs(palette.primary.byStep[best]!.L - input.L)
+      ? s
+      : best,
+  );
+  const nearest = palette.primary.byStep[nearestStep]!;
+  const g = cfg.guarantees;
+
+  return {
+    nearestStep,
+    nearest,
+    delta: {
+      L: Math.abs(input.L - nearest.L),
+      C: Math.abs(input.C - nearest.C),
+      H: Math.abs(input.H - nearest.H),
+    },
+    /*
+     * **モードごとに別々に判定する。** 片方で足りていても、もう片方で足りないことがある。
+     * 明るい黄色は暗色の面で 13:1 を超えるが、明色の面では 1.25:1 しか無い。
+     * ひとまとめにすると、足りない側の数字を並べたまま反対のことを言うことになる。
+     */
+    modes: (['light', 'dark'] as const).map((mode) => {
+      const surfaceStep = mode === 'light' ? g.lightSurfaceStep : g.darkSurfaceStep;
+      const reqs = mode === 'light' ? g.light : g.dark;
+      const ratio = contrastBetween(input, palette.neutral.byStep[surfaceStep]!);
+      const text = reqs.reduce((a, b) => (a.min >= b.min ? a : b));
+      const mark = reqs.reduce((a, b) => (a.min <= b.min ? a : b));
+      return {
+        mode,
+        surfaceStep,
+        ratio,
+        textStep: text.step,
+        textMin: text.min,
+        markMin: mark.min,
+        asText: ratio >= text.min,
+        asMark: ratio >= mark.min,
+      };
+    }),
+  };
+};

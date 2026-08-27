@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import tokens from '../src/tokens.json' with { type: 'json' };
 import {
   contrastBetween,
+  describePrimaryInput,
   generatePalette,
   hexToOklch,
   hueDistance,
@@ -481,5 +482,84 @@ describe('入力の再現性を警告する（決定5-1）', () => {
     const reachable = base.primary.byStep[500]!;
     const pal = generatePalette(reachable);
     expect(pal.warnings.some((w) => w.code === 'primary-chroma-unreachable')).toBe(false);
+  });
+});
+
+describe('選んだ色の置き場所（テーマビルダーの表示の判定）', () => {
+  const of = (hex: string) => {
+    const input = hexToOklch(hex);
+    return { input, ...describePrimaryInput(generatePalette(input), input) };
+  };
+
+  it('色相は変わらない — 受け継ぐのは色相のみ（決定5-1）', () => {
+    for (const hex of ['#f7de3b', '#1f7a78', '#0ea5e9', '#e879f9']) {
+      expect(of(hex).delta.H, hex).toBeLessThan(0.5);
+    }
+  });
+
+  it('最も近い段は、実際に全段の中で最も近い', () => {
+    for (const hex of ['#f7de3b', '#1f7a78', '#0ea5e9']) {
+      const { input, nearestStep } = of(hex);
+      const pal = generatePalette(input);
+      const distances = steps.map((s) => Math.abs(pal.primary.byStep[s]!.L - input.L));
+      expect(Math.min(...distances), hex).toBeCloseTo(
+        Math.abs(pal.primary.byStep[nearestStep]!.L - input.L),
+        10,
+      );
+    }
+  });
+
+  it('警告の判定と食い違わない（二重実装がずれていないこと）', () => {
+    // primary-lightness-shifted は「最も近い段との差」で出る。
+    // 表示側が別の段を指していたら、警告が出ないのに表示だけずれる形になる
+    for (const hex of ['#f7de3b', '#1f7a78', '#0ea5e9', '#e879f9', '#3b82f6']) {
+      const input = hexToOklch(hex);
+      const pal = generatePalette(input);
+      const { nearestStep, delta } = describePrimaryInput(pal, input);
+      const shifted = pal.warnings.find((w) => w.code === 'primary-lightness-shifted');
+      if (shifted) {
+        expect(shifted.detail?.step, hex).toBe(nearestStep);
+        expect(delta.L, hex).toBeGreaterThan(cfg.warnings.primaryLightnessExcess);
+      } else {
+        expect(delta.L, hex).toBeLessThanOrEqual(cfg.warnings.primaryLightnessExcess);
+      }
+    }
+  });
+
+  it('モードごとに別々に判定する（片方で足りても他方で足りないことがある）', () => {
+    // 明るい黄色は暗色の面では十分だが、明色の面では文字にもマークにもならない。
+    // まとめて判定すると、足りない側の数字を並べたまま「使える」と言うことになる
+    const yellow = of('#f7de3b');
+    const light = yellow.modes.find((m) => m.mode === 'light')!;
+    const dark = yellow.modes.find((m) => m.mode === 'dark')!;
+    expect(light.asText).toBe(false);
+    expect(light.asMark).toBe(false);
+    expect(dark.asText).toBe(true);
+
+    // 段500 にそのまま着地する色は、明色で文字として使える
+    const teal = of('#1f7a78');
+    expect(teal.nearestStep).toBe(500);
+    expect(teal.modes.find((m) => m.mode === 'light')!.asText).toBe(true);
+
+    /*
+     * **文字とマークの閾値を取り違えていないこと。**
+     * teal を暗色の面に置くと 3.57:1 で、3:1 と 4.5:1 の**間**に落ちる。
+     * ここを見ないと、片方の閾値をもう片方に使う誤りが素通りする。
+     * 実際、最初はこの assertion が無く、判定を壊しても検査が発火しなかった（教訓2）。
+     */
+    const tealDark = teal.modes.find((m) => m.mode === 'dark')!;
+    expect(tealDark.ratio).toBeGreaterThan(tealDark.markMin);
+    expect(tealDark.ratio).toBeLessThan(tealDark.textMin);
+    expect(tealDark.asText).toBe(false);
+    expect(tealDark.asMark).toBe(true);
+  });
+
+  it('判定は保証の表から読む（閾値をここに書き写していない）', () => {
+    for (const m of of('#0ea5e9').modes) {
+      const reqs = m.mode === 'light' ? g.light : g.dark;
+      expect(m.textMin).toBe(Math.max(...reqs.map((r) => r.min)));
+      expect(m.markMin).toBe(Math.min(...reqs.map((r) => r.min)));
+      expect(m.surfaceStep).toBe(m.mode === 'light' ? g.lightSurfaceStep : g.darkSurfaceStep);
+    }
   });
 });
