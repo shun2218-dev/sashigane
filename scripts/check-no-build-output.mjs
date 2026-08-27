@@ -24,6 +24,14 @@ const PATTERNS = [
   { re: /(^|\/)node_modules\//, why: '依存' },
 ];
 
+/*
+ * **追跡下のファイルだけを見る。** この検査に限っては、それが目的そのものである
+ * （見たいのは「コミットされているか」であって、作業ツリーに何があるかではない）。
+ * `dist/` が未追跡のまま存在していても、ここは緑でよい。
+ *
+ * ただし同じ性質が check:token-usage では見逃しになった（Issue #63）。
+ * **「手元で緑」と「CI で緑」がずれる**ので、性質としてここに書いておく。
+ */
 const files = execSync('git ls-files', { encoding: 'utf8' }).split('\n').filter(Boolean);
 const hits = [];
 
