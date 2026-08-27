@@ -118,6 +118,12 @@ sashigane が `text-default` / `text-muted` / `text-faint` の3段しか持た�
 そのうえで面のプリミティブ（`Card` / `DashboardCard` / `SectionCard` / `Badge` / `Button`）だけを
 セマンティックへ移した。**これは移行の途中経過であって、最終形ではない。**
 
+> **この写像はもう書けない（2026-08-27、決定5-12 改訂・[Issue #65](https://github.com/shun2218-dev/sashigane/issues/65)）。**
+> `--sg-color-bg-surface` / `-inset` を落としたためである。塗るだけの道を残すと
+> 「塗ったが文脈は page のまま」を作れてしまい、実際にサンプルページが踏んでいた。
+> 段階的移行はこの写像ではなく、面の要素へ `data-sg-surface` を足す形で行う。
+> **ページ地（`--sg-color-bg-page`）だけは残っている。**
+
 primary は holosphere が OG 画像で `ACCENT` として直書きしている `#e879f9` を入力にした。
 パレットの警告は出ていない。
 

@@ -37,15 +37,21 @@ const semanticFor = (
   /** 0 なら :root に出す全部。1 以上なら面の文脈で**上書きするものだけ** */
   depth: number,
 ): string[] => {
+  /**
+   * **ページ地だけが値として出る**（決定5-12 改訂）。
+   *
+   * `surface` / `inset` / `overlay` の色は出さない。出すと「塗ったが文脈は page のまま」
+   * という状態を素の CSS から作れてしまい、**エラーにならないまま保証が割れる**（教訓4）。
+   * 面を作る方法は `data-sg-surface` だけである。
+   *
+   * ページ地を残すのは、**どの面の文脈のまま塗っても割らない**からである
+   * （全360色相 × 両モード × 面4段で最悪 4.50。深い面ほど余裕が増える）。
+   * そして CSS が原理的に届かない場所——サーバ側で描く OG 画像など——が
+   * ページ地の値を必要とする（決定2-6）。
+   */
   const surfaces =
     depth === 0
-      ? [
-          `  --sg-color-bg-page: var(--sg-neutral-${mode === 'light' ? 50 : 950});`,
-          `  --sg-color-bg-surface: var(--sg-neutral-${mode === 'light' ? 100 : 900});`,
-          `  --sg-color-bg-inset: var(--sg-neutral-${mode === 'light' ? 200 : 800});`,
-          // overlay は surface と同じ段（決定5-13）。別の役割だが同じ値になる
-          `  --sg-color-bg-overlay: var(--sg-neutral-${mode === 'light' ? 100 : 900});`,
-        ]
+      ? [`  --sg-color-bg-page: var(--sg-neutral-${mode === 'light' ? 50 : 950});`]
       : [];
   return [
     ...surfaces,

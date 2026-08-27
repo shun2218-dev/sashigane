@@ -619,6 +619,42 @@ describe('面の役割の追加（決定5-13）', () => {
     });
   }
 
+  /**
+   * **`--sg-color-bg-page` を残す根拠を検査で持つ**（決定5-12 改訂、Issue #65）。
+   *
+   * 面の色のうちページ地だけが値として出ている。塗るだけの道を1本残すことになるので、
+   * **どの面の文脈のまま塗っても割らない**ことが条件である。落ちたら、
+   * その条件が成立しなくなったということなので `--sg-color-bg-page` も落とすことになる。
+   */
+  it('ページ地はどの面の文脈のまま塗っても割らない（決定5-12 改訂）', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const pageStep = mode === 'light' ? g2.lightSurfaceStep : g2.darkSurfaceStep;
+      let worst = { ratio: Number.POSITIVE_INFINITY, H: -1, role: '' };
+      for (const { H, pal } of palettes) {
+        const bg = pal.neutral.byStep[pageStep]!;
+        surfaceRolesFor(pal, mode).forEach((r) => {
+          const cands: [string, (typeof bg)][] = [
+            ['text-default', pal.neutral.byStep[r.text.default]!],
+            ['text-muted', pal.neutral.byStep[r.text.muted]!],
+            ['text-faint', pal.neutral.byStep[r.text.faint]!],
+            ['accent', pal.primary.byStep[r.colorText]!],
+            ...statusNames.map(
+              (n) => [n, pal.status[n]!.byStep[r.colorText]!] as [string, typeof bg],
+            ),
+          ];
+          for (const [role, c] of cands) {
+            const ratio = contrastBetween(c, bg);
+            if (ratio < worst.ratio) worst = { ratio, H, role };
+          }
+        });
+      }
+      expect(
+        worst.ratio,
+        `${mode}: 最悪は primary=${worst.H}° の ${worst.role}`,
+      ).toBeGreaterThanOrEqual(g2.textMin);
+    }
+  });
+
   it('名前を持つ面には必ず hover の行き先がある', () => {
     for (const mode of ['light', 'dark'] as const) {
       const rows = surfaceRolesFor(palettes[0]!.pal, mode);
