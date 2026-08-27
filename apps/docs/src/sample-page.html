@@ -241,7 +241,8 @@
   .band span:last-child { border-radius: 0 var(--sg-radius-1) var(--sg-radius-1) 0; }
   .band-scale { display: flex; justify-content: space-between; margin-top: var(--sg-space-1); }
 
-  /* 進捗。溝は面の色を借りる。溝は「面より少し凹んだところ」なので inset の段 */
+  /* 進捗。溝は面の色を借りる。溝は「面より少し凹んだところ」なので inset の段。
+     **バーは accent-mark。印の段なので上に文字は載せられない**（決定5-14） */
   .meter { height: var(--sg-space-2); border-radius: var(--sg-radius-full); background: var(--sg-color-bg-inset); overflow: hidden; }
   .meter i { display: block; height: 100%; background: var(--sg-color-accent-mark); }
 
