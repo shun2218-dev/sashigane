@@ -111,6 +111,20 @@ palette.warnings; // 再現できない色・見分けにくい組み合わせ�
 `bg-surface` のようなユーティリティは用意していません。塗るだけだと前景が
 ページ用のまま残り、コントラストが落ちても気づけないためです。
 
+名乗れる面は `page` / `surface` / `inset` / `overlay` の4つです。
+`overlay`（ポップオーバーやツールチップ）は**どこに置いても同じ段**になります。
+
+hover も同じ考え方で、塗るのではなく宣言します。
+
+```html
+<article data-sg-surface="surface">
+  <button data-sg-interactive>…</button>
+</article>
+```
+
+`data-sg-interactive` を付けた要素は、hover 中だけ1段深い面の文脈になります。
+背景と前景が一緒に動くので、hover しても保証は崩れません。
+
 
 ## 開発
 

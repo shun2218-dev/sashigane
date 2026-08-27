@@ -29,11 +29,15 @@ hozo-ui は観測対象に含めていない。
 |---|---|---|
 | `bg-page` | i p h s | |
 | `bg-surface` | i p h s | カード・パネル |
-| `bg-surface-subtle` | p | ページとカードの中間 |
+| `bg-surface-subtle` | p | ページとカードの中間。**退けた**（決定5-13）。明色の 50 と 100 の間に段が無く、足すと `bg-hover` と両立しない |
 | `bg-inset` | i p s | **凹んだ面**。入力欄、進捗トラック、コードブロック地 |
-| `bg-overlay` | h s | **不透明でなければならない**（下記） |
-| `bg-hover` / `bg-active` | i p h | |
+| `bg-overlay` | h s | **不透明でなければならない**（下記）。`data-sg-surface="overlay"`（決定5-13） |
+| `bg-hover` | i p h | `data-sg-interactive` で作る面の文脈（決定5-13） |
+| `bg-active` | i p h | **保留。** 2段深い面は梯子に無い（決定5-13） |
 | `bg-decorative-grid` | i | 方眼の描画線。罫線とは別の値を持っている |
+
+**面はすべて不透明なので、下の制約は sashigane では既に満たされている。**
+overlay に残っているのは「浮いて見える」ことだけで、それは elevation（決定1-8、未実装）の責務である。
 
 ### アルファ面は重なりに使えない
 
@@ -53,6 +57,10 @@ holosphere は面を `bg-white/[0.03]`、境界を `border-white/10` とアル�
 | `border-default` | i p h s |
 | `border-strong` | p（hover 時、accent を混ぜる） |
 | `chart-gridline` | h — **UI の境界よりさらに薄い** |
+
+4段とも決定5-13 でトークンになった。面と一緒に深い側へずれる。
+観測された「hover 時に濃くなる」は面の文脈が担うので、`border-strong` は
+**hover ではない強調**（選択中の行、強調した区切り）のために残している。
 
 チャートのグリッド線が UI の境界より薄いのは意図的で、データを邪魔しないため。
 `border-subtle` で代用できない第4の段が存在する。

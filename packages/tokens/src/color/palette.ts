@@ -451,7 +451,14 @@ export interface SurfaceRoles {
   /** この面が使う中間色の段 */
   surface: number;
   text: { default: number; muted: number; faint: number };
-  border: { subtle: number; default: number };
+  border: { subtle: number; default: number; strong: number };
+  /**
+   * チャートのグリッド線。**UI の境界より薄い第4の段**である（roles.md）。
+   *
+   * 面のすぐ外側の段を取る。border.subtle は面から depth+2 段外側なので、
+   * gridline は必ずその内側に入る。新しい定数は持ち込まない。
+   */
+  gridline: number;
   /** 色つきランプのうち、文字に使う段（4.5:1） */
   colorText: number;
   /** 色つきランプのうち、マークに使う段（3:1）。決定5-7 */
@@ -559,7 +566,11 @@ const solveSurfaceRoles = (
       border: {
         subtle: shift(mode === 'light' ? 200 : 800),
         default: shift(mode === 'light' ? 300 : 700),
+        /** hover 以外の場面（選択中の行、強調した区切り）で使う第3段（決定5-13） */
+        strong: shift(mode === 'light' ? 400 : 600),
       },
+      /** 面のすぐ外側。border.subtle より必ず薄い */
+      gridline: outward[0] ?? surfaceStep,
       colorText,
       colorMark: markStep(colorText),
       series,

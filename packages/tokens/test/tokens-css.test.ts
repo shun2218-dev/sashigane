@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest';
 import {
   colorSemanticVars,
   densityLevels,
+  hoverMirrorVars,
   generatePalette,
   spaceRoles,
   spacingSemanticVars,
@@ -62,12 +63,15 @@ describe('tokens.css のテーマ切り替え', () => {
         .map((l) => l.trim())
         .filter((l) => l.startsWith('--sg-'));
 
-    expect(declarations(blockOf('[data-theme="light"]')!.body)).toEqual(
-      colorSemanticVars('light', palette).map((l) => l.trim()),
-    );
-    expect(declarations(blockOf('[data-theme="dark"]')!.body)).toEqual(
-      colorSemanticVars('dark', palette).map((l) => l.trim()),
-    );
+    // 控え（--sg-color-hover-*）も面の文脈の一部なので、固定用のブロックにも要る。
+    // 落ちていると、テーマを固定した瞬間に hover だけ OS 設定側の値を指す
+    for (const mode of ['light', 'dark'] as const) {
+      expect(declarations(blockOf(`[data-theme="${mode}"]`)!.body)).toEqual(
+        [...colorSemanticVars(mode, palette), ...hoverMirrorVars(mode, palette, 0)].map((l) =>
+          l.trim(),
+        ),
+      );
+    }
   });
 });
 
@@ -110,5 +114,92 @@ describe('tokens.css の密度（決定1-12）', () => {
 
   it('骨格の役割だけが出ている（コンポーネント内部の余白は密度で動かさない）', () => {
     expect(spaceRoles).toEqual(['page', 'section', 'surface']);
+  });
+});
+
+/**
+ * hover の面（決定5-13）。
+ *
+ * 値は面が控えた `--sg-color-hover-*` から**継承で**届く。控えが1つでも欠けると、
+ * hover したときにその変数が無効になり、**エラーにならないまま**役割が消える（教訓4）。
+ * ここで見るのは「規則が参照する控えを、面を作るブロックが全部持っていること」。
+ */
+describe('tokens.css の hover（決定5-13）', () => {
+  /**
+   * 入れ子の無いブロックだけを拾う。@media は中に波括弧を含むので当たらない。
+   *
+   * **先にコメントを落とす。** コメントの中に `{` や `}`（`--sg-{カテゴリ}-{数字}` など）や
+   * セレクタの説明が入っており、落とさないと構文の一部として拾ってしまう
+   */
+  const bare = css.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+  const rules = [...bare.matchAll(/([^{}]*)\{([^{}]*)\}/g)].map((m) => ({
+    selector: m[1]!.trim(),
+    body: m[2]!,
+    at: m.index!,
+  }));
+  const hoverRules = rules.filter((r) => r.selector.includes('[data-sg-interactive]'));
+
+  it('規則は1本だけ（面ごとに書き分けていない）', () => {
+    expect(hoverRules.map((r) => r.selector)).toEqual(['[data-sg-interactive]:hover']);
+  });
+
+  it('触る画面で張り付かないよう (hover: hover) の中にある', () => {
+    const at = hoverRules[0]!.at;
+    const media = bare.lastIndexOf('@media (hover: hover)', at);
+    expect(media, '(hover: hover) の外に出ている').toBeGreaterThan(-1);
+    // 間に別のブロックの終わりが挟まっていないこと（本当にその中にいる）
+    expect(css.slice(media, at)).not.toContain('\n}');
+  });
+
+  it('面のブロックより後にある（背景色の指定が順序で勝つ）', () => {
+    const lastSurface = bare.lastIndexOf('[data-sg-surface=');
+    expect(hoverRules[0]!.at).toBeGreaterThan(lastSurface);
+  });
+
+  it('規則が参照する控えを、面を作るブロックがすべて持っている', () => {
+    const referenced = [...hoverRules[0]!.body.matchAll(/var\((--sg-color-hover-[\w-]+)\)/g)].map(
+      (m) => m[1]!,
+    );
+    expect(referenced.length, '控えを1つも参照していない').toBeGreaterThan(0);
+
+    // 面を作るブロック = 前景の役割を決めているブロック（:root・面・テーマ固定の全部）
+    const contexts = rules.filter(
+      (r) =>
+        r.body.includes('--sg-color-text-default:') &&
+        !r.selector.includes('[data-sg-interactive]'),
+    );
+    expect(contexts.length, '面を作るブロックが見つからない').toBeGreaterThan(0);
+    for (const ctx of contexts) {
+      const missing = referenced.filter((n) => !ctx.body.includes(`${n}:`));
+      expect(missing, `${ctx.selector} が控えていない`).toEqual([]);
+    }
+  });
+
+  it('面が控えた値は、規則が漏れなく現在の役割へ移している（逆向き）', () => {
+    // 上の検査は「規則が参照する控えがあるか」しか見ない。**逆は別の壊れ方をする。**
+    // 控えだけがあって規則が移していない役割は、hover 中に古い段のまま残る。
+    // 背景だけが1段深くなった状態になり、決定5-13 が消したはずの穴が戻る
+    const moved = new Set(
+      [...hoverRules[0]!.body.matchAll(/var\((--sg-color-hover-[\w-]+)\)/g)].map((m) => m[1]!),
+    );
+    const contexts = rules.filter(
+      (r) =>
+        r.body.includes('--sg-color-text-default:') &&
+        !r.selector.includes('[data-sg-interactive]'),
+    );
+    for (const ctx of contexts) {
+      const held = [...ctx.body.matchAll(/(--sg-color-hover-[\w-]+):/g)]
+        .map((m) => m[1]!)
+        // 背景は変数ではなく background-color として移すので、対応は名前で取れない
+        .filter((n) => n !== '--sg-color-hover-bg');
+      expect(
+        held.filter((n) => !moved.has(n)),
+        `${ctx.selector} が控えているのに規則が移していない`,
+      ).toEqual([]);
+    }
+  });
+
+  it('bg-hover というセマンティックは出さない（塗るだけの道を作らない）', () => {
+    expect(css).not.toContain('--sg-color-bg-hover');
   });
 });
