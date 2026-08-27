@@ -41,7 +41,7 @@ primary は従来の `--teal`（`#1f7a78`）を入力にした。パレットの
 | ichirizuka | 役割 | 写像先 | 現在 | 生成 | ΔL | ΔC | ΔH |
 |---|---|---|---|---|---|---|---|
 | `--paper` | ページ背景 | `--sg-color-bg-page` | #e8eced | #f3f6f5 | 0.03 | -0.00 | -21.6° |
-| `--card` | カード背景 | `--sg-color-bg-surface` | #f6f8f8 | #d0dbda | -0.10 | 0.01 | -4.4° |
+| `--card` | カード背景 | `--sg-color-bg-surface` ※ | #f6f8f8 | #d0dbda | -0.10 | 0.01 | -4.4° |
 | `--grid` | 方眼・目盛り | `--sg-color-border-subtle` | #d6dee0 | #aec1c0 | -0.10 | 0.01 | -21.6° |
 | `--rule` | 区切り・枠線 | `--sg-color-border-default` | #c2ced2 | #90a6a5 | -0.14 | 0.01 | -26.9° |
 | `--ink` | 本文・数値 | `--sg-color-text-default` | #14202b | #202626 | 0.03 | -0.02 | -54.1° |
@@ -50,6 +50,10 @@ primary は従来の `--teal`（`#1f7a78`）を入力にした。パレットの
 | `--teal` | リンク・文字 | `--sg-color-accent` | #1f7a78 | #007d7b | **0.00** | 0.01 | **0.0°** |
 | `--teal` | 塗り（バー・SVG） | `--sg-color-accent-mark` | #1f7a78 | #009a98 | 0.09 | 0.02 | 0.0° |
 | `--amber` | 塗り（スケール中間） | `--sg-color-warning-mark` | #e0a73b | #b07b00 | -0.14 | -0.01 | -1.6° |
+
+> ※ **`--sg-color-bg-surface` は現在は存在しない**（2026-08-27、決定5-12 改訂・
+> [Issue #65](https://github.com/shun2218-dev/sashigane/issues/65)）。カード背景は
+> `data-sg-surface="surface"` で作る。この表は写像した当時の測定である。
 | `--magenta` | 文字（減少方向） | `--sg-color-danger` | #c9436b | #c52700 | -0.05 | 0.03 | 27.0° |
 | `--magenta` | 塗り（スケール上端） | `--sg-color-danger-mark` | #c9436b | #f13200 | 0.04 | 0.06 | 27.0° |
 

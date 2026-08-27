@@ -241,9 +241,10 @@
   .band span:last-child { border-radius: 0 var(--sg-radius-1) var(--sg-radius-1) 0; }
   .band-scale { display: flex; justify-content: space-between; margin-top: var(--sg-space-1); }
 
-  /* 進捗。溝は面の色を借りる。溝は「面より少し凹んだところ」なので inset の段。
-     **バーは accent-mark。印の段なので上に文字は載せられない**（決定5-14） */
-  .meter { height: var(--sg-space-2); border-radius: var(--sg-radius-full); background: var(--sg-color-bg-inset); overflow: hidden; }
+  /* 進捗。溝は「凹んだ面」そのものなので data-sg-surface="inset" で作る。
+     **色を借りて塗らない**（決定5-12 改訂）。
+     バーは accent-mark。印の段なので上に文字は載せられない（決定5-14） */
+  .meter { height: var(--sg-space-2); border-radius: var(--sg-radius-full); overflow: hidden; }
   .meter i { display: block; height: 100%; background: var(--sg-color-accent-mark); }
 
   /* ------------------------------------------------------------------
@@ -318,11 +319,13 @@
   .field-error { color: var(--sg-color-danger); }
   .field-ok { color: var(--sg-color-success); }
 
-  /* 面の色を借りている数少ない場所。キー表示は面より1段浮いて見せたい */
+  /* キー表示は面より1段深いところに置く。**色を借りて塗らない**（決定5-12 改訂）。
+     data-sg-surface="surface" にすると前景も一緒に切り替わるので、
+     周りの文字色（caption なら faint、field-ok なら success）を
+     そのまま持ち込んでコントラストを割ることがない */
   kbd {
     font-family: var(--sg-text-code-family);
     font-size: var(--sg-text-caption);
-    background: var(--sg-color-bg-surface);
     border: var(--sg-border-width-0) solid var(--sg-color-border-default);
     border-radius: var(--sg-radius-1);
     padding: 0 var(--sg-space-1);
@@ -404,7 +407,7 @@
       </article>
       <article class="card stack" data-sg-surface="surface">
         <h3 class="h3">密度は文脈</h3>
-        <p>骨格の余白だけが密度で動きます。<kbd>data-sg-density</kbd> で固定でき、既定は画面幅に従います。</p>
+        <p>骨格の余白だけが密度で動きます。<kbd data-sg-surface="surface">data-sg-density</kbd> で固定でき、既定は画面幅に従います。</p>
         <pre data-sg-surface="inset"><code>padding: var(--sg-space-page)</code></pre>
       </article>
       <article class="card stack" data-sg-surface="surface">
@@ -456,7 +459,7 @@
         <div class="band-scale caption num"><span>0</span><span>500</span><span>1,000</span></div>
         <div style="margin-top: var(--sg-space-5)">
           <p class="caption">今月の生成回数（上限比）</p>
-          <div class="meter"><i style="width: 64%"></i></div>
+          <div class="meter" data-sg-surface="inset"><i style="width: 64%"></i></div>
         </div>
       </article>
     </div>
@@ -523,7 +526,7 @@
             <option>全部</option>
           </select>
         </label>
-        <p class="caption field-ok">保存しました。<kbd>⌘</kbd> <kbd>S</kbd> でいつでも上書きできます。</p>
+        <p class="caption field-ok">保存しました。<kbd data-sg-surface="surface">⌘</kbd> <kbd data-sg-surface="surface">S</kbd> でいつでも上書きできます。</p>
         <div class="row">
           <button class="btn btn-primary" type="button">生成する</button>
           <button class="btn btn-danger" type="button">消す</button>
