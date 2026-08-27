@@ -35,6 +35,23 @@
 Tailwind を使う場合は、`--sg-*` を Tailwind の名前空間に写像するアダプタ CSS を追加で読む。
 トークン層自体は Tailwind を知らない。
 
+アダプタは Tailwind の名前空間を全部落としてから、こちらのものだけを写像する。
+**アプリ固有の寸法（チャートの高さ、サイドバーの幅など）は利用側が足す。**
+
+```css
+@import "./tokens.css";   /* レジストリ方式なので相対パスで読む */
+@import "./theme.css";
+
+@theme {
+  --container-sidebar: 16rem;   /* → w-sidebar */
+  --spacing-chart: 21.25rem;    /* → h-chart */
+}
+```
+
+幅は `--container-*` にも書けるが、**高さは `--spacing-*` しか読まない**（Tailwind v4 に
+高さ専用の名前空間が無いため）。**高さのために開けた口は余白にも開く** — `--spacing-chart`
+を足すと `p-chart` も書けるようになります。こちらのスケール自体は緩みません（`p-5` は不可）。
+
 ## 入っているもの
 
 `root = 16px` から導出される。導出できない次元だけが例外を持つ
