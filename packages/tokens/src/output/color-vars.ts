@@ -59,10 +59,13 @@ const semanticFor = (
     `  --sg-color-chart-gridline: var(--sg-neutral-${roles.gridline});`,
     `  --sg-color-accent: var(--sg-primary-${roles.colorText});`,
     `  --sg-color-accent-mark: var(--sg-primary-${roles.colorMark});`,
+    // 塗りの上に載せる文字（決定5-14）。ランプごとに解いてある
+    `  --sg-color-on-accent: var(--sg-neutral-${roles.onFill.accent});`,
     `  --sg-color-border-focus: var(--sg-primary-${roles.colorMark});`,
     ...statusNames.flatMap((n) => [
       `  --sg-color-${n}: var(--sg-${n}-${roles.colorText});`,
       `  --sg-color-${n}-mark: var(--sg-${n}-${roles.colorMark});`,
+      `  --sg-color-on-${n}: var(--sg-neutral-${roles.onFill[n]});`,
     ]),
     // 段が足りない面では出さない。親の面の値をそのまま継承する（決定5-12）
     ...(roles.series ?? []).map(
