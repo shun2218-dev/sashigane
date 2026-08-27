@@ -58,3 +58,12 @@ button { font: inherit; }
 .preview > .preview-card { margin-top: 20px; }
 .sample-label { font-size: 11px; margin-bottom: 8px; display: flex; gap: 8px; align-items: baseline; }
 .sample-label span { font-size: 10px; opacity: 0.75; }
+
+/* サンプルページ（Issue #61）。**器の側は無彩色のまま。**
+   中身は iframe なのでビルダーの CSS は届かない。ここで整えるのは枠と操作だけ */
+.sample-controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 12px; font-size: 12px; color: #555; }
+.sample-controls label { display: inline-flex; align-items: center; gap: 6px; }
+.sample-controls select { font: inherit; padding: 3px 6px; }
+.sample-controls .check { gap: 4px; }
+.sample-frame { display: flex; justify-content: center; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #f2f2f2; }
+.sample-frame iframe { width: 100%; height: 720px; border: 0; display: block; background: #fff; }

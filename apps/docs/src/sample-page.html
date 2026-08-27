@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sashigane サンプルページ</title>
+<!--
+  生成した CSS 変数を**使い切る**ためのサンプルページ（Issue #61）。
+
+  ## 何を見せているか
+
+  読み込んでいるのは、テーマビルダーがその場で生成した tokens.css **1枚だけ**である。
+  React も Tailwind も無く、色は1つも生値で書いていない（`pnpm check:sample-page` が検査する）。
+  ページの見た目は全部 `var(--sg-*)` から来る。
+
+  standalone.html との違いは**生成物が固定かどうか**である。
+  あちらはビルド時のパレットで、原則4（依存は一方通行）の実証を担当する。
+  こちらは iframe に流し込まれるので**選んだ色に追随する。**
+  「この色でページを組んだらどう見えるか」を確かめるのはこちらの仕事。
+
+  ## プリミティブを踏んでいることについて
+
+  radius・duration・border-width・コンポーネント内部の余白には**セマンティックが無い。**
+  原則7 に従い、実需要が観測されるまで役割名を決めないと決めているためである。
+  そのためこのファイルは `check:token-usage` の検査対象外にしてある（理由はそちらに書いた）。
+
+  **踏んだ回数は集計している。** `pnpm check:sample-page` が次元ごとに数え、
+  それが「セマンティックを足すかどうか」の判断材料になる（docs/experiments/sample-page.md）。
+  数を減らすためにプリミティブを避けて書くと観測が歪むので、**必要なだけ素直に使う。**
+-->
+<!-- ここへテーマビルダーが生成した tokens.css を流し込む。ページが読み込むのはこれだけ -->
+<style id="sg-tokens"></style>
+<style>
+  /* ------------------------------------------------------------------
+     骨格
+     ------------------------------------------------------------------ */
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* 面は data-sg-surface が塗る（決定5-12）。ここで background は書かない。
+     書けるようにすると、塗っただけで前景が page 用のまま残る道ができる */
+  body {
+    margin: 0;
+    color: var(--sg-color-text-default);
+    font-size: var(--sg-text-body);
+    line-height: var(--sg-text-body-leading);
+    font-family: var(--sg-text-body-family);
+  }
+
+  /* 骨格の余白だけが密度で動く（決定1-12）。狭い画面では自動で1段詰まる。
+     ページの左右も上下も同じ役割を使う */
+  .wrap {
+    max-width: 64rem;
+    margin: 0 auto;
+    padding-inline: var(--sg-space-page);
+  }
+  section { padding-block: var(--sg-space-section); }
+
+  /* ブレークポイントは値を直接書く。**CSS 変数はメディアクエリの中では使えない。**
+     --sg-breakpoint-* は Tailwind アダプタと人が値を読むためのもので、
+     素の CSS の利用者はこう書くことになる（決定1-10） */
+  @media (width < 48rem) {
+    .cols-3, .cols-2, .split { grid-template-columns: 1fr; }
+  }
+
+  /* ------------------------------------------------------------------
+     文字の役割 — サイズと行高と書体は必ず対で使う（決定1-4・1-11）
+     ------------------------------------------------------------------ */
+  h1, h2, h3, p { margin: 0; }
+  .display {
+    font-size: var(--sg-text-display);
+    line-height: var(--sg-text-display-leading);
+    font-family: var(--sg-text-display-family);
+  }
+  .h1 {
+    font-size: var(--sg-text-heading-1);
+    line-height: var(--sg-text-heading-1-leading);
+    font-family: var(--sg-text-heading-1-family);
+  }
+  .h2 {
+    font-size: var(--sg-text-heading-2);
+    line-height: var(--sg-text-heading-2-leading);
+    font-family: var(--sg-text-heading-2-family);
+  }
+  .h3 {
+    font-size: var(--sg-text-heading-3);
+    line-height: var(--sg-text-heading-3-leading);
+    font-family: var(--sg-text-heading-3-family);
+  }
+  /* 本文の行高は2種類ある。UI の中と、読ませる長文とで別（決定1-4） */
+  .lead, .prose {
+    font-size: var(--sg-text-body-prose);
+    line-height: var(--sg-text-body-prose-leading);
+    font-family: var(--sg-text-body-prose-family);
+  }
+  .caption {
+    font-size: var(--sg-text-caption);
+    line-height: var(--sg-text-caption-leading);
+    font-family: var(--sg-text-caption-family);
+    color: var(--sg-color-text-faint);
+  }
+  /* 見出しの上の小さいラベル。roles.md の eyebrow */
+  .label {
+    font-size: var(--sg-text-label);
+    line-height: var(--sg-text-label-leading);
+    font-family: var(--sg-text-label-family);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sg-color-text-muted);
+  }
+  /* 書体だけの役割。サイズと直交するので段を持たない（決定1-11）。
+     サイズは別の役割から借りて重ねる */
+  .num {
+    font-family: var(--sg-text-numeric-family);
+    font-variant-numeric: var(--sg-text-numeric-variant);
+  }
+  code, pre { font-family: var(--sg-text-code-family); }
+
+  /* ------------------------------------------------------------------
+     部品
+     ------------------------------------------------------------------ */
+  a { color: var(--sg-color-accent); text-decoration-color: var(--sg-color-accent-mark); }
+
+  /* キーボード操作の輪郭。3:1 で足りる印なので mark 側の段を使う */
+  :where(a, button, input, select, summary):focus-visible {
+    outline: var(--sg-border-width-1) solid var(--sg-color-border-focus);
+    outline-offset: var(--sg-border-width-1);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sg-space-2);
+    border: var(--sg-border-width-0) solid transparent;
+    border-radius: var(--sg-radius-2);
+    padding: var(--sg-space-2) var(--sg-space-4);
+    font: inherit;
+    cursor: pointer;
+    /* ブラウザ既定の buttonface を消す。**指定しないと UA の灰色が残り、
+       面の文脈から外れたまま見た目が成立してしまう**（教訓4） */
+    background: transparent;
+    transition: opacity var(--sg-duration-2), border-color var(--sg-duration-1);
+  }
+  /* 塗りの上の文字。**on-accent の役割が無い**ので面の背景色を借りている。
+     accent は文字用の段（4.5:1）なので、面の色を載せれば同じ比が裏返しで成立する。
+     借り物であることは Issue #59 に記録してある */
+  .btn-primary { background: var(--sg-color-accent); color: var(--sg-color-bg-page); }
+  .btn-ghost { border-color: var(--sg-color-border-default); color: var(--sg-color-text-default); }
+  .btn:hover { opacity: 0.88; }
+
+  /* 面の内側の余白は骨格の側なので役割で書く。密度で動くのはこれと page / section だけ */
+  .card {
+    border: var(--sg-border-width-0) solid var(--sg-color-border-subtle);
+    border-radius: var(--sg-radius-3);
+    padding: var(--sg-space-surface);
+  }
+  .grid { display: grid; gap: var(--sg-space-5); }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .split { grid-template-columns: 3fr 2fr; align-items: start; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sg-space-3); }
+  .stack { display: grid; gap: var(--sg-space-3); }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sg-space-2);
+    border: var(--sg-border-width-0) solid var(--sg-color-border-default);
+    border-radius: var(--sg-radius-full);
+    padding: var(--sg-space-1) var(--sg-space-3);
+    font-size: var(--sg-text-caption);
+    line-height: var(--sg-text-caption-leading);
+  }
+
+  /* ------------------------------------------------------------------
+     ヘッダ
+     ------------------------------------------------------------------ */
+  header .wrap {
+    display: flex;
+    align-items: center;
+    gap: var(--sg-space-4);
+    padding-block: var(--sg-space-3);
+  }
+  .brand { font-family: var(--sg-text-display-family); font-size: var(--sg-text-heading-3); }
+  /* 文字ではない印なので 3:1 の段でよい（決定5-2） */
+  .brand i {
+    display: inline-block;
+    width: var(--sg-space-3);
+    height: var(--sg-space-3);
+    border-radius: var(--sg-radius-full);
+    background: var(--sg-color-accent-mark);
+  }
+  nav { display: flex; gap: var(--sg-space-4); margin-inline-start: auto; }
+  nav a { color: var(--sg-color-text-muted); text-decoration: none; }
+  nav a[aria-current] { color: var(--sg-color-accent); }
+  @media (width < 48rem) { nav { display: none; } }
+
+  /* ------------------------------------------------------------------
+     ヒーロー
+     ------------------------------------------------------------------ */
+  .hero { padding-block: var(--sg-space-9) var(--sg-space-8); }
+  .hero .lead { color: var(--sg-color-text-muted); max-width: 46ch; margin-top: var(--sg-space-4); }
+  .hero .row { margin-top: var(--sg-space-5); }
+  /* 「稼働中」の点。ループのスケールは遷移とは別（決定1-6） */
+  .live i {
+    display: inline-block;
+    width: var(--sg-space-2);
+    height: var(--sg-space-2);
+    border-radius: var(--sg-radius-full);
+    background: var(--sg-color-success-mark);
+    animation: pulse var(--sg-duration-loop-1) ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.3; } }
+  @media (prefers-reduced-motion: reduce) { .live i { animation: none; } }
+
+  .stats { display: flex; flex-wrap: wrap; gap: var(--sg-space-6); margin-top: var(--sg-space-7); }
+  .stats b { display: block; font-size: var(--sg-text-heading-2); line-height: var(--sg-text-heading-2-leading); }
+
+  /* ------------------------------------------------------------------
+     データ — 識別色（決定5-8）と連続値（決定5-11）は別の役割
+     ------------------------------------------------------------------ */
+  .bars { display: flex; align-items: flex-end; gap: var(--sg-space-3); height: var(--sg-space-9); }
+  .bars div { flex: 1; border-radius: var(--sg-radius-1) var(--sg-radius-1) 0 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: var(--sg-space-4); margin-top: var(--sg-space-4); }
+  .legend span { display: inline-flex; align-items: center; gap: var(--sg-space-2); }
+  .legend i { width: var(--sg-space-3); height: var(--sg-space-3); border-radius: var(--sg-radius-1); }
+  .band { display: flex; margin-top: var(--sg-space-4); }
+  .band span { flex: 1; height: var(--sg-space-5); }
+  .band span:first-child { border-radius: var(--sg-radius-1) 0 0 var(--sg-radius-1); }
+  .band span:last-child { border-radius: 0 var(--sg-radius-1) var(--sg-radius-1) 0; }
+  .band-scale { display: flex; justify-content: space-between; margin-top: var(--sg-space-1); }
+
+  /* 進捗。溝は面の色を借りる。溝は「面より少し凹んだところ」なので inset の段 */
+  .meter { height: var(--sg-space-2); border-radius: var(--sg-radius-full); background: var(--sg-color-bg-inset); overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--sg-color-accent-mark); }
+
+  /* ------------------------------------------------------------------
+     通知 — 状態色は文字用と印用が対で出る（決定5-2）
+     ------------------------------------------------------------------ */
+  .note {
+    display: flex;
+    gap: var(--sg-space-3);
+    border: var(--sg-border-width-0) solid;
+    border-inline-start-width: var(--sg-border-width-2);
+    border-radius: var(--sg-radius-2);
+    padding: var(--sg-space-3) var(--sg-space-4);
+  }
+  .note b { flex: 0 0 auto; }
+  .note-info    { color: var(--sg-color-info);    border-color: var(--sg-color-info-mark); }
+  .note-success { color: var(--sg-color-success); border-color: var(--sg-color-success-mark); }
+  .note-warning { color: var(--sg-color-warning); border-color: var(--sg-color-warning-mark); }
+  .note-danger  { color: var(--sg-color-danger);  border-color: var(--sg-color-danger-mark); }
+  .note p { color: var(--sg-color-text-muted); }
+
+  /* ------------------------------------------------------------------
+     表・フォーム
+     ------------------------------------------------------------------ */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: start; padding: var(--sg-space-3) var(--sg-space-2); border-bottom: var(--sg-border-width-0) solid var(--sg-color-border-subtle); }
+  th { color: var(--sg-color-text-muted); font-weight: inherit; }
+  td.n, th.n { text-align: end; }
+
+  label { display: grid; gap: var(--sg-space-1); }
+  input, select {
+    border: var(--sg-border-width-0) solid var(--sg-color-border-default);
+    border-radius: var(--sg-radius-2);
+    padding: var(--sg-space-2) var(--sg-space-3);
+    font: inherit;
+    color: inherit;
+    /* 面が塗った背景をそのまま使う。ここで色を指定すると面の文脈から外れる */
+    background: transparent;
+    transition: border-color var(--sg-duration-0);
+  }
+  input[aria-invalid="true"] { border-color: var(--sg-color-danger-mark); }
+  .field-error { color: var(--sg-color-danger); }
+  .field-ok { color: var(--sg-color-success); }
+
+  /* 面の色を借りている数少ない場所。キー表示は面より1段浮いて見せたい */
+  kbd {
+    font-family: var(--sg-text-code-family);
+    font-size: var(--sg-text-caption);
+    background: var(--sg-color-bg-surface);
+    border: var(--sg-border-width-0) solid var(--sg-color-border-default);
+    border-radius: var(--sg-radius-1);
+    padding: 0 var(--sg-space-1);
+  }
+  pre {
+    margin: var(--sg-space-3) 0 0;
+    font-size: var(--sg-text-caption);
+    line-height: var(--sg-text-caption-leading);
+    overflow-x: auto;
+    border-radius: var(--sg-radius-2);
+    padding: var(--sg-space-3);
+  }
+
+  /* ------------------------------------------------------------------
+     料金・CTA・脚
+     ------------------------------------------------------------------ */
+  .plan { display: grid; gap: var(--sg-space-3); }
+  .plan.picked { border-color: var(--sg-color-accent-mark); border-width: var(--sg-border-width-1); }
+  .plan ul { margin: 0; padding-inline-start: var(--sg-space-5); color: var(--sg-color-text-muted); }
+  .plan li { margin-block: var(--sg-space-1); }
+  .price { font-size: var(--sg-text-heading-1); line-height: var(--sg-text-heading-1-leading); }
+  .price small { font-size: var(--sg-text-caption); color: var(--sg-color-text-faint); }
+
+  .cta { border-radius: var(--sg-radius-4); padding: var(--sg-space-7) var(--sg-space-6); text-align: center; }
+  .cta .row { justify-content: center; margin-top: var(--sg-space-5); }
+
+  footer { border-top: var(--sg-border-width-0) solid var(--sg-color-border-subtle); }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: var(--sg-space-4); padding-block: var(--sg-space-6); color: var(--sg-color-text-faint); }
+  footer a { color: var(--sg-color-text-muted); text-decoration: none; margin-inline-end: var(--sg-space-4); }
+</style>
+</head>
+
+<!-- 面はここから始まる。背景と前景が同時に決まる（決定5-12） -->
+<body data-sg-surface="page">
+
+<header>
+  <div class="wrap">
+    <span class="brand"><i></i> sashigane</span>
+    <nav>
+      <a href="#features" aria-current="page">特徴</a>
+      <a href="#data">データ</a>
+      <a href="#pricing">料金</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <button class="btn btn-primary" type="button">導入する</button>
+  </div>
+</header>
+
+<main>
+  <section class="wrap hero">
+    <p class="label">Design tokens</p>
+    <h1 class="display">1色から、<br>全部が決まる。</h1>
+    <p class="lead">
+      primary を1色選ぶだけで、面・文字・状態・グラフの色が規則から生成されます。
+      コントラストは検査して直すものではなく、<strong>そうなっているもの</strong>です。
+    </p>
+    <div class="row">
+      <button class="btn btn-primary" type="button">はじめる</button>
+      <button class="btn btn-ghost" type="button">仕組みを読む</button>
+      <span class="pill live"><i></i> 全360色相で保証</span>
+    </div>
+    <div class="stats num">
+      <div><b>360</b><span class="caption">保証済みの色相</span></div>
+      <div><b>4.50</b><span class="caption">文字の最小コントラスト</span></div>
+      <div><b>1</b><span class="caption">根本定数（16px）</span></div>
+      <div><b>0</b><span class="caption">手で決めた色</span></div>
+    </div>
+  </section>
+
+  <!-- 面が1段深くなる。役割名は1つも変えていないのに、参照する段が深くなる（決定5-12） -->
+  <section class="wrap" id="features">
+    <p class="label">特徴</p>
+    <h2 class="h1">規則が解いているもの</h2>
+    <div class="grid cols-3" style="margin-top: var(--sg-space-5)">
+      <article class="card stack" data-sg-surface="surface">
+        <h3 class="h3">面ごとの保証</h3>
+        <p>面が深くなると、文字もアクセントも自動で1段深い段を指します。カードの上でも 4.5:1 を割りません。</p>
+        <pre data-sg-surface="inset"><code>&lt;div data-sg-surface="surface"&gt;</code></pre>
+      </article>
+      <article class="card stack" data-sg-surface="surface">
+        <h3 class="h3">密度は文脈</h3>
+        <p>骨格の余白だけが密度で動きます。<kbd>data-sg-density</kbd> で固定でき、既定は画面幅に従います。</p>
+        <pre data-sg-surface="inset"><code>padding: var(--sg-space-page)</code></pre>
+      </article>
+      <article class="card stack" data-sg-surface="surface">
+        <h3 class="h3">書体は差し込み口</h3>
+        <p>書体名はブランドの選択なので、システムは構造だけを持ちます。欧文 → 和文 → generic の順序は保証されます。</p>
+        <pre data-sg-surface="inset"><code>--sg-font-brand-display-latin</code></pre>
+      </article>
+    </div>
+  </section>
+
+  <section class="wrap" id="data">
+    <p class="label">データ</p>
+    <h2 class="h1">識別と連続は別の役割</h2>
+    <div class="grid split" style="margin-top: var(--sg-space-5)">
+      <article class="card" data-sg-surface="surface">
+        <h3 class="h3">系列を見分ける</h3>
+        <p class="caption">段をずらして配るので、二色覚のもとでも潰れません（決定5-8）。</p>
+        <div class="bars" style="margin-top: var(--sg-space-4)">
+          <div style="background: var(--sg-color-chart-1); height: 72%"></div>
+          <div style="background: var(--sg-color-chart-2); height: 100%"></div>
+          <div style="background: var(--sg-color-chart-3); height: 46%"></div>
+          <div style="background: var(--sg-color-chart-4); height: 88%"></div>
+          <div style="background: var(--sg-color-chart-5); height: 31%"></div>
+        </div>
+        <div class="legend caption">
+          <span><i style="background: var(--sg-color-chart-1)"></i>系列1</span>
+          <span><i style="background: var(--sg-color-chart-2)"></i>系列2</span>
+          <span><i style="background: var(--sg-color-chart-3)"></i>系列3</span>
+          <span><i style="background: var(--sg-color-chart-4)"></i>系列4</span>
+          <span><i style="background: var(--sg-color-chart-5)"></i>系列5</span>
+        </div>
+      </article>
+
+      <article class="card" data-sg-surface="surface">
+        <h3 class="h3">大小を読む</h3>
+        <p class="caption">面に近い側から遠い側へ並べます。面と同じ段は帯に入りません（決定5-11）。</p>
+        <div class="band">
+          <span style="background: var(--sg-color-sequential-1)"></span>
+          <span style="background: var(--sg-color-sequential-2)"></span>
+          <span style="background: var(--sg-color-sequential-3)"></span>
+          <span style="background: var(--sg-color-sequential-4)"></span>
+          <span style="background: var(--sg-color-sequential-5)"></span>
+          <span style="background: var(--sg-color-sequential-6)"></span>
+          <span style="background: var(--sg-color-sequential-7)"></span>
+          <span style="background: var(--sg-color-sequential-8)"></span>
+          <span style="background: var(--sg-color-sequential-9)"></span>
+          <span style="background: var(--sg-color-sequential-10)"></span>
+        </div>
+        <div class="band-scale caption num"><span>0</span><span>500</span><span>1,000</span></div>
+        <div style="margin-top: var(--sg-space-5)">
+          <p class="caption">今月の生成回数（上限比）</p>
+          <div class="meter"><i style="width: 64%"></i></div>
+        </div>
+      </article>
+    </div>
+
+    <div class="stack" style="margin-top: var(--sg-space-5)">
+      <div class="note note-info"><b>情報</b><p>暗色モードは反転ではなく、参照する段の入れ替えです。</p></div>
+      <div class="note note-success"><b>成功</b><p>360色相すべてで文字 4.5:1 / 印 3:1 を満たしています。</p></div>
+      <div class="note note-warning"><b>警告</b><p>彩度の高い色を選ぶと、規則が届く範囲まで彩度を落とします。</p></div>
+      <div class="note note-danger"><b>危険</b><p>プリミティブをコンポーネントから参照すると検査が落ちます。</p></div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="grid split">
+      <article>
+        <p class="label">記録</p>
+        <h2 class="h2">生成された段</h2>
+        <table style="margin-top: var(--sg-space-4)">
+          <thead>
+            <tr><th>役割</th><th>参照する段</th><th class="n">明色</th><th class="n">暗色</th></tr>
+          </thead>
+          <tbody class="num">
+            <tr><td>本文</td><td>neutral</td><td class="n">900</td><td class="n">100</td></tr>
+            <tr><td>補助</td><td>neutral</td><td class="n">600</td><td class="n">300</td></tr>
+            <tr><td>アクセント</td><td>primary</td><td class="n">500</td><td class="n">400</td></tr>
+            <tr><td>印</td><td>primary</td><td class="n">400</td><td class="n">300</td></tr>
+          </tbody>
+        </table>
+        <p class="caption" style="margin-top: var(--sg-space-2)">数字は等幅で揃えています（決定1-11）。</p>
+      </article>
+
+      <!-- 送信させないのはボタンの型で解く。**このページに script は1つも置かない**（B1） -->
+      <form class="card stack" data-sg-surface="surface">
+        <h3 class="h3">試してみる</h3>
+        <label>
+          <span class="label">プロジェクト名</span>
+          <input type="text" value="ichirizuka">
+          <span class="caption">利用側リポジトリの名前を入れます。</span>
+        </label>
+        <label>
+          <span class="label">基準の色</span>
+          <input type="text" value="not-a-color" aria-invalid="true">
+          <span class="caption field-error">16進の色として読めません。</span>
+        </label>
+        <label>
+          <span class="label">導入の深さ</span>
+          <select>
+            <option>トークンのみ</option>
+            <option>コンポーネント単体</option>
+            <option>全部</option>
+          </select>
+        </label>
+        <p class="caption field-ok">保存しました。<kbd>⌘</kbd> <kbd>S</kbd> でいつでも上書きできます。</p>
+        <div class="row">
+          <button class="btn btn-primary" type="button">生成する</button>
+          <button class="btn btn-ghost" type="button">やめる</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="wrap" id="pricing">
+    <p class="label">料金</p>
+    <h2 class="h1">導入の深さで選ぶ</h2>
+    <div class="grid cols-3" style="margin-top: var(--sg-space-5)">
+      <article class="card plan" data-sg-surface="surface">
+        <h3 class="h3">tokens</h3>
+        <p class="price num">¥0 <small>/ 月</small></p>
+        <ul><li>CSS 変数のみ</li><li>React 非依存</li><li>SCSS / Tailwind アダプタ</li></ul>
+        <button class="btn btn-ghost" type="button">入れる</button>
+      </article>
+      <article class="card plan picked" data-sg-surface="surface">
+        <div class="row"><h3 class="h3">component</h3><span class="pill">おすすめ</span></div>
+        <p class="price num">¥0 <small>/ 月</small></p>
+        <ul><li>コンポーネント単体</li><li>コードが手元に落ちる</li><li>改変は自由</li></ul>
+        <button class="btn btn-primary" type="button">入れる</button>
+      </article>
+      <article class="card plan" data-sg-surface="surface">
+        <h3 class="h3">base</h3>
+        <p class="price num">¥0 <small>/ 月</small></p>
+        <ul><li>全部</li><li>registry:base</li><li>更新は取り込み直し</li></ul>
+        <button class="btn btn-ghost" type="button">入れる</button>
+      </article>
+    </div>
+  </section>
+
+  <section class="wrap" id="faq">
+    <div class="grid split">
+      <article>
+        <p class="label">FAQ</p>
+        <h2 class="h2">読ませる長さの文章</h2>
+        <p class="prose" style="margin-top: var(--sg-space-4); color: var(--sg-color-text-muted)">
+          この段落だけ行高が違います。UI の中に置く文字と、続けて読ませる文章とでは
+          読みやすい行間が違うためです。サイズは同じ段で、行高だけが別の族から来ています。
+          <a href="#data">決定1-4</a> がそう決めており、サイズと行高は必ず対で提供されます。
+          対応が崩れないように、プリミティブだけを公開することはしていません。
+        </p>
+      </article>
+      <aside class="card" data-sg-surface="inset">
+        <h3 class="h3">面をもう1段深くした</h3>
+        <p class="caption">ここは inset です。役割名は上のカードと同じまま、参照する段だけが深くなっています。</p>
+        <div class="row" style="margin-top: var(--sg-space-4)">
+          <span class="pill">page</span><span class="pill">surface</span><span class="pill">inset</span>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="cta" data-sg-surface="inset">
+      <h2 class="h1">トークンだけでも動きます</h2>
+      <p class="lead" style="color: var(--sg-color-text-muted); margin: var(--sg-space-3) auto 0; max-width: 40ch">
+        このページが読み込んでいるのは、生成された CSS 1枚だけです。
+      </p>
+      <div class="row">
+        <button class="btn btn-primary" type="button">CSS をコピー</button>
+        <button class="btn btn-ghost" type="button">仕様を見る</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© sashigane</span>
+    <nav style="margin-inline-start: auto; display: block">
+      <a href="#features">特徴</a><a href="#data">データ</a><a href="#pricing">料金</a>
+    </nav>
+    <span class="caption">MIT License</span>
+  </div>
+</footer>
+
+</body>
+</html>
