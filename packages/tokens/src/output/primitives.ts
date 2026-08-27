@@ -23,6 +23,8 @@ import {
   fontStack,
   fontStackNames,
   leadingFamilies,
+  letterSpacing,
+  letterSpacingCaps,
   lineHeight,
   numericFeature,
   numericVariant,
@@ -42,6 +44,12 @@ export const rem = (px: number): string => {
 
 const ms = (v: number): string => `${Number.parseFloat(v.toFixed(1))}ms`;
 
+/** em は「サイズに対する比」なので rem に直さない。0 は単位を付けない */
+const em = (v: number): string => {
+  const r = Number.parseFloat(v.toFixed(4));
+  return r === 0 ? '0' : `${r}em`;
+};
+
 export const primitiveVars = (): string[] => [
   '  /* spacing — 決定1-2 */',
   ...spacing.map((v, i) => `  --sg-space-${i}: ${rem(v)};`),
@@ -56,6 +64,13 @@ export const primitiveVars = (): string[] => [
         `  --sg-line-height-${family}-${i}: ${Number.parseFloat(lineHeight(v, family).toFixed(4))};`,
     ),
   ),
+  '',
+  '  /* letter-spacing — 行高と同じくサイズから導出される従属値（決定1-9）。単体では使わない。',
+  '     本文サイズで 0。小さい段は正、大きい段は負。漸近線が最大の詰めになる */',
+  ...fontSize.map(
+    (v, i) => `  --sg-letter-spacing-${i}: ${em(letterSpacing(v))};`,
+  ),
+  `  --sg-letter-spacing-caps: ${em(letterSpacingCaps)};`,
   '',
   '  /* radius — spacing の部分集合（決定1-5）。full は段ではない */',
   ...radius.map((v, i) => `  --sg-radius-${i}: ${rem(v)};`),
@@ -153,8 +168,14 @@ export const typographySemanticVars = (): string[] => [
   ...TEXT_ROLES.flatMap((r) => [
     `  --sg-text-${r.name}: var(--sg-font-size-${r.index});`,
     `  --sg-text-${r.name}-leading: var(--sg-line-height-${r.leading}-${r.index});`,
+    `  --sg-text-${r.name}-tracking: var(--sg-letter-spacing-${r.index});`,
     `  --sg-text-${r.name}-family: var(--sg-font-stack-${r.stack});`,
   ]),
+  '',
+  '  /* 大文字化の加算項（決定1-9）。サイズと直交するので段を持たない。',
+  '     サイズ側の項と**足して**使う:',
+  '       letter-spacing: calc(var(--sg-text-label-tracking) + var(--sg-tracking-caps)); */',
+  '  --sg-tracking-caps: var(--sg-letter-spacing-caps);',
   '',
   '  /* 書体だけの役割。サイズと直交するので段を持たない（決定1-11） */',
   ...FONT_ROLES.flatMap((r) => [

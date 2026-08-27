@@ -19,7 +19,12 @@ import {
   fontStack,
   fontStackNames,
   fontStackVars,
+  fontSize,
   generatePalette,
+  letterSpacing,
+  letterSpacingCaps,
+  letterSpacingCoefficient,
+  root,
   tokenLayers,
   typographySemanticVars,
 } from '../src/index.ts';
@@ -86,10 +91,11 @@ describe('書体スタックの構造', () => {
 });
 
 describe('タイポグラフィの役割', () => {
-  it('サイズ役割はサイズ・行高・書体の3点を欠かさない', () => {
+  it('サイズ役割はサイズ・行高・字間・書体の4点を欠かさない', () => {
     for (const r of TEXT_ROLES) {
       expect(names, r.name).toContain(`--sg-text-${r.name}`);
       expect(names, r.name).toContain(`--sg-text-${r.name}-leading`);
+      expect(names, r.name).toContain(`--sg-text-${r.name}-tracking`);
       expect(names, r.name).toContain(`--sg-text-${r.name}-family`);
     }
   });
@@ -99,6 +105,7 @@ describe('タイポグラフィの役割', () => {
       expect(names, r.name).toContain(`--sg-text-${r.name}-family`);
       expect(names, r.name).not.toContain(`--sg-text-${r.name}`);
       expect(names, r.name).not.toContain(`--sg-text-${r.name}-leading`);
+      expect(names, r.name).not.toContain(`--sg-text-${r.name}-tracking`);
     }
   });
 
@@ -116,5 +123,49 @@ describe('タイポグラフィの役割', () => {
       expect(layers.primitives).toContain(ref![1]);
       expect(layers.semantics).not.toContain(ref![1]);
     }
+  });
+});
+
+/**
+ * letter-spacing（決定1-9）。行高と同じくサイズからの従属値である。
+ *
+ * **`coefficient` は root から導けない**（原則2 の4つ目の例外）ので、
+ * 値そのものではなく**規則が満たすべき性質**を検査する。
+ */
+describe('letter-spacing（決定1-9）', () => {
+  it('本文サイズ（root）でちょうど 0 になる', () => {
+    expect(letterSpacing(root)).toBe(0);
+  });
+
+  it('サイズが大きいほど小さくなる（単調。等しい段が無い）', () => {
+    const values = fontSize.map((v) => letterSpacing(v));
+    for (let i = 1; i < values.length; i++) {
+      expect(values[i]!, `段${i}`).toBeLessThan(values[i - 1]!);
+    }
+  });
+
+  it('本文より小さい段は正、大きい段は負', () => {
+    for (const size of fontSize) {
+      const v = letterSpacing(size);
+      if (size < root) expect(v, `${size}px`).toBeGreaterThan(0);
+      if (size > root) expect(v, `${size}px`).toBeLessThan(0);
+    }
+  });
+
+  /**
+   * 漸近線は −coefficient である。**どの段もそこには届かない。**
+   * 届いてしまうなら、それは 1/size の形が壊れているということになる。
+   */
+  it('詰めは漸近線（−coefficient）を超えない', () => {
+    for (const size of fontSize) {
+      expect(letterSpacing(size), `${size}px`).toBeGreaterThan(-letterSpacingCoefficient);
+    }
+  });
+
+  it('大文字化の加算項は段を持たず、1つだけ出る', () => {
+    expect([...names].filter((n) => n.startsWith('--sg-tracking-'))).toEqual([
+      '--sg-tracking-caps',
+    ]);
+    expect(letterSpacingCaps).toBeGreaterThan(0);
   });
 });

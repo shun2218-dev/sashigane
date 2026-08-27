@@ -43,6 +43,7 @@
     color: var(--sg-color-text-default);
     font-size: var(--sg-text-body);
     line-height: var(--sg-text-body-leading);
+    letter-spacing: var(--sg-text-body-tracking);
     font-family: var(--sg-text-body-family);
   }
 
@@ -69,32 +70,38 @@
   .display {
     font-size: var(--sg-text-display);
     line-height: var(--sg-text-display-leading);
+    letter-spacing: var(--sg-text-display-tracking);
     font-family: var(--sg-text-display-family);
   }
   .h1 {
     font-size: var(--sg-text-heading-1);
     line-height: var(--sg-text-heading-1-leading);
+    letter-spacing: var(--sg-text-heading-1-tracking);
     font-family: var(--sg-text-heading-1-family);
   }
   .h2 {
     font-size: var(--sg-text-heading-2);
     line-height: var(--sg-text-heading-2-leading);
+    letter-spacing: var(--sg-text-heading-2-tracking);
     font-family: var(--sg-text-heading-2-family);
   }
   .h3 {
     font-size: var(--sg-text-heading-3);
     line-height: var(--sg-text-heading-3-leading);
+    letter-spacing: var(--sg-text-heading-3-tracking);
     font-family: var(--sg-text-heading-3-family);
   }
   /* 本文の行高は2種類ある。UI の中と、読ませる長文とで別（決定1-4） */
   .lead, .prose {
     font-size: var(--sg-text-body-prose);
     line-height: var(--sg-text-body-prose-leading);
+    letter-spacing: var(--sg-text-body-prose-tracking);
     font-family: var(--sg-text-body-prose-family);
   }
   .caption {
     font-size: var(--sg-text-caption);
     line-height: var(--sg-text-caption-leading);
+    letter-spacing: var(--sg-text-caption-tracking);
     font-family: var(--sg-text-caption-family);
     color: var(--sg-color-text-faint);
   }
@@ -102,8 +109,9 @@
   .label {
     font-size: var(--sg-text-label);
     line-height: var(--sg-text-label-leading);
+    /* 大文字化するので加算項を足す（決定1-9）。**生値を書かない** */
+    letter-spacing: calc(var(--sg-text-label-tracking) + var(--sg-tracking-caps));
     font-family: var(--sg-text-label-family);
-    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--sg-color-text-muted);
   }
@@ -216,7 +224,7 @@
   @media (prefers-reduced-motion: reduce) { .live i { animation: none; } }
 
   .stats { display: flex; flex-wrap: wrap; gap: var(--sg-space-6); margin-top: var(--sg-space-7); }
-  .stats b { display: block; font-size: var(--sg-text-heading-2); line-height: var(--sg-text-heading-2-leading); }
+  .stats b { display: block; font-size: var(--sg-text-heading-2); line-height: var(--sg-text-heading-2-leading); letter-spacing: var(--sg-text-heading-2-tracking); }
 
   /* ------------------------------------------------------------------
      データ — 識別色（決定5-8）と連続値（決定5-11）は別の役割

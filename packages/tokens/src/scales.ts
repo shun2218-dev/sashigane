@@ -83,6 +83,31 @@ export const lineHeightCoefficient = root / tokens.lineHeight.coefficientDivisor
 export const lineHeight = (size: number, family: LeadingFamily = 'ui'): number =>
   leadingFamilies[family] + lineHeightCoefficient / size;
 
+export const letterSpacingCoefficient = tokens.letterSpacing.coefficient;
+
+/**
+ * letter-spacing = coefficient × (root / size − 1)  （単位は em、決定1-9）
+ *
+ * line-height（決定1-4）と**同じ 1/size の形**である。字間も行高と同じく
+ * サイズからの従属値であって、独立したスケールではない。
+ *
+ * 本文サイズ（root）で 0 になる。**補正は本文からの差として定義される。**
+ * 小さい段は正（詰まって見えるので開ける）、大きい段は負（開いて見えるので詰める）。
+ * size → ∞ の漸近線は −coefficient で、これが**システムが与える最大の詰め**である。
+ *
+ * `coefficient` は root から導けない。duration（決定1-6）と同じく独自のアンカーを持つ。
+ */
+export const letterSpacing = (size: number): number =>
+  letterSpacingCoefficient * (root / size - 1);
+
+/**
+ * 大文字化の加算項（決定1-9）。**サイズと直交するので段を持たない。**
+ *
+ * 大文字は字面が詰まって見えるため字間を開ける必要がある。
+ * サイズ側の項と**足して**使う（`calc()`）。
+ */
+export const letterSpacingCaps = tokens.letterSpacing.caps;
+
 /**
  * 幾何数列。doublesEverySteps 段で正確に倍になる。
  *
