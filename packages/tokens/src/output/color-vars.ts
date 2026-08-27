@@ -121,11 +121,15 @@ const surfaceDepth: Record<SurfaceName, number> = {
 };
 export const depthOf = (name: SurfaceName): number => surfaceDepth[name];
 
-/** 色のセマンティック。モードで**参照する段を変えるだけ**（決定5-2） */
-export const colorSemanticVars = (mode: 'light' | 'dark', palette: Palette): string[] => [
-  ...semanticFor(mode, surfaceRolesFor(palette, mode)[0]!, 0),
-  ...hoverMirrorVars(mode, palette, 0),
-];
+/**
+ * 色のセマンティック。モードで**参照する段を変えるだけ**（決定5-2）。
+ *
+ * **hover の控え（`--sg-color-hover-*`）は含まない。** あれは利用側が参照する役割ではなく
+ * hover の規則が読む内部の値であり、tokens.js にも tokens.d.ts にも出さない（決定5-13）。
+ * 必要とするのは tokens.css だけなので、そちらで足す。
+ */
+export const colorSemanticVars = (mode: 'light' | 'dark', palette: Palette): string[] =>
+  semanticFor(mode, surfaceRolesFor(palette, mode)[0]!, 0);
 
 /**
  * 面の文脈（決定5-12）。**背景と前景を同時に決める。**
@@ -196,26 +200,28 @@ export const hoverMirrorVars = (
  * **既知の限界:** hover した要素の中の要素を hover しても、控えは面の側にしか無いので
  * 文脈は変わらない（外側と同じ段になる）。保証は割らないが、内側の hover は見えない。
  */
-export const hoverRuleVars = (palette: Palette): string[] => {
-  /**
-   * **控えの側から名前を集める。** 片方のモードや特定の深さだけを見て並べると、
-   * そこに出ない役割が規則から漏れ、hover 中に古い段のまま残る。
-   * 全モード × 全深さの和集合を取れば、構造として漏れようがない（教訓5）。
-   */
-  const names = [
-    ...new Set(
-      (['light', 'dark'] as const).flatMap((mode) =>
-        surfaceRolesFor(palette, mode).flatMap((_, depth) =>
-          hoverMirrorVars(mode, palette, depth)
-            .map((line) => line.trimStart().split(':')[0]!)
-            // 背景は変数ではなく background-color として移す
-            .filter((n) => n !== '--sg-color-hover-bg'),
-        ),
+/**
+ * 控えの名前の**全モード × 全深さの和集合**。
+ *
+ * 片方のモードや特定の深さだけを見て並べると、そこに出ない役割が規則から漏れ、
+ * hover 中に古い段のまま残る。和集合を取れば構造として漏れようがない（教訓5）。
+ *
+ * 層の名前表（`tokenLayers`）もここから内部の名前を取る。
+ */
+export const hoverMirrorNames = (palette: Palette): string[] => [
+  ...new Set(
+    (['light', 'dark'] as const).flatMap((mode) =>
+      surfaceRolesFor(palette, mode).flatMap((_, depth) =>
+        hoverMirrorVars(mode, palette, depth).map((line) => line.trimStart().split(':')[0]!),
       ),
     ),
-  ];
-  return [
-    '  background-color: var(--sg-color-hover-bg);',
-    ...names.map((n) => `  ${n.replace('--sg-color-hover-', '--sg-color-')}: var(${n});`),
-  ];
-};
+  ),
+];
+
+export const hoverRuleVars = (palette: Palette): string[] => [
+  '  background-color: var(--sg-color-hover-bg);',
+  // 背景は変数ではなく background-color として移すので、名前の対応からは外れる
+  ...hoverMirrorNames(palette)
+    .filter((n) => n !== '--sg-color-hover-bg')
+    .map((n) => `  ${n.replace('--sg-color-hover-', '--sg-color-')}: var(${n});`),
+];

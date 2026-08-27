@@ -51,22 +51,14 @@ describe('JS へ出す値', () => {
   });
 
   it('色は light と dark で必ず変わる（暗色ブロックが素通りしていない）', () => {
-    // 動かないのは**ランプの中央を指すものだけ**である。両モードは同じランプを
-    // 逆向きにたどるので、端から同じ数だけ入った位置は必ず同じ段になる。
-    // **一律に除外しない。** 他が動かなくなったらそれは暗色ブロックの素通りである。
-    //
-    //   sequential の中央     — 決定5-11。帯の真ん中の1本
-    //   その hover の控え     — 同じ理由（決定5-13）
-    //   hover の border-strong — 面から5段外側。11段の中央がちょうどここに来る
-    const mid = (steps.length - 1) / 2;
-    const fixed = [
-      `--sg-color-sequential-${mid}`,
-      `--sg-color-hover-sequential-${mid}`,
-      '--sg-color-hover-border-strong',
-    ];
+    // 連続帯の中央だけは構造的に動かない。両モードが同じランプを逆向きに
+    // たどるので、真ん中の1本だけが同じ段を指す（決定5-11）。
+    // **一律に sequential を除外しない。** 動かないのは中央の1本だけで、
+    // 他が動かなくなったらそれは暗色ブロックの素通りである
+    const fixed = `--sg-color-sequential-${(steps.length - 1) / 2}`;
     const same = Object.entries(values.light).filter(
       ([name, v]) => name.startsWith('--sg-color-') && values.dark[name] === v,
     );
-    expect(same.map(([n]) => n).sort()).toEqual([...fixed].sort());
+    expect(same.map(([n]) => n)).toEqual([fixed]);
   });
 });

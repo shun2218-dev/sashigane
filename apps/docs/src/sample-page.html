@@ -218,7 +218,16 @@
   /* ------------------------------------------------------------------
      データ — 識別色（決定5-8）と連続値（決定5-11）は別の役割
      ------------------------------------------------------------------ */
-  .bars { display: flex; align-items: flex-end; gap: var(--sg-space-3); height: var(--sg-space-9); }
+  /* グリッド線は UI の境界より薄い第4の段（決定5-13）。データを邪魔しない濃さで、
+     面が深くなれば一緒に深い側へずれる */
+  .bars {
+    display: flex; align-items: flex-end; gap: var(--sg-space-3); height: var(--sg-space-9);
+    background-image: repeating-linear-gradient(
+      to top,
+      var(--sg-color-chart-gridline) 0 var(--sg-border-width-0),
+      transparent var(--sg-border-width-0) 25%
+    );
+  }
   .bars div { flex: 1; border-radius: var(--sg-radius-1) var(--sg-radius-1) 0 0; }
   .legend { display: flex; flex-wrap: wrap; gap: var(--sg-space-4); margin-top: var(--sg-space-4); }
   .legend span { display: inline-flex; align-items: center; gap: var(--sg-space-2); }
@@ -256,8 +265,25 @@
      ------------------------------------------------------------------ */
   table { width: 100%; border-collapse: collapse; }
   th, td { text-align: start; padding: var(--sg-space-3) var(--sg-space-2); border-bottom: var(--sg-border-width-0) solid var(--sg-color-border-subtle); }
-  th { color: var(--sg-color-text-muted); font-weight: inherit; }
+  /* 見出しと本体の区切りは行どうしの区切りより強い。**hover ではない強調**（決定5-13） */
+  th { color: var(--sg-color-text-muted); font-weight: inherit; border-bottom-color: var(--sg-color-border-strong); }
   td.n, th.n { text-align: end; }
+
+  /* hover は塗らずに宣言する（決定5-13）。data-sg-interactive を付けた行だけが、
+     hover 中に1段深い面の文脈になる。背景と前景が一緒に動くので保証は崩れない。
+     **このページに hover の色は1つも書いていない。** */
+  tbody tr { cursor: default; }
+
+  /* 重なる面。data-sg-surface="overlay" はどこに置いても同じ段になる（決定5-13）。
+     浮きは影と明度差分（決定1-8 の elevation）の担当で、そちらは未実装 */
+  .anchor { position: relative; }
+  .popover {
+    position: absolute; inset-block-start: 0; inset-inline-end: 0;
+    max-width: 22rem;
+    border: var(--sg-border-width-0) solid var(--sg-color-border-default);
+    border-radius: var(--sg-radius-2);
+    padding: var(--sg-space-3) var(--sg-space-4);
+  }
 
   label { display: grid; gap: var(--sg-space-1); }
   input, select {
@@ -427,18 +453,24 @@
 
   <section class="wrap">
     <div class="grid split">
-      <article>
+      <article class="anchor">
         <p class="label">記録</p>
         <h2 class="h2">生成された段</h2>
+
+        <!-- 重なる面。script を置かないので開いたまま見せる -->
+        <aside class="popover" data-sg-surface="overlay">
+          <p class="caption">重なる面は下地に依らず同じ段です。行に触れると、その行だけが1段深い面になります。</p>
+        </aside>
+
         <table style="margin-top: var(--sg-space-4)">
           <thead>
             <tr><th>役割</th><th>参照する段</th><th class="n">明色</th><th class="n">暗色</th></tr>
           </thead>
           <tbody class="num">
-            <tr><td>本文</td><td>neutral</td><td class="n">900</td><td class="n">100</td></tr>
-            <tr><td>補助</td><td>neutral</td><td class="n">600</td><td class="n">300</td></tr>
-            <tr><td>アクセント</td><td>primary</td><td class="n">500</td><td class="n">400</td></tr>
-            <tr><td>印</td><td>primary</td><td class="n">400</td><td class="n">300</td></tr>
+            <tr data-sg-interactive><td>本文</td><td>neutral</td><td class="n">900</td><td class="n">100</td></tr>
+            <tr data-sg-interactive><td>補助</td><td>neutral</td><td class="n">600</td><td class="n">300</td></tr>
+            <tr data-sg-interactive><td>アクセント</td><td>primary</td><td class="n">500</td><td class="n">400</td></tr>
+            <tr data-sg-interactive><td>印</td><td>primary</td><td class="n">400</td><td class="n">300</td></tr>
           </tbody>
         </table>
         <p class="caption" style="margin-top: var(--sg-space-2)">数字は等幅で揃えています（決定1-11）。</p>

@@ -11,13 +11,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  colorPrimitiveVars,
   colorSemanticVars,
   fontInputNames,
   generatePalette,
-  primitiveVars,
   toTokensCss,
   tokenLayers,
+  tokenValues,
   typographySemanticVars,
   densityLevels,
   spaceRoles,
@@ -26,10 +25,6 @@ import {
 
 const palette = generatePalette({ L: 0.6, C: 0.1, H: 220 });
 const layers = tokenLayers(palette);
-
-/** 生成した CSS 行から宣言名を数える。layers.ts の実装とは独立に書く */
-const countDeclarations = (lines: string[]) =>
-  lines.filter((l) => /^\s*--sg-[a-z0-9-]+\s*:/.test(l)).length;
 
 describe('層の名前表', () => {
   it('両層とも空ではない', () => {
@@ -43,14 +38,34 @@ describe('層の名前表', () => {
   });
 
   it('表は tokens.css が宣言する変数を1つ残らず覆う', () => {
-    const declared =
-      countDeclarations(primitiveVars()) +
-      countDeclarations(colorPrimitiveVars(palette)) +
-      countDeclarations(typographySemanticVars()) +
-      countDeclarations(spacingSemanticVars('default')) +
-      countDeclarations(colorSemanticVars('light', palette));
+    /*
+     * **生成した CSS そのものから取る。** 各 *Vars() の呼び出しを数え上げる形だと、
+     * tokens.css が別経路で足した宣言（決定5-13 の hover の控えなど）を数え落とす。
+     * 数え落としても両辺が同じだけ減るので、**検査は緑のまま通ってしまう**（教訓2）。
+     */
+    const declared = new Set(
+      [...toTokensCss(palette).matchAll(/^\s*(--sg-[a-z0-9-]+)\s*:/gm)].map((m) => m[1]!),
+    );
+    const table = new Set([...layers.primitives, ...layers.semantics, ...layers.internals]);
+    expect([...declared].filter((n) => !table.has(n)), '表に無い宣言').toEqual([]);
+    expect([...table].filter((n) => !declared.has(n)), '宣言が無い表の名前').toEqual([]);
+  });
 
-    expect(layers.primitives.length + layers.semantics.length).toBe(declared);
+  it('内部の値は空ではなく、他のどの層とも互いに素である（決定5-13）', () => {
+    const semantics = new Set(layers.semantics);
+    const primitives = new Set(layers.primitives);
+    const inputs = new Set(layers.inputs);
+    expect(layers.internals.length).toBeGreaterThan(0);
+    expect(layers.internals.filter((n) => semantics.has(n)), 'セマンティックと重複').toEqual([]);
+    expect(layers.internals.filter((n) => primitives.has(n)), 'プリミティブと重複').toEqual([]);
+    expect(layers.internals.filter((n) => inputs.has(n)), '差し込み口と重複').toEqual([]);
+  });
+
+  it('内部の値は tokens.js にも tokens.d.ts にも出ない（決定5-13）', () => {
+    const internals = new Set(layers.internals);
+    for (const theme of ['light', 'dark'] as const) {
+      expect(Object.keys(tokenValues(palette)[theme]).filter((n) => internals.has(n))).toEqual([]);
+    }
   });
 
   it('セマンティックの名前は light と dark で同一である（値だけが切り替わる）', () => {

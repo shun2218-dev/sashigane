@@ -20,7 +20,7 @@
  * 手書きの一覧は作らない（決定2-6）。各 `*Vars()` が出した CSS 行から名前を取り出す。
  */
 import type { Palette } from '../color/palette.ts';
-import { colorPrimitiveVars, colorSemanticVars } from './color-vars.ts';
+import { colorPrimitiveVars, colorSemanticVars, hoverMirrorNames } from './color-vars.ts';
 import {
   fontInputNames,
   primitiveVars,
@@ -44,6 +44,17 @@ export type TokenLayers = {
    * 「表に無い名前」として落とすと利用側が口を使えない。
    */
   inputs: string[];
+  /**
+   * トークン層が**自分の仕掛けのために宣言する**名前。参照は禁止（プリミティブと同じ扱い）。
+   *
+   * hover の控え（`--sg-color-hover-*`、決定5-13）がこれである。hover の規則が読むための
+   * 値であって役割ではない。利用側が直接参照すると、hover していない要素に hover の色が
+   * 乗る——**塗るだけの道が裏口から復活する。**
+   *
+   * セマンティックとして数えると tokens.js・tokens.d.ts・SCSS にも出てしまう。
+   * 出るのは tokens.css だけでよい。
+   */
+  internals: string[];
 };
 
 /** 生成した CSS 行から宣言されている変数名を取り出す。コメント行と空行は落ちる。 */
@@ -55,6 +66,7 @@ const declaredNames = (lines: string[]): string[] =>
 
 export const tokenLayers = (palette: Palette): TokenLayers => ({
   primitives: [...declaredNames(primitiveVars()), ...declaredNames(colorPrimitiveVars(palette))].sort(),
+  internals: [...hoverMirrorNames(palette)].sort(),
   // セマンティックの名前は light / dark で同一。値だけが切り替わる（決定5-7）。
   // 同一であることは packages/tokens/test/layers.test.ts が検査する。
   // 骨格の余白は密度で値だけが変わる。名前は3段とも同一（決定1-12）

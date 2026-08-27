@@ -182,7 +182,11 @@ const findTokenViolations = (text, allowed, primitives) => {
     const name = m[0];
     if (allowed.has(name)) continue;
     out.push({
-      kind: primitives.has(name) ? 'primitive' : 'unknown',
+      kind: primitives.has(name)
+        ? 'primitive'
+        : internals.has(name)
+          ? 'internal'
+          : 'unknown',
       line: lineOf(text, m.index),
       what: name,
     });
@@ -206,7 +210,7 @@ const findClassViolations = (text) => {
   return out;
 };
 
-const findAll = (text, allowed, primitives) => [
+const findAll = (text, allowed, primitives, internals) => [
   ...findTokenViolations(text, allowed, primitives),
   ...findClassViolations(text),
 ];
@@ -222,10 +226,21 @@ if (!existsSync(LAYERS)) {
 }
 const layers = JSON.parse(readFileSync(LAYERS, 'utf8'));
 const semantics = new Set(layers.semantics);
+/**
+ * トークン層が自分の仕掛けのために宣言する名前（決定5-13）。参照は禁止。
+ * **「名前表に無い」ではなく「参照してはいけない」として報告する。**
+ * 打ち間違いと混ざると、直し方が分からない
+ */
+const internals = new Set(layers.internals);
 const primitives = new Set(layers.primitives);
 const inputs = new Set(layers.inputs);
 
-if (semantics.size === 0 || primitives.size === 0 || inputs.size === 0) {
+if (
+  semantics.size === 0 ||
+  primitives.size === 0 ||
+  inputs.size === 0 ||
+  internals.size === 0
+) {
   console.error(`${LAYERS} の層が空です。生成器が壊れています。`);
   process.exit(1);
 }
@@ -244,6 +259,9 @@ const FIXTURES = [
   // 決定1-11: 書体スタックはプリミティブ。役割（--sg-text-*-family）を経由させる
   { text: 'a { font-family: var(--sg-font-stack-mono); }', expect: 'primitive' },
   { text: 'a { color: var(--sg-color-text-mutedd); }', expect: 'unknown' },
+  // 決定5-13: hover の控えは内部の値。参照すると hover していない要素に hover の色が乗る
+  { text: 'a { color: var(--sg-color-hover-text-default); }', expect: 'internal' },
+  { text: 'a { background: var(--sg-color-hover-bg); }', expect: 'internal' },
   { text: '<div class="p-[20px]">', expect: 'arbitrary' },
   { text: '<div class="[mask-type:luminance]">', expect: 'arbitrary' },
   { text: '<div class="bg-(--sg-color-accent)">', expect: 'arbitrary' },
@@ -278,7 +296,7 @@ const FIXTURES = [
 
 const selfTestFailures = [];
 for (const f of FIXTURES) {
-  const found = findAll(f.text, allowed, primitives);
+  const found = findAll(f.text, allowed, primitives, internals);
   const kinds = found.map((v) => v.kind);
   const ok = f.expect === null ? kinds.length === 0 : kinds.includes(f.expect);
   if (!ok) {
@@ -313,7 +331,7 @@ const violations = [];
 for (const file of files) {
   // 追跡されているが作業ツリーには無い（削除の途中など）。検査失敗ではなく飛ばす
   if (!existsSync(file)) continue;
-  for (const v of findAll(readFileSync(file, 'utf8'), allowed, primitives)) {
+  for (const v of findAll(readFileSync(file, 'utf8'), allowed, primitives, internals)) {
     violations.push({ file, ...v });
   }
 }
@@ -323,6 +341,9 @@ const MESSAGE = {
   unknown:
     '生成器が出力しない名前です。打ち間違いか、消費側で独自に定義した変数です' +
     '（書体名を差す口は --sg-font-brand-* だけです）',
+  internal:
+    'トークン層が自分の仕掛けのために宣言している値です。参照すると hover していない要素に' +
+    ' hover の色が乗ります。hover の面は data-sg-interactive で作ります（決定5-13）',
   arbitrary: 'Tailwind の任意値記法です。スケール外の値を書けてしまいます（決定3-1）',
 };
 

@@ -173,12 +173,32 @@ const layers = JSON.parse(readFileSync(LAYERS, 'utf8'));
 const semantics = new Set(layers.semantics);
 const primitives = new Set(layers.primitives);
 const inputs = new Set(layers.inputs);
+/**
+ * トークン層が自分の仕掛けのために宣言する名前（決定5-13）。
+ * **名前表にはあるが参照してはいけない。** 名前表に無いもの（打ち間違い）とは別に扱う
+ */
+const internals = new Set(layers.internals);
 
 const violations = rawValues(html);
 const refs = sgRefs(html);
 const unknown = [...new Set(refs)].filter(
-  (n) => !semantics.has(n) && !primitives.has(n) && !inputs.has(n),
+  (n) => !semantics.has(n) && !primitives.has(n) && !inputs.has(n) && !internals.has(n),
 );
+const internalRefs = [...new Set(refs)].filter((n) => internals.has(n));
+
+/*
+ * 内部の値の検出も陰性対照を通す。**0 件を「踏んでいない」と読めるようにするため**（教訓2）。
+ * 名前表が空だったり、内部の種別が消えたりすると、ここで落ちる
+ */
+{
+  const probe = sgRefs('<div style="color: var(--sg-color-hover-text-default)"></div>');
+  const fires = probe.filter((n) => internals.has(n));
+  if (internals.size === 0 || fires.length !== 1) {
+    console.error('陰性対照が期待どおりに動いていない: 内部の値の参照を検出できていない');
+    console.error(`  名前表の内部 ${internals.size} 件 / 検出 ${fires.length} 件`);
+    process.exit(1);
+  }
+}
 
 /* --- 集計（落とすためではなく観測のため） --- */
 const usedSemantics = new Set(refs.filter((n) => semantics.has(n)));
@@ -208,6 +228,12 @@ if (unknown.length) {
   console.error('\n名前表に無い --sg-* を参照している（打ち間違いか、消えた名前）:');
   for (const n of unknown) console.error(`  ${n}`);
 }
+if (internalRefs.length) {
+  console.error('\nトークン層の内部の値を参照している（参照は禁止。決定5-13）:');
+  for (const n of internalRefs) console.error(`  ${n}`);
+  console.error('\nhover の面は data-sg-interactive で作る。控えを直接読むと、');
+  console.error('hover していない要素に hover の色が乗る。');
+}
 if (violations.length) {
   console.error('\nトークン由来でない値がある:');
   for (const v of violations) {
@@ -216,5 +242,5 @@ if (violations.length) {
   console.error('\n色を持ちうるプロパティは、生成した変数だけで書くこと。');
 }
 
-if (unknown.length || violations.length) process.exit(1);
-console.log('\n✓ 生値は無く、参照している名前はすべて名前表にある');
+if (unknown.length || internalRefs.length || violations.length) process.exit(1);
+console.log('\n✓ 生値は無く、参照している名前はすべて名前表にある（内部の値は踏んでいない）');

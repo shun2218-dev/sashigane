@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest';
 import {
   colorSemanticVars,
   densityLevels,
+  hoverMirrorVars,
   generatePalette,
   spaceRoles,
   spacingSemanticVars,
@@ -62,12 +63,15 @@ describe('tokens.css のテーマ切り替え', () => {
         .map((l) => l.trim())
         .filter((l) => l.startsWith('--sg-'));
 
-    expect(declarations(blockOf('[data-theme="light"]')!.body)).toEqual(
-      colorSemanticVars('light', palette).map((l) => l.trim()),
-    );
-    expect(declarations(blockOf('[data-theme="dark"]')!.body)).toEqual(
-      colorSemanticVars('dark', palette).map((l) => l.trim()),
-    );
+    // 控え（--sg-color-hover-*）も面の文脈の一部なので、固定用のブロックにも要る。
+    // 落ちていると、テーマを固定した瞬間に hover だけ OS 設定側の値を指す
+    for (const mode of ['light', 'dark'] as const) {
+      expect(declarations(blockOf(`[data-theme="${mode}"]`)!.body)).toEqual(
+        [...colorSemanticVars(mode, palette), ...hoverMirrorVars(mode, palette, 0)].map((l) =>
+          l.trim(),
+        ),
+      );
+    }
   });
 });
 

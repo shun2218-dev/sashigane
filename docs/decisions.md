@@ -1882,6 +1882,26 @@ hover 面では 600 になる）が、**選択中の行や強調した区切り�
 **例外規則は後から誰も消せなくなる。** 押下の表現は Phase 3 で
 コンポーネントを書いてから決める。
 
+#### 控えは「参照してよい名前」ではない
+
+`--sg-color-hover-*` は hover の規則が読むための値であって、利用側が書く役割ではない。
+**参照されると、hover していない要素に hover の色が乗る。** 塗るだけの道が裏口から復活する。
+
+そのため名前表（`tokens.layers.json`）に**第4の種別 `internals` を足した。**
+
+| 種別 | 参照 | 例 |
+|---|---|---|
+| `primitives` | **禁止** | `--sg-neutral-500` |
+| `semantics` | 可 | `--sg-color-text-muted` |
+| `inputs` | 利用側が**定義する** | `--sg-font-brand-body-latin` |
+| `internals` | **禁止** | `--sg-color-hover-text-muted` |
+
+`check:token-usage` と `check:sample-page` は、これを「名前表に無い」ではなく
+**「参照してはいけない」として報告する。** 打ち間違いと混ざると直し方が分からない。
+
+内部の値は **`tokens.css` にしか出さない。** `tokens.js` にも `tokens.d.ts` にも
+`tokens.scss` にも出ない。面の文脈を持たない出力に控えだけあっても意味がない。
+
 #### 保証しない範囲
 
 - **hover した要素の中の要素を hover しても文脈は変わらない。** 控えは面の側にしか無いので、
@@ -1899,6 +1919,13 @@ hover 面では 600 になる）が、**選択中の行や強調した区切り�
 - `test/tokens-css.test.ts` — hover の規則が1本だけであること、`(hover: hover)` の中にあること、
   面のブロックより後にあること、そして**規則が参照する控えを面を作るブロックが全部持っていること**。
   控えを1つ落として発火することを確認した
+- `test/layers.test.ts` — 名前表が **`tokens.css` の宣言を1つ残らず覆う**こと。
+  生成した CSS から直接取るので、別経路で足した宣言を数え落とせない。
+  内部の値が他のどの層とも互いに素で、`tokens.js` にも `tokens.d.ts` にも出ないこと
+- `scripts/check-token-usage.mjs` — `bg-hover` と `bg-overlay` が出ないこと、
+  内部の値の参照が `internal` として発火すること（陰性対照2件）
+- `scripts/check-sample-page.mjs` — サンプルページが新しい役割を実際に使っていること（原則3）。
+  内部の値を踏んでいないこと。**この検出にも陰性対照を通す**（教訓2）
 - `scripts/check-tailwind-adapter.mjs` — `bg-hover` と `bg-overlay` が出ないこと
 
 **実ブラウザで確かめた。** 詳細度と継承の話なので静的検査では効くことを証明できない。
