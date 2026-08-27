@@ -121,10 +121,15 @@ describe('tokens.css の密度（決定1-12）', () => {
  * ここで見るのは「規則が参照する控えを、面を作るブロックが全部持っていること」。
  */
 describe('tokens.css の hover（決定5-13）', () => {
-  /** 入れ子の無いブロックだけを拾う。@media は中に波括弧を含むので当たらない */
-  const rules = [...css.matchAll(/([^{}]*)\{([^{}]*)\}/g)].map((m) => ({
-    // 直前のコメントも前置きに入るので、失敗メッセージのために落とす
-    selector: m[1]!.replace(/\/\*[\s\S]*?\*\//g, '').trim(),
+  /**
+   * 入れ子の無いブロックだけを拾う。@media は中に波括弧を含むので当たらない。
+   *
+   * **先にコメントを落とす。** コメントの中に `{` や `}`（`--sg-{カテゴリ}-{数字}` など）や
+   * セレクタの説明が入っており、落とさないと構文の一部として拾ってしまう
+   */
+  const bare = css.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+  const rules = [...bare.matchAll(/([^{}]*)\{([^{}]*)\}/g)].map((m) => ({
+    selector: m[1]!.trim(),
     body: m[2]!,
     at: m.index!,
   }));
@@ -136,14 +141,14 @@ describe('tokens.css の hover（決定5-13）', () => {
 
   it('触る画面で張り付かないよう (hover: hover) の中にある', () => {
     const at = hoverRules[0]!.at;
-    const media = css.lastIndexOf('@media (hover: hover)', at);
+    const media = bare.lastIndexOf('@media (hover: hover)', at);
     expect(media, '(hover: hover) の外に出ている').toBeGreaterThan(-1);
     // 間に別のブロックの終わりが挟まっていないこと（本当にその中にいる）
     expect(css.slice(media, at)).not.toContain('\n}');
   });
 
   it('面のブロックより後にある（背景色の指定が順序で勝つ）', () => {
-    const lastSurface = css.lastIndexOf('[data-sg-surface=');
+    const lastSurface = bare.lastIndexOf('[data-sg-surface=');
     expect(hoverRules[0]!.at).toBeGreaterThan(lastSurface);
   });
 
@@ -163,6 +168,30 @@ describe('tokens.css の hover（決定5-13）', () => {
     for (const ctx of contexts) {
       const missing = referenced.filter((n) => !ctx.body.includes(`${n}:`));
       expect(missing, `${ctx.selector} が控えていない`).toEqual([]);
+    }
+  });
+
+  it('面が控えた値は、規則が漏れなく現在の役割へ移している（逆向き）', () => {
+    // 上の検査は「規則が参照する控えがあるか」しか見ない。**逆は別の壊れ方をする。**
+    // 控えだけがあって規則が移していない役割は、hover 中に古い段のまま残る。
+    // 背景だけが1段深くなった状態になり、決定5-13 が消したはずの穴が戻る
+    const moved = new Set(
+      [...hoverRules[0]!.body.matchAll(/var\((--sg-color-hover-[\w-]+)\)/g)].map((m) => m[1]!),
+    );
+    const contexts = rules.filter(
+      (r) =>
+        r.body.includes('--sg-color-text-default:') &&
+        !r.selector.includes('[data-sg-interactive]'),
+    );
+    for (const ctx of contexts) {
+      const held = [...ctx.body.matchAll(/(--sg-color-hover-[\w-]+):/g)]
+        .map((m) => m[1]!)
+        // 背景は変数ではなく background-color として移すので、対応は名前で取れない
+        .filter((n) => n !== '--sg-color-hover-bg');
+      expect(
+        held.filter((n) => !moved.has(n)),
+        `${ctx.selector} が控えているのに規則が移していない`,
+      ).toEqual([]);
     }
   });
 

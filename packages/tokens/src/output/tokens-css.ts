@@ -42,15 +42,16 @@ const surfaceBlocks = (
   palette: Palette,
   scope: string,
 ): string[] =>
-  surfaceNames.flatMap((name) => {
-    const attr = `[data-sg-surface="${name}"]`;
-    const selector = scope ? `${scope} ${attr}, ${scope}${attr}` : attr;
-    return [
-      `${selector} {`,
-      ...surfaceContextVars(mode, palette, depthOf(name)),
-      '}',
-      '',
-    ];
+  [...new Set(surfaceNames.map(depthOf))].sort().flatMap((depth) => {
+    // 同じ深さの面はまとめる。overlay は surface と同じ段なので（決定5-13）、
+    // 分けて出すと**同じ中身のブロックが並ぶだけ**になる
+    const attrs = surfaceNames
+      .filter((n) => depthOf(n) === depth)
+      .map((n) => `[data-sg-surface="${n}"]`);
+    const selector = attrs
+      .flatMap((attr) => (scope ? [`${scope} ${attr}`, `${scope}${attr}`] : [attr]))
+      .join(', ');
+    return [`${selector} {`, ...surfaceContextVars(mode, palette, depth), '}', ''];
   });
 
 export const toTokensCss = (palette: Palette): string =>

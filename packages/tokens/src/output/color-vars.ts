@@ -197,11 +197,25 @@ export const hoverMirrorVars = (
  * 文脈は変わらない（外側と同じ段になる）。保証は割らないが、内側の hover は見えない。
  */
 export const hoverRuleVars = (palette: Palette): string[] => {
-  const names = semanticFor('light', surfaceRolesFor(palette, 'light')[1]!, 1).map(
-    (line) => line.trimStart().split(':')[0]!,
-  );
+  /**
+   * **控えの側から名前を集める。** 片方のモードや特定の深さだけを見て並べると、
+   * そこに出ない役割が規則から漏れ、hover 中に古い段のまま残る。
+   * 全モード × 全深さの和集合を取れば、構造として漏れようがない（教訓5）。
+   */
+  const names = [
+    ...new Set(
+      (['light', 'dark'] as const).flatMap((mode) =>
+        surfaceRolesFor(palette, mode).flatMap((_, depth) =>
+          hoverMirrorVars(mode, palette, depth)
+            .map((line) => line.trimStart().split(':')[0]!)
+            // 背景は変数ではなく background-color として移す
+            .filter((n) => n !== '--sg-color-hover-bg'),
+        ),
+      ),
+    ),
+  ];
   return [
     '  background-color: var(--sg-color-hover-bg);',
-    ...names.map((n) => `  ${n}: var(${n.replace('--sg-color-', '--sg-color-hover-')});`),
+    ...names.map((n) => `  ${n.replace('--sg-color-hover-', '--sg-color-')}: var(${n});`),
   ];
 };
