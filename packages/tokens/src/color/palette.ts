@@ -464,6 +464,15 @@ export interface SurfaceRoles {
   /** 色つきランプのうち、マークに使う段（3:1）。決定5-7 */
   colorMark: number;
   /**
+   * 塗りの上に載せる文字の段（決定5-14）。**ランプごとに解く。**
+   *
+   * これまでは `bg-page` を流用していた。値としては正しかったが、
+   * **塗りの側から導出していない**ので、塗りの段を変えた瞬間に追随しない。
+   * 前景に面の色を借りるのは意味の嘘であり、`--sg-color-bg-page` を
+   * 前景として書ける道を残すことでもある。
+   */
+  onFill: { accent: number } & { [K in StatusName]: number };
+  /**
    * 識別色の系列ごとの段。**面が深いと段が足りず null になる。**
    *
    * 暗色の inset では 3:1 を満たす段が4つしか残らず、5系列を配れない。
@@ -559,6 +568,25 @@ const solveSurfaceRoles = (
           )
         : null;
 
+    /**
+     * 塗りの上の文字は**ランプの端**から取る（決定5-14）。
+     * 端は2つしかないので、コントラストが高いほうを選べばよい。
+     *
+     * 色つきの塗り（`colorText` の段）はページ地に対してちょうど 4.5:1 に
+     * 解かれている（決定5-2）ので、その裏返しも必ず 4.5:1 になる。
+     * 深い面では塗りがさらに端へ寄るので、余裕は増えるだけである。
+     */
+    const onFillFor = (ramp: Ramp): number => {
+      const fill = ramp.byStep[colorText]!;
+      const ends = [cfg.steps[0]!, cfg.steps[cfg.steps.length - 1]!];
+      return ends.reduce((best, e) =>
+        contrastBetween(palette.neutral.byStep[e]!, fill) >
+        contrastBetween(palette.neutral.byStep[best]!, fill)
+          ? e
+          : best,
+      );
+    };
+
     return {
       surface: surfaceStep,
       /** 文字の最も強い段は面によらず動かさない。どの面でも要件を満たす */
@@ -573,6 +601,12 @@ const solveSurfaceRoles = (
       gridline: outward[0] ?? surfaceStep,
       colorText,
       colorMark: markStep(colorText),
+      onFill: {
+        accent: onFillFor(palette.primary),
+        ...(Object.fromEntries(
+          statusNames.map((n) => [n, onFillFor(palette.status[n]!)]),
+        ) as { [K in StatusName]: number }),
+      },
       series,
     };
   });

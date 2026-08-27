@@ -143,7 +143,10 @@
   /* 塗りの上の文字。**on-accent の役割が無い**ので面の背景色を借りている。
      accent は文字用の段（4.5:1）なので、面の色を載せれば同じ比が裏返しで成立する。
      借り物であることは Issue #59 に記録してある */
-  .btn-primary { background: var(--sg-color-accent); color: var(--sg-color-bg-page); }
+  /* 塗りの上の文字は on-accent（決定5-14）。**bg-page は借りない。**
+     面の色を前景に借りると、塗りの段を変えた瞬間に追随しない */
+  .btn-primary { background: var(--sg-color-accent); color: var(--sg-color-on-accent); }
+  .btn-danger { background: var(--sg-color-danger); color: var(--sg-color-on-danger); }
   .btn-ghost { border-color: var(--sg-color-border-default); color: var(--sg-color-text-default); }
   .btn:hover { opacity: 0.88; }
 
@@ -254,6 +257,20 @@
     padding: var(--sg-space-3) var(--sg-space-4);
   }
   .note b { flex: 0 0 auto; }
+
+  /* 塗りのバッジ。**status ごとに on-* を持つ**（決定5-14）。
+     値はいまどれも同じ段に解かれるが、名前は塗りの側に付いている */
+  .tags { display: flex; flex-wrap: wrap; gap: var(--sg-space-2); }
+  .tag {
+    border-radius: var(--sg-radius-full);
+    padding: var(--sg-space-1) var(--sg-space-3);
+    font-size: var(--sg-text-caption);
+    line-height: var(--sg-text-caption-leading);
+  }
+  .tag-info    { background: var(--sg-color-info);    color: var(--sg-color-on-info); }
+  .tag-success { background: var(--sg-color-success); color: var(--sg-color-on-success); }
+  .tag-warning { background: var(--sg-color-warning); color: var(--sg-color-on-warning); }
+  .tag-danger  { background: var(--sg-color-danger);  color: var(--sg-color-on-danger); }
   .note-info    { color: var(--sg-color-info);    border-color: var(--sg-color-info-mark); }
   .note-success { color: var(--sg-color-success); border-color: var(--sg-color-success-mark); }
   .note-warning { color: var(--sg-color-warning); border-color: var(--sg-color-warning-mark); }
@@ -448,6 +465,14 @@
       <div class="note note-success"><b>成功</b><p>360色相すべてで文字 4.5:1 / 印 3:1 を満たしています。</p></div>
       <div class="note note-warning"><b>警告</b><p>彩度の高い色を選ぶと、規則が届く範囲まで彩度を落とします。</p></div>
       <div class="note note-danger"><b>危険</b><p>プリミティブをコンポーネントから参照すると検査が落ちます。</p></div>
+
+      <p class="caption">同じ状態色を「文字」ではなく「塗り」として使うと、上に載せる文字が要ります。</p>
+      <div class="tags">
+        <span class="tag tag-info">情報</span>
+        <span class="tag tag-success">成功</span>
+        <span class="tag tag-warning">警告</span>
+        <span class="tag tag-danger">危険</span>
+      </div>
     </div>
   </section>
 
@@ -500,6 +525,7 @@
         <p class="caption field-ok">保存しました。<kbd>⌘</kbd> <kbd>S</kbd> でいつでも上書きできます。</p>
         <div class="row">
           <button class="btn btn-primary" type="button">生成する</button>
+          <button class="btn btn-danger" type="button">消す</button>
           <button class="btn btn-ghost" type="button">やめる</button>
         </div>
       </form>

@@ -76,6 +76,8 @@ const EXPECTATIONS = [
   ['bg-blue-500', false, '素の Tailwind の色'],
   ['bg-accent', true, 'セマンティックの写像'],
   ['bg-danger', true, 'セマンティックの写像'],
+  ['text-on-accent', true, '塗りの上に載せる文字（決定5-14）'],
+  ['text-on-danger', true, '状態色の塗りの上に載せる文字（決定5-14）'],
   ['bg-page', false, '面は写像しない。data-sg-surface で作る（決定5-12）'],
   ['bg-surface', false, '面は写像しない。塗るだけの道を残すと保証が静かに崩れる'],
   ['bg-inset', false, '面は写像しない'],

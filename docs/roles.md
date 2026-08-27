@@ -75,11 +75,19 @@ holosphere は面を `bg-white/[0.03]`、境界を `border-white/10` とアル�
 | `text-muted` | i p h s |
 | `text-faint` | i p |
 | `chart-tick` | h — muted と faint の間 |
-| `text-on-accent` | p（`#fff` をハードコード） s |
+| `text-on-accent` | p（`#fff` をハードコード） h（`text-white`） s（`*-foreground`） |
 | `text-link` | i p |
 | `text-disabled` | i（色を faint に）/ p（`opacity: 0.45`）→ **不統一** |
 
 3プロジェクトが独立に文字を3段に落ち着かせているのは強い一致。
+
+`text-on-accent` は決定5-14 で `--sg-color-on-accent` として持った。
+状態色の塗りも同じ形で持つ（`on-danger` など）。
+
+**「明るい塗り＋暗い文字」は4本に1件も無い**（2026-08-27 に全ファイルを読み直した）。
+Issue #59 が想定した組み方は観測されなかった。代わりに **p と h で最も多いのは
+「淡い塗り＋アクセント色の文字」**（`color-mix(accent 7〜35%)`、`bg-*-300/15`）で、
+これはどちらもアルファ合成である。決定5-14 で別の決定として切り分けた。
 
 ---
 

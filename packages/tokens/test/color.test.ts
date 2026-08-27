@@ -128,6 +128,29 @@ describe('面ごとのコントラスト保証（決定5-12）', () => {
         );
       });
 
+      it(`${where}: 塗りの上の文字が ${g.textMin}:1 以上 — 全360色相・全ランプ`, () => {
+        let worst = { ratio: Number.POSITIVE_INFINITY, H: -1, ramp: '' };
+        for (const { H, pal } of palettes) {
+          const roles = surfaceRolesFor(pal, mode)[depth]!;
+          const ramps: [string, typeof pal.primary][] = [
+            ['accent', pal.primary],
+            ...statusNames.map((n) => [n, pal.status[n]!] as [string, typeof pal.primary]),
+          ];
+          for (const [name, ramp] of ramps) {
+            // 塗りは色つきランプの colorText の段。その上に onFill の中間色を載せる
+            const ratio = contrastBetween(
+              pal.neutral.byStep[roles.onFill[name as 'accent']!]!,
+              ramp.byStep[roles.colorText]!,
+            );
+            if (ratio < worst.ratio) worst = { ratio, H, ramp: name };
+          }
+        }
+        expect(
+          worst.ratio,
+          `最悪は primary=${worst.H}° の ${worst.ramp} の塗り`,
+        ).toBeGreaterThanOrEqual(g.textMin);
+      });
+
       it(`${where}: 系列色を配れるなら全系列が ${g.markMin}:1 以上 — 全360色相`, () => {
         let worst = { ratio: Number.POSITIVE_INFINITY, H: -1 };
         let assigned = 0;

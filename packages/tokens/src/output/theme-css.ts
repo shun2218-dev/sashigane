@@ -162,6 +162,12 @@ export const toThemeCss = (palette: Palette): string =>
     '  --color-chart-gridline: var(--sg-color-chart-gridline);',
     '  --color-accent: var(--sg-color-accent);',
     '  --color-accent-mark: var(--sg-color-accent-mark);',
+    '',
+    '  /* 塗りの上に載せる文字（決定5-14）。text-on-accent のように使う。',
+    '     bg-page を前景に借りるのをやめるための役割で、値は塗りの側から解いてある */',
+    '  --color-on-accent: var(--sg-color-on-accent);',
+    ...statusNames.map((n) => `  --color-on-${n}: var(--sg-color-on-${n});`),
+    '',
     ...statusNames.flatMap((n) => [
       `  --color-${n}: var(--sg-color-${n});`,
       `  --color-${n}-mark: var(--sg-color-${n}-mark);`,
