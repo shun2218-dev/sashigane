@@ -23,10 +23,11 @@
  *
  * ### この検査が原理的に見逃す範囲（教訓5）
  *
- *   - **色以外の次元の生値。** `opacity: 0.88` `letter-spacing: 0.08em` は
- *     トークンを経由していないが、この検査は永久に発火しない。
- *     不透明度・字送り・行長は**スケールを持つべきかどうかすら決めていない**次元であり、
- *     決まっていないものを検査で縛ることはできない（記録は docs/experiments/sample-page.md）
+ *   - **スケールを持たない次元の生値。** いまは `opacity: 0.88` だけである。
+ *     持つべきかどうかすら決めていない次元を検査で縛ることはできない
+ *     （記録は docs/experiments/sample-page.md）。
+ *     **字送りはここから外れた。** 決定1-9 を確定させてスケールを持ったので、
+ *     `font-size` / `line-height` / `font-family` と並べて検出対象に入れた（教訓3）
  *   - 色を持ちうるプロパティの一覧（COLORISH）に無いプロパティ。
  *     `accent-color` のように後から増えたものは、足すまで見えない
  *   - JS で組み立てた色。このページに script は1つも無いが、置けば見えなくなる
@@ -66,6 +67,19 @@ const COLORISH = (prop) =>
   prop.endsWith('-color') ||
   /^border(-(top|right|bottom|left|(inline|block)-(start|end)))?$/.test(prop);
 
+/**
+ * スケールを持つ組版の次元。**値はトークンだけで組めるはず**である。
+ *
+ * 字送りは決定1-9 を確定させるまで「スケールを持つべきかどうかすら決めていない」
+ * 次元だったので、ここに入れられなかった。**入れられるようになったので入れる**（教訓3）。
+ * 残っているのは `opacity` だけである。
+ */
+const TYPOGRAPHIC = (prop) =>
+  prop === 'font-size' ||
+  prop === 'line-height' ||
+  prop === 'letter-spacing' ||
+  prop === 'font-family';
+
 /** 色を持ちうるプロパティの値に許す語。**狭いほど強い** */
 const ALLOWED_VALUE = new Set([
   'transparent',
@@ -84,6 +98,15 @@ const ALLOWED_VALUE = new Set([
   // 分割は空白だけで行い、単独のコンマだけをここで許す
   ',',
 ]);
+
+/**
+ * 組版のプロパティの値に許す語。**色より狭い。**
+ *
+ * `calc(` `+` `)` を許すのは、大文字化の加算項を足すため（決定1-9）。
+ * 中身に数値が残ると `calc(1rem` のような形になって許可集合から外れるので、
+ * 括弧を許しても生値は通らない。
+ */
+const ALLOWED_TYPO_VALUE = new Set(['inherit', 'initial', 'unset', '0', 'calc(', '+', ')']);
 
 /** `var(--sg-…)` の中身。入れ子のフォールバックは使っていないので単純に取る */
 const VAR_REF = /var\(\s*(--[a-z0-9-]+)\s*\)/gi;
@@ -113,16 +136,21 @@ const declarations = (html) => {
   return out;
 };
 
-/** 生値の色（と、色を持ちうるプロパティに紛れた生値の寸法）を見つける */
+/** 生値（色と、スケールを持つ組版の次元）を見つける */
 const rawValues = (html) =>
   declarations(html).flatMap(({ prop, value, line }) => {
-    if (!COLORISH(prop)) return [];
+    const allowed = COLORISH(prop)
+      ? ALLOWED_VALUE
+      : TYPOGRAPHIC(prop)
+        ? ALLOWED_TYPO_VALUE
+        : null;
+    if (!allowed) return [];
     // var(…) を取り除いた残りが、許可した語だけで構成されていること
     const rest = value.replace(VAR_REF, ' ').trim();
     const bad = rest
       .split(/\s+/)
       .filter(Boolean)
-      .filter((t) => !ALLOWED_VALUE.has(t.toLowerCase()));
+      .filter((t) => !allowed.has(t.toLowerCase()));
     return bad.length ? [{ line, prop, value, bad }] : [];
   });
 
@@ -138,6 +166,9 @@ const FIXTURE = `
   .a { color: #fff; }
   .b { border: 1px solid var(--sg-color-border-default); }
   .c { background: var(--sg-color-bg-page); }
+  .d { letter-spacing: 0.08em; }
+  .e { font-size: var(--sg-text-body); line-height: var(--sg-text-body-leading); }
+  .f { letter-spacing: calc(var(--sg-text-label-tracking) + var(--sg-tracking-caps)); }
 </style>
 <div style="background: rgba(0,0,0,.2)"></div>
 `;
@@ -153,7 +184,24 @@ const expect = (cond, msg) => {
 expect(fired.some((v) => v.bad.includes('#fff')), '生の16進を検出できていない');
 expect(fired.some((v) => v.bad.includes('rgba(0,0,0,.2)')), 'style 属性の rgba() を検出できていない');
 expect(fired.some((v) => v.bad.includes('1px')), '色を持つプロパティに紛れた生の寸法を検出できていない');
-expect(fired.length === 3, `許可した値まで落としている（${fired.length} 件）`);
+expect(
+  fired.some((v) => v.bad.includes('0.08em')),
+  '組版の次元の生値を検出できていない（決定1-9 で字送りはスケールを持った）',
+);
+/*
+ * **通る側の対照。** 落ちるべきものだけを並べると、
+ * 「通すはずの書き方が落ちるようになった」ことに気づけない（教訓2、Issue #63）。
+ * とくに calc() は、加算項を足す唯一の書き方である
+ */
+expect(
+  !fired.some((v) => v.prop === 'font-size' || v.prop === 'line-height'),
+  'トークンだけで組んだ組版の宣言を落としている',
+);
+expect(
+  !fired.some((v) => v.value.startsWith('calc(')),
+  'calc() で加算項を足す書き方を落としている（決定1-9）',
+);
+expect(fired.length === 4, `許可した値まで落としている（${fired.length} 件）`);
 
 /* ============================================================
    本体
@@ -239,7 +287,11 @@ if (violations.length) {
   for (const v of violations) {
     console.error(`  ${PAGE}:${v.line}  ${v.prop}: ${v.value}   ← ${v.bad.join(' ')}`);
   }
-  console.error('\n色を持ちうるプロパティは、生成した変数だけで書くこと。');
+  console.error(
+    '\n色を持ちうるプロパティと、スケールを持つ組版の次元' +
+      '（font-size / line-height / letter-spacing / font-family）は、\n' +
+      '生成した変数だけで書くこと。加算が要る場合は calc() で足す（決定1-9）。',
+  );
 }
 
 if (unknown.length || internalRefs.length || violations.length) process.exit(1);

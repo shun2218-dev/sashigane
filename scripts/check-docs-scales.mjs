@@ -18,6 +18,9 @@ import {
   durationTransition,
   fontSize,
   leadingFamilies,
+  letterSpacing,
+  letterSpacingCaps,
+  letterSpacingCoefficient,
   lineHeight,
   breakpoint,
   breakpointNames,
@@ -79,6 +82,31 @@ if (lhRows.length !== fontSize.length) {
   }
 }
 
+/* ---------- letter-spacing 表: | index | ○○px | ○○em | ---------- */
+/*
+ * **単位を書いた形で照合する。** 数字だけの表にすると font-size 表（同じ列数）と
+ * 見分けがつかず、rows(2) が両方拾って行数が合わなくなる。
+ * 表の側に単位を残すのは読み手のためでもある（em は「サイズに対する比」なので、
+ * px と並べないと大きさが分からない）。
+ */
+const lsRows = [
+  ...doc.matchAll(/^\|\s*(\d+)\s*\|\s*([\d.]+)px\s*\|\s*(-?[\d.]+)(?:em)?\s*\|\s*$/gm),
+].map((m) => [+m[1], +m[2], +m[3]]);
+
+if (lsRows.length !== fontSize.length) {
+  errors.push(
+    `letter-spacing の表が ${lsRows.length} 行しか見つかりません（期待 ${fontSize.length} 行）。`,
+  );
+} else {
+  for (const [i, px, em] of lsRows) {
+    if (px !== +fontSize[i].toFixed(2)) {
+      errors.push(`letter-spacing 表の ${i} 行目の px: 表 ${px} / 生成器 ${fontSize[i].toFixed(2)}`);
+    }
+    const want = +letterSpacing(fontSize[i]).toFixed(4);
+    if (em !== want) errors.push(`letter-spacing[${i}]: 表 ${em} / 生成器 ${want}`);
+  }
+}
+
 /* ---------- README の概要表 ---------- */
 /*
  * README にも値を書いている（利用者が最初に見る場所なので、
@@ -96,6 +124,8 @@ const readmeExpectations = [
   ['duration ループの下端', String(Math.round(durationLoop[0]))],
   ['duration ループの上端', String(Math.round(durationLoop.at(-1)))],
   ['breakpoint', breakpointNames.map((n) => breakpoint(n)).join(', ') + breakpointUnit],
+  ['letter-spacing の係数', `${letterSpacingCoefficient} × (root ÷ size`],
+  ['letter-spacing の大文字化の加算項', `${letterSpacingCaps}em`],
 ];
 
 for (const [label, text] of readmeExpectations) {
@@ -117,4 +147,5 @@ if (errors.length) {
 
 console.log(`✓ font-size 表 ${fsRows.length} 行が生成器と一致`);
 console.log(`✓ line-height 表 ${lhRows.length} 行 × ${Object.keys(leadingFamilies).length} 系統が生成器と一致`);
+console.log(`✓ letter-spacing 表 ${lsRows.length} 行が生成器と一致`);
 console.log(`✓ README の概要表 ${readmeExpectations.length} 項目が生成器と一致`);
