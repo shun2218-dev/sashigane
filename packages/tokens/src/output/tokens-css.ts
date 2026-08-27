@@ -9,6 +9,8 @@ import { breakpoint, breakpointUnit, densityLevels } from '../scales.ts';
 import {
   colorPrimitiveVars,
   colorSemanticVars,
+  depthOf,
+  hoverRuleVars,
   surfaceContextVars,
   surfaceNames,
 } from './color-vars.ts';
@@ -40,10 +42,15 @@ const surfaceBlocks = (
   palette: Palette,
   scope: string,
 ): string[] =>
-  surfaceNames.flatMap((name, depth) => {
+  surfaceNames.flatMap((name) => {
     const attr = `[data-sg-surface="${name}"]`;
     const selector = scope ? `${scope} ${attr}, ${scope}${attr}` : attr;
-    return [`${selector} {`, ...surfaceContextVars(mode, palette, depth), '}', ''];
+    return [
+      `${selector} {`,
+      ...surfaceContextVars(mode, palette, depthOf(name)),
+      '}',
+      '',
+    ];
   });
 
 export const toTokensCss = (palette: Palette): string =>
@@ -111,4 +118,18 @@ export const toTokensCss = (palette: Palette): string =>
     '}',
     '',
     ...surfaceBlocks('dark', palette, '[data-theme="dark"]'),
+    '/* hover の文脈（決定5-13）。**規則は1本だけ**で、値は面が控えた --sg-color-hover-* から',
+    '   継承で届く。セレクタで面ごとに書き分けると、overlay が梯子の途中に戻る面である',
+    '   ために「入れ子の深さ」と「出力の順序」が一致せず、どちらかの入れ子が必ず外れる。',
+    '',
+    '   data-sg-interactive を付けた要素だけが対象。付けなければ何も起きないので、',
+    '   背景だけ塗って前景を置き去りにする道は存在しない（決定5-12 と同じ理由、教訓4）。',
+    '',
+    '   触る画面では hover が張り付いて残るため (hover: hover) で囲う。',
+    '   面のブロックより後に出すことで、背景色の指定が順序で勝つ。 */',
+    '@media (hover: hover) {',
+    '  [data-sg-interactive]:hover {',
+    ...hoverRuleVars(palette).map((l) => `  ${l}`),
+    '  }',
+    '}',
   ].join('\n');

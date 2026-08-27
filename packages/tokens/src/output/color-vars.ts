@@ -43,6 +43,8 @@ const semanticFor = (
           `  --sg-color-bg-page: var(--sg-neutral-${mode === 'light' ? 50 : 950});`,
           `  --sg-color-bg-surface: var(--sg-neutral-${mode === 'light' ? 100 : 900});`,
           `  --sg-color-bg-inset: var(--sg-neutral-${mode === 'light' ? 200 : 800});`,
+          // overlay は surface と同じ段（決定5-13）。別の役割だが同じ値になる
+          `  --sg-color-bg-overlay: var(--sg-neutral-${mode === 'light' ? 100 : 900});`,
         ]
       : [];
   return [
@@ -52,6 +54,9 @@ const semanticFor = (
     `  --sg-color-text-faint: var(--sg-neutral-${roles.text.faint});`,
     `  --sg-color-border-subtle: var(--sg-neutral-${roles.border.subtle});`,
     `  --sg-color-border-default: var(--sg-neutral-${roles.border.default});`,
+    `  --sg-color-border-strong: var(--sg-neutral-${roles.border.strong});`,
+    // チャートのグリッド線は UI の境界より薄い第4の段（決定5-13）
+    `  --sg-color-chart-gridline: var(--sg-neutral-${roles.gridline});`,
     `  --sg-color-accent: var(--sg-primary-${roles.colorText});`,
     `  --sg-color-accent-mark: var(--sg-primary-${roles.colorMark});`,
     `  --sg-color-border-focus: var(--sg-primary-${roles.colorMark});`,
@@ -94,13 +99,33 @@ const sequentialVars = (mode: 'light' | 'dark', surfaceStep: number): string[] =
   );
 };
 
-/** 面の名前。重なりの順に並ぶ。tokens.css の `[data-sg-surface]` の値になる */
-export const surfaceNames = ['page', 'surface', 'inset'] as const;
+/** 面の名前。tokens.css の `[data-sg-surface]` の値になる */
+export const surfaceNames = ['page', 'surface', 'inset', 'overlay'] as const;
 export type SurfaceName = (typeof surfaceNames)[number];
 
+/**
+ * 面の名前 → 梯子の深さ。**添字とは一致しない。**
+ *
+ * `overlay` は `surface` と同じ段に置く（決定5-13）。重なりの外に出る面なので
+ * 深さは下地に依らないが、最深段に置くと**中の項目が hover できなくなる。**
+ * 暗色の 700 は梯子の最深段で、その hover が要求する 600 は成立しないためである。
+ * ドロップダウンは overlay の中に hover する項目が並ぶ形なので、これは実用上の破綻になる。
+ *
+ * 浮いて見せるのは影と明度差分（決定1-8 の elevation）の責務である。**未実装。**
+ */
+const surfaceDepth: Record<SurfaceName, number> = {
+  page: 0,
+  surface: 1,
+  inset: 2,
+  overlay: 1,
+};
+export const depthOf = (name: SurfaceName): number => surfaceDepth[name];
+
 /** 色のセマンティック。モードで**参照する段を変えるだけ**（決定5-2） */
-export const colorSemanticVars = (mode: 'light' | 'dark', palette: Palette): string[] =>
-  semanticFor(mode, surfaceRolesFor(palette, mode)[0]!, 0);
+export const colorSemanticVars = (mode: 'light' | 'dark', palette: Palette): string[] => [
+  ...semanticFor(mode, surfaceRolesFor(palette, mode)[0]!, 0),
+  ...hoverMirrorVars(mode, palette, 0),
+];
 
 /**
  * 面の文脈（決定5-12）。**背景と前景を同時に決める。**
@@ -118,5 +143,65 @@ export const surfaceContextVars = (
   return [
     `  background-color: var(--sg-neutral-${roles.surface});`,
     ...semanticFor(mode, roles, depth),
+    ...hoverMirrorVars(mode, palette, depth),
+  ];
+};
+
+/**
+ * hover の文脈（決定5-13）。**深さ+1 の役割一式を `--sg-color-hover-*` に控えておく。**
+ *
+ * hover した要素の文脈は「最も近い面の1段深いもの」である。
+ * これをセレクタで表そうとすると、`overlay` が梯子の途中に戻る面であるために
+ * 「入れ子の深さ」と「出力の順序」が一致せず、どちらかの入れ子が必ず外れる。
+ * **CSS の継承に解かせる**と、最も近い面が控えた値がそのまま届くので入れ子に依らない。
+ *
+ * 最深段には hover の行き先が無いので何も出さない。
+ * 名前を持つ面（page / surface / inset / overlay）はすべて最深段より浅いので、
+ * `data-sg-surface` で作れる面には必ず hover がある。
+ */
+export const hoverMirrorVars = (
+  mode: 'light' | 'dark',
+  palette: Palette,
+  depth: number,
+): string[] => {
+  const next = surfaceRolesFor(palette, mode)[depth + 1];
+  if (!next) return [];
+  const mirrored = semanticFor(mode, next, depth + 1).map((line) =>
+    line.replace(/^(\s*)--sg-color-/, '$1--sg-color-hover-'),
+  );
+  /**
+   * 深い面では系列色を配れず、変数そのものが出ない（決定5-12）。
+   * 控えの側が欠けると hover したときに値が無効になり、
+   * 「親の面の値を継承する」という既存の振る舞いが壊れるので、ここで現在の面へ落とす。
+   */
+  const missing = palette.categorical
+    .map((_, i) => `--sg-color-hover-chart-${i + 1}`)
+    .filter((n) => !mirrored.some((l) => l.trimStart().startsWith(`${n}:`)))
+    .map((n) => `  ${n}: var(${n.replace('--sg-color-hover-', '--sg-color-')});`);
+  return [
+    `  --sg-color-hover-bg: var(--sg-neutral-${next.surface});`,
+    ...mirrored,
+    ...missing,
+  ];
+};
+
+/**
+ * hover の規則そのもの。**1本しか出さない。** 値は控えから継承で届く。
+ *
+ * `data-sg-interactive` を明示的に付けた要素だけが対象である。
+ * 付けなければ何も起きないので、`bg-hover` を塗るだけの道は存在しない（教訓4）。
+ *
+ * `@media (hover: hover)` で囲うのは、触る画面で hover が張り付いて残るためである。
+ *
+ * **既知の限界:** hover した要素の中の要素を hover しても、控えは面の側にしか無いので
+ * 文脈は変わらない（外側と同じ段になる）。保証は割らないが、内側の hover は見えない。
+ */
+export const hoverRuleVars = (palette: Palette): string[] => {
+  const names = semanticFor('light', surfaceRolesFor(palette, 'light')[1]!, 1).map(
+    (line) => line.trimStart().split(':')[0]!,
+  );
+  return [
+    '  background-color: var(--sg-color-hover-bg);',
+    ...names.map((n) => `  ${n}: var(${n.replace('--sg-color-', '--sg-color-hover-')});`),
   ];
 };

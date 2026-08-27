@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import tokens from '../src/tokens.json' with { type: 'json' };
 import {
   contrastBetween,
+  depthOf,
   generatePalette,
   hexToOklch,
   hueDistance,
@@ -21,6 +22,7 @@ import {
   resolveStatusHues,
   statusNames,
   steps,
+  surfaceNames as surfaceNamesAll,
   surfaceRolesFor,
   verifyPalette,
   type Palette,
@@ -78,7 +80,9 @@ describe('コントラスト保証（決定5-2）', () => {
 });
 
 describe('面ごとのコントラスト保証（決定5-12）', () => {
-  const surfaceNames = ['page', 'surface', 'inset'] as const;
+  // 4つ目は名前を持たない段である（決定5-13）。inset の hover の行き先で、
+  // data-sg-surface では名乗れない。**検査の対象からは外さない。**
+  const surfaceNames = ['page', 'surface', 'inset', 'hover(inset)'] as const;
 
   for (const mode of ['light', 'dark'] as const) {
     const surfaces = mode === 'light' ? g.surfaces.light : g.surfaces.dark;
@@ -481,5 +485,68 @@ describe('入力の再現性を警告する（決定5-1）', () => {
     const reachable = base.primary.byStep[500]!;
     const pal = generatePalette(reachable);
     expect(pal.warnings.some((w) => w.code === 'primary-chroma-unreachable')).toBe(false);
+  });
+});
+
+describe('面の役割の追加（決定5-13）', () => {
+  const g2 = tokens.color.guarantees;
+
+  for (const mode of ['light', 'dark'] as const) {
+    const surfaces = mode === 'light' ? g2.surfaces.light : g2.surfaces.dark;
+    /** 面から遠ざかる向きの距離。境界の4段はこの順に並んでいなければならない */
+    const away = (step: number) =>
+      mode === 'light' ? steps.indexOf(step) : steps.length - 1 - steps.indexOf(step);
+
+    it(`${mode}: 境界の4段は面から遠ざかる順に並ぶ（gridline < subtle < default < strong）`, () => {
+      for (const { H, pal } of palettes) {
+        surfaces.forEach((surfaceStep, depth) => {
+          const r = surfaceRolesFor(pal, mode)[depth]!;
+          const ladder = [r.gridline, r.border.subtle, r.border.default, r.border.strong];
+          const where = `primary=${H}° / ${mode} 面${surfaceStep}`;
+          expect(away(r.gridline), `${where}: gridline が面より内側`).toBeGreaterThan(
+            away(surfaceStep),
+          );
+          for (let i = 1; i < ladder.length; i++) {
+            expect(away(ladder[i]!), `${where}: 境界の段が逆転した`).toBeGreaterThan(
+              away(ladder[i - 1]!),
+            );
+          }
+        });
+      }
+    });
+  }
+
+  it('名前を持つ面には必ず hover の行き先がある', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const rows = surfaceRolesFor(palettes[0]!.pal, mode);
+      for (const name of surfaceNamesAll) {
+        expect(rows[depthOf(name) + 1], `${mode} / ${name} に hover の行き先が無い`).toBeDefined();
+      }
+    }
+  });
+
+  /**
+   * **梯子が4段で止まる根拠を、文章ではなく検査で持つ。**
+   *
+   * 5段目を足せる状態になったら（ランプの段数を増やしたときなど）この検査が落ちる。
+   * 落ちたら「もう1段置ける」という意味なので、決定5-13 を読み直すことになる。
+   */
+  it('梯子の5段目は成立しない（明色は text.default が割り、暗色は段が足りない）', () => {
+    // **1色で測っても答えにならない。** 色相によっては 4.5 を満たしてしまう
+    // （primary=314° で 4.52）。保証は全色相で成立していなければ意味がないので、
+    // ここで見るのは最悪色相である（決定5-1、教訓2）
+    let worst = { ratio: Number.POSITIVE_INFINITY, H: -1 };
+    for (const { H, pal } of palettes) {
+      const ratio = contrastBetween(pal.neutral.byStep[900]!, pal.neutral.byStep[400]!);
+      if (ratio < worst.ratio) worst = { ratio, H };
+    }
+    expect(
+      worst.ratio,
+      `明色の面400 が全色相で 4.5 を満たした（最悪は primary=${worst.H}°）`,
+    ).toBeLessThan(g2.textMin);
+
+    // 暗色 面600 は default(段100) より浅い段が 50 しか無く、muted と faint を置けない。
+    // こちらは色相に依らない構造の話
+    expect(steps.filter((s) => s < 100).length, '暗色の面600 に文字の3段を置ける').toBeLessThan(2);
   });
 });
