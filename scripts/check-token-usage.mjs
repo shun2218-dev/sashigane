@@ -45,10 +45,26 @@
  *     `--brand-blue: #3b82f6` のような別名の生値は検出できない
  *   - `className={…}` の式の中に閉じ括弧を含む文字列がある場合、式として読めないので飛ばす
  *   - 除外したファイル（下記 EXCLUDED）
+ *   - **未追跡のファイル**（`git ls-files` が対象。下記）
+ *   - **末尾が `-` で終わる一致**（Issue #63 の逃げ道のために捨てている）。
+ *     そのため `var(--sg-space-${n})` のように**実行時に組み立てるプリミティブ参照**は
+ *     見えない。直す前は `--sg-space-` が `unknown` として報告されていたが、
+ *     メッセージは的外れで、たまたま行が挙がっていただけだった。
+ *     塞ぐには「`--sg-…-` の直後が `${` なら報告する」のように**書き方を先回りして
+ *     列挙する**ことになるので採らない（教訓5）
  *
  * 逆に**過剰に検出する**ものが1つある。コメントに書いた `--sg-space-3` も違反として落ちる。
  * コメントだけを除くには言語ごとのパーサが要り、割に合わない。
  * 説明でプリミティブ名に触れたい場合は `--sg-space-N` のように書く。
+ * **末尾が `-` で終わる一致は名前として扱わない**ので、この書き方は落ちない（Issue #63）。
+ * 逃げ道が実際に効くことは陰性対照で確かめている。
+ *
+ * ## 検査対象は「追跡下」のファイルである
+ *
+ * `git ls-files` を対象にしているので、**`git add` していないファイルは検査に入らない。**
+ * 生成物や作業中のファイルまで検査したくないので性質としては正しいが、
+ * **「手元で緑」と「CI で緑」がずれる原因になる。**
+ * Issue #63 はこれで見逃した。新しいファイルを足したら、先に `git add` する。
  *
  * ## 陰性対照
  *
@@ -70,7 +86,7 @@ const TARGET_EXT = /\.(css|scss|html|tsx|jsx|ts|js|mts|mjs)$/;
 /**
  * 対象から外すもの。**理由の書けない除外を足さない。**
  * 対象は「追跡下の全ソース」であり、ここに列挙したものだけを引く。
- * 新しく作ったファイルは自動的に検査に入る。
+ * **追跡されたファイルは自動的に検査に入る。** 未追跡のものは入らない（上記）。
  */
 const EXCLUDED = [
   {
@@ -103,8 +119,21 @@ const EXCLUDED = [
    検出器（フィクスチャにも実ファイルにも同じものを当てる）
    ============================================================ */
 
-/** ソース中に現れる `--sg-*` の名前 */
+/**
+ * ソース中に現れる `--sg-*` の名前。
+ *
+ * **末尾が `-` の一致は捨てる**（`isName` を通す）。`--sg-space-N` `--sg-font-stack-*`
+ * `--sg-space-{段}` のような**説明のための書き方**は、手前までが一致して
+ * `--sg-space-` という名前を作り、表に無いので `unknown` で落ちていた。
+ * 文書が案内している逃げ道が機能していなかった（Issue #63）。
+ *
+ * `--sg-space-` は宣言としてありえない形なので、名前として扱わないのが素直である。
+ * **切り詰めない。** `--sg-space` に丸めると、それはそれで表に無い名前になる。
+ */
 const SG_NAME = /--sg-[a-z0-9-]+/g;
+
+/** 宣言としてありえる形か。末尾が `-` のものは説明のための書き方である */
+const isName = (n) => !n.endsWith('-');
 
 /** class / className の始まり。値の切り出しは classValues() が続きを読む */
 const CLASS_ATTR_HEAD = /\b(?:class|className)\s*=\s*/g;
@@ -180,6 +209,8 @@ const findTokenViolations = (text, allowed, primitives) => {
   const out = [];
   for (const m of text.matchAll(SG_NAME)) {
     const name = m[0];
+    // 説明のための書き方（--sg-space-N など）。宣言としてありえない形なので見ない
+    if (!isName(name)) continue;
     if (allowed.has(name)) continue;
     out.push({
       kind: primitives.has(name)
@@ -289,6 +320,14 @@ const FIXTURES = [
   { text: 'svg { fill: var(--sg-color-chart-1); }', expect: null },
   { text: '<div class="p-4 bg-danger hover:bg-danger/80 md:p-6">', expect: null },
   { text: 'const c = <b className={`p-4 ${extra}`} />', expect: null },
+  /*
+   * Issue #63: **文書が案内している逃げ道が実際に効くこと。**
+   * 直す前はどれも手前まで一致して `--sg-space-` `--sg-font-stack-` を作り、
+   * 表に無い名前として落ちていた。「落ちないこと」の対照が無かったので静かに壊れていた
+   */
+  { text: '/* 説明: --sg-space-N は段の番号 */', expect: null },
+  { text: '/* 書体スタック --sg-font-stack-* はプリミティブ */', expect: null },
+  { text: '// 余白は --sg-space-{段} で参照する', expect: null },
   // 決定2-7: 差し込み口へ書体名を差すのは利用側の正当な行為
   { text: ':root { --sg-font-brand-body-latin: var(--font-inter); }', expect: null },
   { text: 'p { font-family: var(--sg-text-body-family); }', expect: null },
@@ -359,7 +398,12 @@ if (violations.length) {
   process.exit(1);
 }
 
-console.log(`✓ 陰性対照 ${FIXTURES.length} 件が期待どおり発火した`);
+// 「発火した」件数と「落ちなかった」件数を分けて出す。混ぜると、
+// 通るべきものだけが増えても件数が伸びて、対照が効いているように見える（教訓2）
+const fires = FIXTURES.filter((f) => f.expect !== null).length;
+console.log(
+  `✓ 陰性対照 ${fires} 件が期待どおり発火し、通るべき ${FIXTURES.length - fires} 件は落ちなかった`,
+);
 console.log(
   `✓ プリミティブ参照なし（許可: セマンティック ${semantics.size} 個 + 差し込み口 ${inputs.size} 個）`,
 );
