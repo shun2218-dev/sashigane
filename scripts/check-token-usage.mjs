@@ -82,6 +82,15 @@ const EXCLUDED = [
     why: 'この検査自身が陰性対照として違反文字列を持つ',
   },
   {
+    re: /^apps\/docs\/src\/sample-page\.html$/,
+    why:
+      '生成した変数を使い切って見せるためのサンプルであり、コンポーネントではない（Issue #61）。' +
+      'radius / duration / border-width / コンポーネント内部の余白にはセマンティックが無く（原則7）、' +
+      '踏まずに LP を組むことができない。**踏んだ回数は check:sample-page が集計しており、' +
+      'それ自体がセマンティックを足すかどうかの観測になる。** ' +
+      '生値の色が混ざっていないことは check:sample-page が別途検査する',
+  },
+  {
     re: /^apps\/docs\/public\/standalone\.html$/,
     why:
       'tokens.css が単体で成立することを目で確かめる検査用フィクスチャであり、コンポーネントではない。' +
