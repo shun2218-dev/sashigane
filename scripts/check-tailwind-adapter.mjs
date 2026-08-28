@@ -121,9 +121,14 @@ const EXPECTATIONS = [
   ['max-w-md', false, '--container-*'],
   ['w-2xl', false, '--container-*'],
   ['min-w-md', false, '--container-*'],
-  ['font-bold', false, '--font-weight-*。太さはまだ決めていない（#53）'],
-  ['font-medium', false, '--font-weight-*'],
-  ['font-light', false, '--font-weight-*'],
+  /* 太さ（決定1-13）。素の t シャツ語彙は落とし、役割名だけを出す */
+  ['font-bold', false, '素の t シャツ語彙。太さは役割で書く（決定1-13）'],
+  ['font-medium', false, '素の t シャツ語彙'],
+  ['font-light', false, '素の t シャツ語彙。300 は観測ゼロ'],
+  ['font-base', true, '太さの役割。既定 400'],
+  ['font-emphasis', true, '太さの役割。既定 500'],
+  ['font-heading', true, '太さの役割。既定 600'],
+  ['font-strong', true, '太さの役割。既定 700'],
   ['blur-sm', false, '--blur-*。elevation と同じく未実装（決定1-8）'],
   ['backdrop-blur-md', false, '--blur-*'],
   ['drop-shadow-lg', false, '--drop-shadow-*'],
@@ -326,6 +331,50 @@ if (!/font-family:\s*var\(--sg-text-numeric-family\)/.test(numeric)) {
 }
 if (!/font-feature-settings:\s*var\(--sg-font-feature-tabular\)/.test(numeric)) {
   failures.push('font-numeric に等幅数字の指定が伴っていない。書体だけが当たると桁が揃わない');
+}
+
+/*
+ * **書体の役割と太さの役割が同じ font-* を取り合っていないこと**（決定1-13）。
+ *
+ * Tailwind では `--font-*`（書体）と `--font-weight-*`（太さ）が**どちらも
+ * `font-{名前}` を作る。** 名前が衝突すると、片方が生成されないか、
+ * 生成された規則の中身が入れ替わる。**どちらもエラーにならない**（教訓4）。
+ *
+ * クラスが「出たか」だけを見る EXPECTATIONS では捕まらないので、
+ * **規則の中身**を見る。
+ */
+{
+  const bodyOf = (cls) => /\{([^}]*)\}/.exec(out.slice(out.search(new RegExp(`^\\s*\\.${cls}\\s*\\{`, 'm'))))?.[1] ?? '';
+  // **名前は生成物から取る。** 手で並べると、役割を増やしたときに検査から漏れる
+  const themeCss = readFileSync(join(dist, 'theme.css'), 'utf8');
+  const declared = (re) => [...themeCss.matchAll(re)].map((m) => m[1]);
+  const weightNames = declared(/^\s*--font-weight-([a-z0-9-]+)\s*:/gm);
+  // `--font-numeric--font-feature-settings` のような**修飾子**は名前ではない。
+  // Tailwind の `--{名前空間}-{名前}--{プロパティ}` の形なので、`--` を含むものを外す
+  const familyNames = declared(/^\s*--font-((?!weight-)[a-z0-9-]+)\s*:/gm).filter(
+    (n) => !n.includes('--'),
+  );
+  if (weightNames.length === 0 || familyNames.length === 0) {
+    failures.push('書体または太さの役割が theme.css に1つも無い');
+  }
+  for (const name of familyNames) {
+    const b = bodyOf(`font-${name}`);
+    if (!/font-family:/.test(b)) {
+      failures.push(`font-${name} が書体を当てていない（太さの役割名と衝突した可能性）`);
+    }
+    if (/font-weight:/.test(b)) {
+      failures.push(`font-${name} に太さが混ざっている。--font-weight-${name} と衝突している`);
+    }
+  }
+  for (const name of weightNames) {
+    const b = bodyOf(`font-${name}`);
+    if (!/font-weight:/.test(b)) {
+      failures.push(`font-${name} が太さを当てていない（書体の役割名と衝突した可能性）`);
+    }
+    if (/font-family:/.test(b)) {
+      failures.push(`font-${name} に書体が混ざっている。--font-${name} と衝突している`);
+    }
+  }
 }
 
 /* preflight の既定書体が我々のものになっていること。

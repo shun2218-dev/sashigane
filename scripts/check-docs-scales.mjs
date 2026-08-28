@@ -21,6 +21,8 @@ import {
   letterSpacing,
   letterSpacingCaps,
   letterSpacingCoefficient,
+  fontWeight,
+  fontWeightRoles,
   lineHeight,
   breakpoint,
   breakpointNames,
@@ -126,6 +128,13 @@ const readmeExpectations = [
   ['breakpoint', breakpointNames.map((n) => breakpoint(n)).join(', ') + breakpointUnit],
   ['letter-spacing の係数', `${letterSpacingCoefficient} × (root ÷ size`],
   ['letter-spacing の大文字化の加算項', `${letterSpacingCaps}em`],
+  [
+    'font-weight の既定',
+    fontWeightRoles
+      .map((r) => /,\s*(\d+)\)$/.exec(fontWeight(r))[1])
+      .join(' / '),
+  ],
+  ['font-weight の役割名', fontWeightRoles.map((r) => `\`${r}\``).join(' ')],
 ];
 
 for (const [label, text] of readmeExpectations) {

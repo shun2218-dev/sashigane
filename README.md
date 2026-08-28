@@ -63,6 +63,7 @@ Tailwind を使う場合は、`--sg-*` を Tailwind の名前空間に写像す�
 | font-size | アンカー `root`、下 `÷9/8` ×3、上 `×5/4` ×7 | `11.24 … 16 … 76.29`（11段） |
 | line-height | `a + (root ÷ 2) / size`、`a` は display / ui / prose | サイズから自動で決まる |
 | letter-spacing | `0.025 × (root ÷ size − 1)` em。大文字化は `0.08em` の加算項 | サイズから自動で決まる |
+| font-weight | 役割で `400 / 500 / 600 / 700`。**書体に合わせて差し替えられる** | `base` `emphasis` `heading` `strong` |
 | radius | spacing の 0〜16 の部分集合 | `0, 4, 8, 12, 16` + `full` |
 | duration | 遷移 `200ms` / ループ `1000ms` アンカー、比率 `√2` | `100 … 400` / `707 … 1414` |
 | border-width | px 固定 | `1, 2, 3` |

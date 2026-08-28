@@ -20,6 +20,9 @@ import {
   fontStackNames,
   fontStackVars,
   fontSize,
+  fontWeight,
+  fontWeightInputName,
+  fontWeightRoles,
   generatePalette,
   letterSpacing,
   letterSpacingCaps,
@@ -167,5 +170,63 @@ describe('letter-spacing（決定1-9）', () => {
       '--sg-tracking-caps',
     ]);
     expect(letterSpacingCaps).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * font-weight（決定1-13）。**書体と同じく、値を導出できない次元である。**
+ *
+ * 使える段は書体が実装しているものに限られ、無い段は合成太字になる。
+ * エラーにならないので、**差し込み口とフォールバックの形**を検査で守る。
+ */
+describe('font-weight（決定1-13）', () => {
+  const weights = fontWeightRoles.map((r) => fontWeight(r));
+
+  it('役割は書体の役割と名前が衝突しない（Tailwind ではどちらも font-* を作る）', () => {
+    const familyRoles = new Set<string>([
+      ...FONT_ROLES.map((r) => r.name),
+      ...TEXT_ROLES.map((r) => r.name),
+      ...fontStackNames,
+    ]);
+    for (const r of fontWeightRoles) {
+      expect(familyRoles.has(r), `太さの役割 ${r} が書体の役割と同名`).toBe(false);
+    }
+  });
+
+  it('必ず差し込み口とフォールバックの対で出る（差していない口が空にならない）', () => {
+    for (const [i, value] of weights.entries()) {
+      const role = fontWeightRoles[i]!;
+      // var(口) だけだと、差していない環境で空文字になり宣言ごと無効になる（教訓4）
+      expect(value, role).toMatch(
+        new RegExp(`^var\\(${fontWeightInputName(role)}, \\d{3}\\)$`),
+      );
+    }
+  });
+
+  it('既定は CSS の段（100〜900 の100刻み）である', () => {
+    for (const value of weights) {
+      const n = Number(/,\s*(\d+)\)$/.exec(value)![1]);
+      expect(n % 100, value).toBe(0);
+      expect(n, value).toBeGreaterThanOrEqual(100);
+      expect(n, value).toBeLessThanOrEqual(900);
+    }
+  });
+
+  it('既定は役割の順に強くなる（同じ段が2つ無い）', () => {
+    const nums = weights.map((v) => Number(/,\s*(\d+)\)$/.exec(v)![1]));
+    for (let i = 1; i < nums.length; i++) {
+      expect(nums[i]!, `${fontWeightRoles[i]}`).toBeGreaterThan(nums[i - 1]!);
+    }
+  });
+
+  it('差し込み口は宣言しない（宣言するとフォールバックが効かない）', () => {
+    for (const role of fontWeightRoles) {
+      expect(names, role).not.toContain(fontWeightInputName(role));
+    }
+    // 口は名前表の inputs 側にある
+    const layers = tokenLayers(generatePalette({ L: 0.6, C: 0.1, H: 220 }));
+    for (const role of fontWeightRoles) {
+      expect(layers.inputs, role).toContain(fontWeightInputName(role));
+    }
   });
 });
