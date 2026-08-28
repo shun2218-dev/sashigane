@@ -15,6 +15,7 @@
  */
 import type { Palette } from '../color/palette.ts';
 import {
+  borderWidth,
   fontWeightRoles,
   breakpoint,
   breakpointNames,
@@ -107,6 +108,12 @@ export const toThemeCss = (palette: Palette): string =>
       return name ? [`  --radius-${name}: var(--sg-radius-${index});`] : [];
     }),
     '  --radius-full: var(--sg-radius-full);',
+    '',
+    '  /* border-width — 名前は px の値に合わせる（決定3-3 の倍数規約と同じ考え方）。',
+    '     索引で写像すると border-2 が 3px になって素の Tailwind と食い違う。',
+    '     **写像するとスケールの段は素の数値を上書きする。** 段の外の border-4 などは',
+    '     Tailwind が素の px で作り続けるので、そちらは lint で塞ぐ（決定3-5） */',
+    ...borderWidth.map((px, index) => `  --border-width-${px}: var(--sg-border-width-${index});`),
     '',
     '  /* text — 素の t シャツ語彙は値が一致しないので使わない。',
     '     セマンティック役割名を使い、行高を対で束ねる（決定1-4・3-3） */',
