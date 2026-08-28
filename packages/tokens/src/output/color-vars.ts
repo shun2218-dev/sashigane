@@ -10,6 +10,9 @@
  */
 import type { Palette, Ramp, SurfaceRoles } from '../color/palette.ts';
 import { statusNames, steps, surfaceRolesFor } from '../color/palette.ts';
+import tokensJson from '../tokens.json' with { type: 'json' };
+
+const cfg = tokensJson.color;
 import { toCss } from '../color/oklch.ts';
 
 const rampVars = (prefix: string, ramp: Ramp): string[] =>
@@ -234,3 +237,48 @@ export const hoverRuleVars = (palette: Palette): string[] => [
     .filter((n) => n !== '--sg-color-hover-bg')
     .map((n) => `  ${n.replace('--sg-color-hover-', '--sg-color-')}: var(${n});`),
 ];
+
+/**
+ * ページ地に対して**対比の要件を持つ**色の役割（決定5-2・5-7）。
+ *
+ * `tokens.js` は16進に丸めるので、境界ちょうどに解かれた段が丸めで要件を割ることがある
+ * （決定2-6 改訂、Issue #52）。**どの役割にどの要件があるか**をここで持ち、
+ * 割ったときだけ寄せる。
+ *
+ * ここに載っていない役割は「要件が無い」ものである。
+ *   bg-*        面そのもの。前景ではない
+ *   border-*    装飾。要件を持たない（決定5-12）
+ *   on-*        要件はあるが**相手が塗り**で、ページ地ではない（決定5-14）
+ *   sequential-* 帯として読めればよく、特定の比を要求しない（決定5-11）
+ *
+ * **分類漏れは検査が捕まえる。** `test/values.test.ts` が、すべての `--sg-color-*` が
+ * 「要件あり」か「要件無しとして明示」のどちらかに入っていることを見る。
+ */
+export const colorRequirements = (
+  mode: 'light' | 'dark',
+  palette: Palette,
+): Map<string, number> => {
+  const g = cfg.guarantees;
+  const roles = surfaceRolesFor(palette, mode)[0]!;
+  const out = new Map<string, number>();
+  for (const k of ['default', 'muted', 'faint']) out.set(`--sg-color-text-${k}`, g.textMin);
+  out.set('--sg-color-accent', g.textMin);
+  out.set('--sg-color-accent-mark', g.markMin);
+  out.set('--sg-color-border-focus', g.markMin);
+  for (const n of statusNames) {
+    out.set(`--sg-color-${n}`, g.textMin);
+    out.set(`--sg-color-${n}-mark`, g.markMin);
+  }
+  (roles.series ?? []).forEach((_, i) => out.set(`--sg-color-chart-${i + 1}`, g.markMin));
+  return out;
+};
+
+/** 要件を持たないことを**明示する**接頭辞。ここも検査が使う */
+export const colorWithoutRequirement = (name: string): boolean =>
+  name.startsWith('--sg-color-bg-') ||
+  name.startsWith('--sg-color-border-subtle') ||
+  name.startsWith('--sg-color-border-default') ||
+  name.startsWith('--sg-color-border-strong') ||
+  name.startsWith('--sg-color-chart-gridline') ||
+  name.startsWith('--sg-color-on-') ||
+  name.startsWith('--sg-color-sequential-');

@@ -37,8 +37,8 @@
  * 上の「生成時点の写し」という制約が、書体では**差す前の姿**という形で現れる。
  */
 import type { Palette } from '../color/palette.ts';
-import { toHex, type Oklch } from '../color/oklch.ts';
-import { colorPrimitiveVars, colorSemanticVars } from './color-vars.ts';
+import { hexToOklch, oklchContrast, toHex, type Oklch } from '../color/oklch.ts';
+import { colorPrimitiveVars, colorRequirements, colorSemanticVars } from './color-vars.ts';
 import { outputHeader } from './header.ts';
 import {
   primitiveVars,
@@ -144,6 +144,62 @@ const resolve = (lines: string[], primitives: Map<string, string>): Record<strin
   return out;
 };
 
+/** 16進を1段ずつ動かした近傍。半径 r まで、近い順に返す */
+const neighbourHexes = (hex: string, r: number): string[] => {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const base = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const out: { hex: string; d: number }[] = [];
+  for (let dr = -r; dr <= r; dr++)
+    for (let dg = -r; dg <= r; dg++)
+      for (let db = -r; db <= r; db++) {
+        const c = [base[0]! + dr, base[1]! + dg, base[2]! + db];
+        if (c.some((v) => v < 0 || v > 255)) continue;
+        out.push({
+          hex: `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`,
+          d: Math.abs(dr) + Math.abs(dg) + Math.abs(db),
+        });
+      }
+  return out.sort((a, b) => a.d - b.d).map((x) => x.hex);
+};
+
+/**
+ * **丸めで要件を割ったときだけ、最も近い満たす16進へ寄せる**（決定2-6 改訂、Issue #52）。
+ *
+ * 決定5-2 は端点を要件ちょうどまで解くので余裕がゼロである。`tokens.css` は `oklch()` を
+ * そのまま出すので影響しないが、`tokens.js` は16進に丸めるため、境界ちょうどの段が
+ * **16進に落とした瞬間だけ**要件を下回ることがある。全360色相で 12960 通りを測ると
+ * 文字で 196 件（最悪 4.456）、マークは 0 件だった。
+ *
+ * **「丸めで対比を落とさない」ではない。** それだと半分の値が動く（実測 43560 件中 21560 件）。
+ * 丸めは対比を上下どちらにも動かすので、**要件を割ったときだけ**倒す。
+ */
+const hexMeeting = (fg: string, bg: string, min: number): string => {
+  const bgC = hexToOklch(bg);
+  const ok = (h: string) => oklchContrast(hexToOklch(h), bgC) >= min;
+  if (ok(fg)) return fg;
+  for (let r = 1; r <= 4; r++) {
+    const found = neighbourHexes(fg, r).find(ok);
+    if (found) return found;
+  }
+  // 近傍4段で見つからないなら、丸めでは説明できないずれである。**黙って通さない**（教訓2）
+  throw new Error(`16進で要件 ${min} を満たせません: fg=${fg} bg=${bg}`);
+};
+
+const enforceContrast = (
+  colors: Record<string, string>,
+  mode: 'light' | 'dark',
+  palette: Palette,
+): Record<string, string> => {
+  const bg = colors['--sg-color-bg-page'];
+  if (!bg) throw new Error('ページ地が解決できていません');
+  const out = { ...colors };
+  for (const [name, min] of colorRequirements(mode, palette)) {
+    const cur = out[name];
+    if (cur !== undefined) out[name] = hexMeeting(cur, bg, min);
+  }
+  return out;
+};
+
 export const tokenValues = (palette: Palette): TokenValues => {
   const primitives = primitiveValues(palette);
   const typography = resolve(typographySemanticVars(), primitives);
@@ -154,8 +210,16 @@ export const tokenValues = (palette: Palette): TokenValues => {
    */
   const spacing = resolve(spacingSemanticVars('default'), primitives);
   return {
-    light: { ...typography, ...spacing, ...resolve(colorSemanticVars('light', palette), primitives) },
-    dark: { ...typography, ...spacing, ...resolve(colorSemanticVars('dark', palette), primitives) },
+    light: {
+      ...typography,
+      ...spacing,
+      ...enforceContrast(resolve(colorSemanticVars('light', palette), primitives), 'light', palette),
+    },
+    dark: {
+      ...typography,
+      ...spacing,
+      ...enforceContrast(resolve(colorSemanticVars('dark', palette), primitives), 'dark', palette),
+    },
   };
 };
 

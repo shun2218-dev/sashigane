@@ -19,8 +19,26 @@
  *     （build.mjs が1回の実行で両方を書くので、構造上ずれない）
  */
 import { existsSync, readFileSync } from 'node:fs';
-import { toHex } from '../packages/tokens/src/color/oklch.ts';
+import { hexToOklch, oklchContrast, toHex } from '../packages/tokens/src/color/oklch.ts';
 import { expandVarFallbacks } from '../packages/tokens/src/output/values.ts';
+import { colorRequirements } from '../packages/tokens/src/output/color-vars.ts';
+import { generatePalette } from '../packages/tokens/src/color/palette.ts';
+
+/**
+ * 要件の表を作るための primary は、**生成物のヘッダから取る。**
+ *
+ * 定数を書き写すと `build.mjs` とずれても誰も気づかない（二重管理）。
+ * ヘッダには段500 の色が書いてあり、決定5-1 のとおり**受け継ぐのは色相だけ**なので、
+ * それを入力にすれば同じ役割の割り当てが解かれる。
+ */
+const primaryFromHeader = (text) => {
+  const m = /段 500 は (#[0-9a-f]{6})/.exec(text);
+  if (!m) {
+    console.error('生成物のヘッダから primary を読めません。ヘッダの形が変わっています。');
+    process.exit(1);
+  }
+  return m[1];
+};
 
 const DIST = 'packages/tokens/dist';
 for (const f of ['tokens.css', 'tokens.js', 'tokens.layers.json']) {
@@ -90,6 +108,12 @@ const { tokens } = await import(`../${DIST}/tokens.js`);
 
 /* ---------- 突き合わせ ---------- */
 const errors = [];
+let adjusted = 0;
+const palette = generatePalette(hexToOklch(primaryFromHeader(css)));
+const requirements = {
+  light: colorRequirements('light', palette),
+  dark: colorRequirements('dark', palette),
+};
 for (const theme of ['light', 'dark']) {
   const js = tokens[theme];
   if (!js) {
@@ -101,7 +125,40 @@ for (const theme of ['light', 'dark']) {
     if (expected === undefined) {
       errors.push(`tokens.css の ${theme} に ${name} がありません。`);
     } else if (js[name] !== expected) {
-      errors.push(`${theme} の ${name} がずれています: css=${expected} js=${js[name]}`);
+      /*
+       * **要件を割った丸めだけは、ずれていてよい**（決定2-6 改訂、Issue #52）。
+       * 決定5-2 は端点を要件ちょうどまで解くので、16進に落とすと境界の段が割ることがある。
+       * その1件だけを寄せているので、次の3つを満たすなら正しいずれである。
+       *
+       *   1. 素直に丸めた値は要件を割っている
+       *   2. tokens.js の値は要件を満たしている
+       *   3. ずれは丸めで説明できる幅（RGB 各成分 4 段以内）に収まっている
+       *
+       * **3つとも見る。** 「違うが要件は満たす」だけを見ると、まったく別の色でも通る
+       */
+      const min = requirements[theme].get(name);
+      const bg = js['--sg-color-bg-page'];
+      const contrast = (h) => oklchContrast(hexToOklch(h), hexToOklch(bg));
+      const channels = (h) => [1, 3, 5].map((i) => Number.parseInt(h.slice(i, i + 2), 16));
+      const shift = Math.max(
+        ...channels(js[name]).map((v, i) => Math.abs(v - channels(expected)[i])),
+      );
+      const ok =
+        min !== undefined &&
+        bg !== undefined &&
+        contrast(expected) < min &&
+        contrast(js[name]) >= min &&
+        shift <= 4;
+      if (!ok) {
+        errors.push(
+          `${theme} の ${name} がずれています: css=${expected} js=${js[name]}` +
+            (min === undefined
+              ? '（この役割は要件を持たないので、寄せてよい理由が無い）'
+              : `（要件 ${min} / 素直な丸め ${contrast(expected).toFixed(3)} / js ${contrast(js[name]).toFixed(3)} / ずれ ${shift}）`),
+        );
+      } else {
+        adjusted++;
+      }
     }
   }
   for (const name of Object.keys(js)) {
@@ -117,5 +174,8 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`✓ light / dark の ${layers.semantics.length} 件が tokens.css と一致`);
+console.log(
+  `✓ light / dark の ${layers.semantics.length} 件が tokens.css と一致` +
+    (adjusted ? `（うち ${adjusted} 件は丸めで要件を割ったため寄せてある。決定2-6 改訂）` : ''),
+);
 console.log('✓ tokens.js にセマンティック以外の名前は出ていない');
