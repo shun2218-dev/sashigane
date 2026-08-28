@@ -31,10 +31,14 @@
  * `duration-137` `delay-137` `z-42` `opacity-37` `rotate-17` `order-9` `grid-cols-13` など。
  * `duration-137` は決定1-6 のスケールを素通りする。**`p-5` と同じ性質の穴である。**
  *
- * **この検査もそれらを見逃す。** 下の許可集合は括弧を弾くだけなので、
- * 括弧を持たない `duration-137` は通る。対処は Issue #55 で検討する（教訓5）。
- * class 属性のトークンを「英数字と記号の許可集合」に照らし、`[` `]` `(` `)` を
+ class 属性のトークンを「英数字と記号の許可集合」に照らし、`[` `]` `(` `)` を
  * 含むものを落とす。禁止する記法を列挙するのではなく、許す形以外を落とす。
+ *
+ * **素の数値は別に見る**（決定3-5、Issue #55）。括弧を持たないので許可集合では落ちない。
+ * 対象は**スケールを持つ次元だけ**で、いまは `border-*`（決定1-7）と
+ * `duration-*` `delay-*`（決定1-6）である。`z-42` `order-9` `opacity-37` などは
+ * スケールを持っていない次元なので**対象にしない**（原則7。観測してから決める）。
+ * 許す数値は生成した `theme.css` から取るので、写像を増やせば自動で通るようになる。
  *
  * ## この検査が原理的に見逃す範囲（教訓5）
  *
@@ -46,6 +50,13 @@
  *   - `className={…}` の式の中に閉じ括弧を含む文字列がある場合、式として読めないので飛ばす
  *   - 除外したファイル（下記 EXCLUDED）
  *   - **未追跡のファイル**（`git ls-files` が対象。下記）
+ *   - **`outline-<n>` `ring-<n>` `inset-ring-<n>` `stroke-<n>`。** 物理的には
+ *     border-width と同じ「幅」の次元だが、Tailwind の名前空間が別で、まだ写像していない。
+ *     写像すれば同じ形で塞げる（Issue #72）
+ *   - **上の一覧は網羅ではない。** 素通りするユーティリティは列挙で数え切れない
+ *     （Tailwind の全ユーティリティを知らないと数えられない）。
+ *     **塞げていないものが他にもある前提で読む。** 見つけたら SCALED_BARE に
+ *     プレフィックスを1つ足す。この検査は次元の側から絞っているので設計は変わらない
  *   - **末尾が `-` で終わる一致**（Issue #63 の逃げ道のために捨てている）。
  *     そのため `var(--sg-space-${n})` のように**実行時に組み立てるプリミティブ参照**は
  *     見えない。直す前は `--sg-space-` が `unknown` として報告されていたが、
@@ -225,15 +236,74 @@ const findTokenViolations = (text, allowed, primitives) => {
   return out;
 };
 
-/** 2. Tailwind の任意値記法 */
+/**
+ * スケールを持つ次元の**素の数値ユーティリティ**（決定3-5、Issue #55）。
+ *
+ * v4 には**テーマを参照しない素の数値**があり、`--*: initial` では止まらない。
+ * `duration-137` は決定1-6 のスケールを、`border-4` は決定1-7 のスケールを素通りする。
+ * `p-5` と同じ性質の穴だが、**`@theme` では構造的に止められない。lint でしか塞げない。**
+ *
+ * 対象は**スケールを持つ次元だけ**である。`z-42` `order-9` `grid-cols-13` `opacity-37`
+ * `rotate-17` `scale-77` `skew-9` `col-span-13` `row-span-7` `aspect-3/4` は
+ * スケールを持っていない次元であり、トークンの管轄ではない（原則7。観測してから決める）。
+ *
+ * 許す数値は**生成した theme.css から取る。** 手で並べると写像を増やしたときにずれる。
+ */
+const SCALED_BARE = [
+  {
+    // border-4 / border-t-4 / border-x-4 …。方向つきも同じ名前空間を使う（実測）
+    re: /^border(?:-[trblxyse])?-(\d+(?:\.\d+)?)$/,
+    namespace: /^\s*--border-width-([0-9.]+)\s*:/gm,
+    dimension: 'border-width（決定1-7）',
+  },
+  {
+    re: /^duration-(\d+(?:\.\d+)?)$/,
+    namespace: /^\s*--transition-duration-([0-9.]+)\s*:/gm,
+    dimension: 'duration（決定1-6）',
+  },
+  {
+    re: /^delay-(\d+(?:\.\d+)?)$/,
+    namespace: /^\s*--transition-delay-([0-9.]+)\s*:/gm,
+    dimension: 'duration（決定1-6）',
+  },
+];
+
+const THEME = 'packages/tokens/dist/theme.css';
+if (!existsSync(THEME)) {
+  console.error(`${THEME} がありません。先に pnpm build:tokens を実行してください。`);
+  process.exit(1);
+}
+const themeCss = readFileSync(THEME, 'utf8');
+const scaledAllowed = SCALED_BARE.map((r) => ({
+  ...r,
+  allowed: new Set([...themeCss.matchAll(r.namespace)].map((m) => m[1])),
+}));
+
+/** 変種（`md:` `hover:`）と負号を落として、素のユーティリティ名だけにする */
+const bareName = (token) => token.split(':').pop().replace(/^-/, '');
+
+/** 2. Tailwind の任意値記法と、スケールを素通りする素の数値 */
 const findClassViolations = (text) => {
   const out = [];
   const scan = (raw, at) => {
     // 補間は取り除くが、**長さは保つ**。トークンの位置がずれると行番号がずれる（自己レビュー B2）
     const readable = raw.replace(INTERPOLATION, (m) => ' '.repeat(m.length));
     for (const token of readable.matchAll(/\S+/g)) {
-      if (ALLOWED_CLASS_TOKEN.test(token[0])) continue;
-      out.push({ kind: 'arbitrary', line: lineOf(text, at + token.index), what: token[0] });
+      if (!ALLOWED_CLASS_TOKEN.test(token[0])) {
+        out.push({ kind: 'arbitrary', line: lineOf(text, at + token.index), what: token[0] });
+        continue;
+      }
+      const name = bareName(token[0]);
+      for (const rule of scaledAllowed) {
+        const m = rule.re.exec(name);
+        if (!m || rule.allowed.has(m[1])) continue;
+        out.push({
+          kind: 'bare-number',
+          line: lineOf(text, at + token.index),
+          what: token[0],
+          dimension: rule.dimension,
+        });
+      }
     }
   };
   for (const v of classValues(text)) scan(v.raw, v.at);
@@ -297,6 +367,16 @@ const FIXTURES = [
   { text: '<div class="[mask-type:luminance]">', expect: 'arbitrary' },
   { text: '<div class="bg-(--sg-color-accent)">', expect: 'arbitrary' },
   { text: '.card { @apply gap-[7px]; }', expect: 'arbitrary' },
+  /*
+   * Issue #55: スケールを持つ次元の素の数値。**`@theme` では止まらない。**
+   * 変種つき・方向つき・`@apply` の中でも見つかること
+   */
+  { text: '<div class="duration-137">', expect: 'bare-number' },
+  { text: '<div class="delay-137">', expect: 'bare-number' },
+  { text: '<div class="border-4">', expect: 'bare-number' },
+  { text: '<div class="border-t-8">', expect: 'bare-number' },
+  { text: '<div class="md:hover:border-4">', expect: 'bare-number' },
+  { text: '.a { @apply border-4; }', expect: 'bare-number' },
   { text: 'const c = <b className={"text-[13px]"} />', expect: 'arbitrary' },
   // 自己レビュー B1: ヘルパー呼び出しの中のリテラル
   { text: 'const c = <b className={clsx("p-4", on && "p-[7px]")} />', expect: 'arbitrary' },
@@ -315,6 +395,17 @@ const FIXTURES = [
   { text: 'a { padding: var(--sg-space-surface); }', expect: null },
   { text: 'a { padding-inline: var(--sg-space-page); }', expect: null },
   { text: 'a { gap: var(--sg-space-section); }', expect: null },
+  /*
+   * **写像した段は通る。** 落ちる側だけを並べると、写像を増やしたときに
+   * 「通すはずの書き方が落ちる」ことに気づけない（Issue #63 の教訓）
+   */
+  { text: '<div class="border-1 border-2 border-3">', expect: null },
+  { text: '<div class="border-t-2 md:border-x-3">', expect: null },
+  /*
+   * スケールを持たない次元は**対象外**。原則7 に従い、観測してから決める。
+   * ここを弾き始めると、決めていない次元をトークンの管轄に引き込むことになる
+   */
+  { text: '<div class="z-42 order-9 opacity-37 rotate-17 grid-cols-13">', expect: null },
   // 決定2-3 の正規表現が誤検出していた2件
   { text: 'h1 { font-size: var(--sg-text-heading-1); }', expect: null },
   { text: 'svg { fill: var(--sg-color-chart-1); }', expect: null },
@@ -384,6 +475,9 @@ const MESSAGE = {
     'トークン層が自分の仕掛けのために宣言している値です。参照すると hover していない要素に' +
     ' hover の色が乗ります。hover の面は data-sg-interactive で作ります（決定5-13）',
   arbitrary: 'Tailwind の任意値記法です。スケール外の値を書けてしまいます（決定3-1）',
+  'bare-number':
+    'テーマを参照しない素の数値ユーティリティです。スケールを素通りします（決定3-5）。' +
+    'この形は @theme では止められないので、ここでしか塞げません',
 };
 
 if (violations.length) {

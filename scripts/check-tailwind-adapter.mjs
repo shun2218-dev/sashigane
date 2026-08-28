@@ -97,6 +97,16 @@ const EXPECTATIONS = [
   ['rounded-2xl', true, '16px。素の Tailwind と値が一致する'],
   ['rounded-full', true, 'ピルは段ではなく別カテゴリ（決定1-5）'],
   ['rounded-md', false, '6px。対応する段が無いので定義していない'],
+  /* border-width（決定1-7）。名前は px に合わせるので素の Tailwind と値が一致する */
+  ['border-1', true, 'スケールの 1px'],
+  ['border-2', true, 'スケールの 2px'],
+  ['border-3', true, 'スケールの 3px'],
+  ['border-t-3', true, '方向つきも同じ名前空間を使う（実測）'],
+  /*
+   * **border-4 は生成されてしまう。** 段の外の素の数値は @theme では止められない。
+   * ここは「生成されない」ことを期待できない。塞ぐのは check:token-usage（決定3-5）
+   */
+  ['border-4', true, '段の外だが Tailwind が素の px で作る。lint でしか塞げない'],
   ['rounded-3xl', false, '24px。対応する段が無い'],
   ['shadow-lg', false, '影は未実装。名前空間をリセットしている'],
   ['font-body', true, '書体のセマンティック役割（決定1-11）'],
@@ -374,6 +384,22 @@ if (!/font-feature-settings:\s*var\(--sg-font-feature-tabular\)/.test(numeric)) 
     if (/font-family:/.test(b)) {
       failures.push(`font-${name} に書体が混ざっている。--font-${name} と衝突している`);
     }
+  }
+}
+
+/*
+ * **写像した段が我々の値を指していること**（決定1-7）。
+ * 索引で写像すると border-2 が 3px になり、素の Tailwind と食い違う。
+ * クラスが出たかだけでは分からないので中身を見る。
+ */
+for (const [cls, token] of [
+  ['border-1', '--sg-border-width-0'],
+  ['border-2', '--sg-border-width-1'],
+  ['border-3', '--sg-border-width-2'],
+]) {
+  const body = /\{([^}]*)\}/.exec(out.slice(out.search(new RegExp(`^\\s*\\.${cls}\\s*\\{`, 'm'))))?.[1] ?? '';
+  if (!new RegExp(`var\\(${token}\\)`).test(body)) {
+    failures.push(`${cls} が ${token} を指していない。素の px のままか、段がずれている`);
   }
 }
 

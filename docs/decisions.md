@@ -1338,6 +1338,107 @@ inline なしだと Tailwind 側の `--color-danger` を上書きしても効い
 
 ---
 
+### 決定 3-5: 素の数値ユーティリティは lint でしか塞げない
+
+> [Issue #55](https://github.com/shun2218-dev/sashigane/issues/55)。
+> [#44](https://github.com/shun2218-dev/sashigane/issues/44) の自己レビューで見つけた。
+
+#### 事実
+
+決定3-1 は `--spacing: initial` で `p-5` を**構造的に**生成されなくした。
+しかし v4 には**テーマを参照しない素の数値ユーティリティ**があり、`@theme` では止まらない。
+
+候補を並べてコンパイルすると、**試した中で20個が生成された。**
+
+```
+z-42  order-9  col-span-13  row-span-7  aspect-3/4  scale-77  rotate-17  skew-9
+grid-cols-13  opacity-37  delay-137  duration-0  duration-137  border-3
+outline-3  ring-3  inset-ring-3  stroke-3  line-clamp-13  flex-13
+```
+
+> **これは全体の数ではない。** 私が候補として並べたクラスの中で生成されたものが20個だった、
+> というだけである。**一覧は列挙で網羅できない**（Tailwind の全ユーティリティを
+> 知らないと数えられない）。教訓2 の「測れるもので測っただけの結論を、
+> 問いへの答えとして扱わない」に当たる。
+>
+> Issue は7個としており、そこに `border-3` が無かった。
+> **決定1-7 の border-width スケールも素通りしていた。**
+> （`font-750` は生成されない。決定1-13 は穴を開けていない。
+> `divide-x-*` も実測では生成されない）
+
+**この決定は列挙に依存しない。** 塞ぐ対象を「素通りするもの一覧」ではなく
+**「スケールを持つ次元」の側から決めているので、一覧が不完全でも設計は変わらない。**
+プレフィックスを増やせば同じ形で塞げる。
+
+#### 対象はスケールを持つ次元だけ
+
+生成されたもののうち、トークンがスケールを持っているのは **border-width（決定1-7）** と
+**duration（決定1-6）** の2次元だけである。
+
+`z-42` `order-9` `opacity-37` `rotate-17` `scale-77` `skew-9` `col-span-13` `row-span-7`
+`grid-cols-13` `aspect-3/4` は**スケールを持っていない次元**で、トークンの管轄ではない。
+弾き始めると、**決めていない次元をトークンの管轄に引き込む**ことになる（原則7）。
+
+#### 段の中は写像で塞ぎ、段の外は lint で塞ぐ
+
+**border-width は写像できる。** 名前は px に合わせる（決定3-3 の倍数規約と同じ考え方）。
+
+```css
+--border-width-1: var(--sg-border-width-0);   /* border-1 → 1px */
+--border-width-2: var(--sg-border-width-1);   /* border-2 → 2px */
+--border-width-3: var(--sg-border-width-2);   /* border-3 → 3px */
+```
+
+**写像するとスケールの段は素の数値を上書きする。** 方向つき（`border-t-3` `border-x-3`）も
+同じ名前空間を使うことを実測で確かめた。段の外（`border-4`）は Tailwind が素の px で
+作り続けるので、そちらは lint が塞ぐ。
+
+**duration は写像できない。** 名前空間は `--transition-duration-*` だと実測で分かったが、
+決定1-6 のスケールは √2 刻みで、**小数を鍵にできない**（`--transition-duration-141\.4` は
+効かない）。整数の4段しか届かない。**この PR では写像せず、
+[Issue #72](https://github.com/shun2218-dev/sashigane/issues/72) に切った。**
+そのため `duration-<数値>` は**全部落ちる。** 素の CSS で
+`transition-duration: var(--sg-duration-2)` と書く道は残っている。
+
+#### `@theme` では構造的に止められない
+
+決定3-1 は「動的生成を止める」ことで**書けなくした。** 素の数値ユーティリティは違う。
+**テーマを一切参照しないので、テーマ側から止める手段が無い。**
+
+そのため **lint が唯一の防御になる。** 教訓3 は「機械的に検査できるものは文書ではなく
+検査にする」と言っているが、ここは**検査にしかできない**。
+`p-5` と違って**手元で書けてしまい、CI で初めて落ちる。**
+
+#### 許す数値は生成物から取る
+
+lint が許す数値は `theme.css` の `--border-width-*` / `--transition-duration-*` から読む。
+**手で並べない。** 写像を増やせば自動で通るようになり、写像を消せば自動で落ちる。
+
+#### 検査
+
+`scripts/check-token-usage.mjs` が `bare-number` として報告する。陰性対照は両側を持つ。
+
+- 落ちる: `duration-137` `delay-137` `border-4` `border-t-8` `md:hover:border-4`
+  `@apply border-4`（変種つき・方向つき・`@apply` の中でも見つかること）
+- **落ちない**: `border-1` `border-2` `border-3` `border-t-2` `md:border-x-3`
+  （写像した段）／`z-42` `order-9` `opacity-37` `rotate-17` `grid-cols-13`
+  （スケールを持たない次元）
+
+`scripts/check-tailwind-adapter.mjs` は、写像した段が**我々の値を指していること**を
+中身まで見る。索引で写像すると `border-2` が 3px になり、素の Tailwind と食い違う。
+
+#### 見逃す範囲（申告）
+
+**`outline-<n>` `ring-<n>` `inset-ring-<n>` `stroke-<n>` は塞いでいない。**
+物理的には border-width と同じ「幅」の次元だが、Tailwind の名前空間が別で、
+まだ写像していない。写像すれば同じ形で塞げる（Issue #72）。
+
+**そして、この一覧自体が網羅でない。** 上に書いたとおり、素通りするユーティリティを
+列挙で数え切ることはできない。**塞げていないものが他にもある前提で読む。**
+見つけたら `SCALED_BARE` にプレフィックスを1つ足せばよい。
+
+---
+
 ## 5. 色
 
 > **色は静的な値の集合ではない。** 利用者が primary を1色選ぶと、
