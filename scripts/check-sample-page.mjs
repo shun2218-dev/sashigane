@@ -169,6 +169,7 @@ const FIXTURE = `
   .b { border: 1px solid var(--sg-color-border-default); }
   .c { background: var(--sg-color-bg-page); }
   .d { letter-spacing: 0.08em; }
+  .g { font-weight: 700; }
   .e { font-size: var(--sg-text-body); line-height: var(--sg-text-body-leading); }
   .f { letter-spacing: calc(var(--sg-text-label-tracking) + var(--sg-tracking-caps)); }
 </style>
@@ -190,6 +191,10 @@ expect(
   fired.some((v) => v.bad.includes('0.08em')),
   '組版の次元の生値を検出できていない（決定1-9 で字送りはスケールを持った）',
 );
+expect(
+  fired.some((v) => v.prop === 'font-weight' && v.bad.includes('700')),
+  '太さの生値を検出できていない（決定1-13 で太さは役割を持った）',
+);
 /*
  * **通る側の対照。** 落ちるべきものだけを並べると、
  * 「通すはずの書き方が落ちるようになった」ことに気づけない（教訓2、Issue #63）。
@@ -203,7 +208,7 @@ expect(
   !fired.some((v) => v.value.startsWith('calc(')),
   'calc() で加算項を足す書き方を落としている（決定1-9）',
 );
-expect(fired.length === 4, `許可した値まで落としている（${fired.length} 件）`);
+expect(fired.length === 5, `許可した値まで落としている（${fired.length} 件）`);
 
 /* ============================================================
    本体
