@@ -6,7 +6,16 @@
  * ここで見るのは、出力そのものが満たすべき性質。
  */
 import { describe, expect, it } from 'vitest';
-import { generatePalette, steps, tokenLayers, tokenValues } from '../src/index.ts';
+import {
+  colorRequirements,
+  colorWithoutRequirement,
+  contrastBetween,
+  generatePalette,
+  hexToOklch,
+  steps,
+  tokenLayers,
+  tokenValues,
+} from '../src/index.ts';
 
 const palette = generatePalette({ L: 0.6, C: 0.1, H: 220 });
 const values = tokenValues(palette);
@@ -60,5 +69,51 @@ describe('JS へ出す値', () => {
       ([name, v]) => name.startsWith('--sg-color-') && values.dark[name] === v,
     );
     expect(same.map(([n]) => n)).toEqual([fixed]);
+  });
+});
+
+/**
+ * 16進に落としても保証が成立すること（決定2-6 改訂、Issue #52）。
+ *
+ * 決定5-2 は端点を要件**ちょうど**まで解くので余裕がゼロである。
+ * `tokens.css` は `oklch()` をそのまま出すので影響しないが、
+ * `tokens.js` は16進に丸めるため、境界の段が**丸めた瞬間だけ**割ることがあった。
+ */
+describe('JS へ出す値の保証（決定2-6 改訂）', () => {
+  /** 全色相ぶんの値を1度だけ作る。tokenValues は出力を丸ごと組むので重い */
+  const all = Array.from({ length: 360 }, (_, H) => {
+    const pal = generatePalette({ L: 0.6, C: 0.1, H });
+    return { H, pal, values: tokenValues(pal) };
+  });
+
+  it('ページ地に対する要件を、16進のままで満たす — 全360色相', () => {
+    for (const { H, pal, values: v } of all) {
+      for (const mode of ['light', 'dark'] as const) {
+        const bg = hexToOklch(v[mode]['--sg-color-bg-page']!);
+        for (const [name, min] of colorRequirements(mode, pal)) {
+          const hex = v[mode][name];
+          if (hex === undefined) continue;
+          expect(
+            contrastBetween(hexToOklch(hex), bg),
+            `${mode} / ${name} / primary=${H}°`,
+          ).toBeGreaterThanOrEqual(min);
+        }
+      }
+    }
+  }, 60_000);
+
+  /**
+   * **分類漏れを捕まえる。** 要件の表に載っていない色が「要件無し」として
+   * 明示されていなければ落ちる。役割を足したときに、静かに保証の外へ出ることを防ぐ
+   */
+  it('すべての色のセマンティックが、要件あり／要件無しのどちらかに分類されている', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const required = colorRequirements(mode, palette);
+      const names = Object.keys(values[mode]).filter((n) => n.startsWith('--sg-color-'));
+      const unclassified = names.filter(
+        (n) => !required.has(n) && !colorWithoutRequirement(n),
+      );
+      expect(unclassified, `${mode}: 分類されていない色の役割`).toEqual([]);
+    }
   });
 });
