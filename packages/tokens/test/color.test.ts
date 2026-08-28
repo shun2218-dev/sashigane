@@ -698,13 +698,20 @@ describe('面の役割の追加（決定5-13）', () => {
  * したがって**マークとして使える段の数**が系列数の上限になる。
  */
 describe('識別色の上限（決定5-5）', () => {
-  /** 面に対して 3:1 を満たす段。全360色相の最悪で判定する */
+  /**
+   * 面に対して 3:1 を満たす段。全360色相の最悪で判定する。
+   *
+   * **識別色のランプで測る。** 上限の根拠は「識別色がマークとして使える段の数」であり、
+   * 識別色は primary とは別のランプで彩度も違う（決定5-3）。
+   * いまは primary で測っても同じ集合になるが、**それは結果であって根拠ではない。**
+   */
   const usableSteps = (mode: 'light' | 'dark'): number[] => {
     const surface = mode === 'light' ? g.lightSurfaceStep : g.darkSurfaceStep;
     return steps.filter((s) =>
-      palettes.every(
-        ({ pal }) =>
-          contrastBetween(pal.primary.byStep[s]!, pal.neutral.byStep[surface]!) >= g.markMin,
+      palettes.every(({ pal }) =>
+        pal.categorical.every(
+          (ramp) => contrastBetween(ramp.byStep[s]!, pal.neutral.byStep[surface]!) >= g.markMin,
+        ),
       ),
     );
   };
