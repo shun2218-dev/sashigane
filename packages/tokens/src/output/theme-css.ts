@@ -15,6 +15,7 @@
  */
 import type { Palette } from '../color/palette.ts';
 import {
+  fontWeightRoles,
   breakpoint,
   breakpointNames,
   breakpointUnit,
@@ -128,6 +129,11 @@ export const toThemeCss = (palette: Palette): string =>
     '     experiments/font-family.md）ので --font-* 名前空間へ写像する。',
     '     tabular-nums も font-variant-numeric 修飾子が無いため feature-settings で出す */',
     ...FONT_UTILITIES.map((f) => `  --font-${f.name}: var(${f.token});`),
+    '',
+    '  /* 太さ（決定1-13）。**--font-* と --font-weight-* はどちらも font-* を作る。**',
+    '     役割名を書体の役割（body / display / label）と衝突させないのはそのため。',
+    '     衝突しないことは検査で確かめている */',
+    ...fontWeightRoles.map((r) => `  --font-weight-${r}: var(--sg-weight-${r});`),
     ...FONT_ROLES.filter((r) => r.tabular).map(
       (r) => `  --font-${r.name}--font-feature-settings: var(--sg-font-feature-tabular);`,
     ),

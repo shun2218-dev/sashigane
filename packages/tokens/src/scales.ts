@@ -264,5 +264,30 @@ export const fontStack = (stack: FontStack): string =>
  * Tailwind v4.3.3 に `--font-*--font-variant-numeric` 修飾子が無いため
  * （実測: docs/experiments/font-family.md）、アダプタ側は feature を参照する。
  */
+/* ------------------------------------------------------------------
+   font-weight — 決定1-13
+   ------------------------------------------------------------------ */
+
+/**
+ * 太さの役割。**段ではなく役割で持つ。**
+ *
+ * 太さは root から導けない。そのうえ**使える段は書体が実装しているものに限られる。**
+ * 可変フォントなら連続だが、静的フォントに無い段を指定すると合成太字になり、
+ * 意図と違う見た目になる。**そして合成はエラーにならない**（教訓4）。
+ *
+ * そこで書体（決定1-11）と同じく**既定値つきの差し込み口**として持つ。
+ * システムは意見を持つが、書体の実装に合わせて利用側が差し替えられる。
+ */
+export type FontWeightRole = keyof typeof tokens.fontWeight.roles;
+export const fontWeightRoles = Object.keys(tokens.fontWeight.roles) as FontWeightRole[];
+
+/** 利用側が太さを差す口。**トークンは宣言しない**（宣言すると var() のフォールバックが効かない） */
+export const fontWeightInputName = (role: FontWeightRole): string =>
+  `--sg-font-brand-weight-${role}`;
+
+/** `var(口, 既定)` の形。既定は観測に基づく（決定1-13） */
+export const fontWeight = (role: FontWeightRole): string =>
+  `var(${fontWeightInputName(role)}, ${tokens.fontWeight.roles[role]})`;
+
 export const numericVariant = tokens.fontFamily.numeric.variant;
 export const numericFeature = tokens.fontFamily.numeric.feature;

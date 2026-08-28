@@ -44,6 +44,7 @@
     font-size: var(--sg-text-body);
     line-height: var(--sg-text-body-leading);
     letter-spacing: var(--sg-text-body-tracking);
+    font-weight: var(--sg-weight-base);
     font-family: var(--sg-text-body-family);
   }
 
@@ -71,24 +72,28 @@
     font-size: var(--sg-text-display);
     line-height: var(--sg-text-display-leading);
     letter-spacing: var(--sg-text-display-tracking);
+    font-weight: var(--sg-weight-heading);
     font-family: var(--sg-text-display-family);
   }
   .h1 {
     font-size: var(--sg-text-heading-1);
     line-height: var(--sg-text-heading-1-leading);
     letter-spacing: var(--sg-text-heading-1-tracking);
+    font-weight: var(--sg-weight-heading);
     font-family: var(--sg-text-heading-1-family);
   }
   .h2 {
     font-size: var(--sg-text-heading-2);
     line-height: var(--sg-text-heading-2-leading);
     letter-spacing: var(--sg-text-heading-2-tracking);
+    font-weight: var(--sg-weight-heading);
     font-family: var(--sg-text-heading-2-family);
   }
   .h3 {
     font-size: var(--sg-text-heading-3);
     line-height: var(--sg-text-heading-3-leading);
     letter-spacing: var(--sg-text-heading-3-tracking);
+    font-weight: var(--sg-weight-heading);
     font-family: var(--sg-text-heading-3-family);
   }
   /* 本文の行高は2種類ある。UI の中と、読ませる長文とで別（決定1-4） */
@@ -111,6 +116,7 @@
     line-height: var(--sg-text-label-leading);
     /* 大文字化するので加算項を足す（決定1-9）。**生値を書かない** */
     letter-spacing: calc(var(--sg-text-label-tracking) + var(--sg-tracking-caps));
+    font-weight: var(--sg-weight-emphasis);
     font-family: var(--sg-text-label-family);
     text-transform: uppercase;
     color: var(--sg-color-text-muted);
@@ -224,7 +230,8 @@
   @media (prefers-reduced-motion: reduce) { .live i { animation: none; } }
 
   .stats { display: flex; flex-wrap: wrap; gap: var(--sg-space-6); margin-top: var(--sg-space-7); }
-  .stats b { display: block; font-size: var(--sg-text-heading-2); line-height: var(--sg-text-heading-2-leading); letter-spacing: var(--sg-text-heading-2-tracking); }
+  /* 大型数値は最も強い段。観測4本すべてがここに 700 を当てていた（決定1-13） */
+  .stats b { display: block; font-size: var(--sg-text-heading-2); line-height: var(--sg-text-heading-2-leading); letter-spacing: var(--sg-text-heading-2-tracking); font-weight: var(--sg-weight-strong); }
 
   /* ------------------------------------------------------------------
      データ — 識別色（決定5-8）と連続値（決定5-11）は別の役割
@@ -266,7 +273,7 @@
     border-radius: var(--sg-radius-2);
     padding: var(--sg-space-3) var(--sg-space-4);
   }
-  .note b { flex: 0 0 auto; }
+  .note b { flex: 0 0 auto; font-weight: var(--sg-weight-emphasis); }
 
   /* 塗りのバッジ。**status ごとに on-* を持つ**（決定5-14）。
      値はいまどれも同じ段に解かれるが、名前は塗りの側に付いている */
@@ -293,7 +300,8 @@
   table { width: 100%; border-collapse: collapse; }
   th, td { text-align: start; padding: var(--sg-space-3) var(--sg-space-2); border-bottom: var(--sg-border-width-0) solid var(--sg-color-border-subtle); }
   /* 見出しと本体の区切りは行どうしの区切りより強い。**hover ではない強調**（決定5-13） */
-  th { color: var(--sg-color-text-muted); font-weight: inherit; border-bottom-color: var(--sg-color-border-strong); }
+  /* 見出し行は本文より強くしない。**太さは役割で書く**（決定1-13） */
+  th { color: var(--sg-color-text-muted); font-weight: var(--sg-weight-base); border-bottom-color: var(--sg-color-border-strong); }
   td.n, th.n { text-align: end; }
 
   /* hover は塗らずに宣言する（決定5-13）。data-sg-interactive を付けた行だけが、

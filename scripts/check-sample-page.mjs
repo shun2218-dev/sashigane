@@ -27,7 +27,8 @@
  *     持つべきかどうかすら決めていない次元を検査で縛ることはできない
  *     （記録は docs/experiments/sample-page.md）。
  *     **字送りはここから外れた。** 決定1-9 を確定させてスケールを持ったので、
- *     `font-size` / `line-height` / `font-family` と並べて検出対象に入れた（教訓3）
+ *     `font-size` / `line-height` / `font-family` と並べて検出対象に入れた（教訓3）。
+ *     **太さも同じ理由で入った**（決定1-13）
  *   - 色を持ちうるプロパティの一覧（COLORISH）に無いプロパティ。
  *     `accent-color` のように後から増えたものは、足すまで見えない
  *   - JS で組み立てた色。このページに script は1つも無いが、置けば見えなくなる
@@ -78,6 +79,7 @@ const TYPOGRAPHIC = (prop) =>
   prop === 'font-size' ||
   prop === 'line-height' ||
   prop === 'letter-spacing' ||
+  prop === 'font-weight' ||
   prop === 'font-family';
 
 /** 色を持ちうるプロパティの値に許す語。**狭いほど強い** */
@@ -289,7 +291,7 @@ if (violations.length) {
   }
   console.error(
     '\n色を持ちうるプロパティと、スケールを持つ組版の次元' +
-      '（font-size / line-height / letter-spacing / font-family）は、\n' +
+      '（font-size / line-height / letter-spacing / font-weight / font-family）は、\n' +
       '生成した変数だけで書くこと。加算が要る場合は calc() で足す（決定1-9）。',
   );
 }

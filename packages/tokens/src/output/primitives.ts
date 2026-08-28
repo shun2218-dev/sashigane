@@ -22,6 +22,9 @@ import {
   fontSlots,
   fontStack,
   fontStackNames,
+  fontWeight,
+  fontWeightInputName,
+  fontWeightRoles,
   leadingFamilies,
   letterSpacing,
   letterSpacingCaps,
@@ -113,14 +116,24 @@ export const fontStackVars = (): string[] => [
   '     未定義のままなら generic へ落ちる。差せば欧文 → 和文 → generic の順序は保証される。 */',
   ...fontStackNames.map((stack) => `  --sg-font-stack-${stack}: ${fontStack(stack)};`),
   '',
+  '  /* font-weight — 太さも root から導けない（決定1-13）。**使える段は書体次第**で、',
+  '     無い段を指定すると合成太字になる。エラーにはならない（教訓4）。',
+  '     そこで書体名と同じく差し込み口を持つ。ここも宣言しない:',
+  ...fontWeightRoles.map((role) => `       ${fontWeightInputName(role)}`),
+  '     差さなければ既定が効く。既定は観測に基づく4段である。 */',
+  ...fontWeightRoles.map((role) => `  --sg-font-weight-${role}: ${fontWeight(role)};`),
+  '',
   '  /* 数字を等幅にする指定。CSS と Tailwind で符号化が違う（決定1-11） */',
   `  --sg-font-variant-tabular: ${numericVariant};`,
   `  --sg-font-feature-tabular: ${numericFeature};`,
 ];
 
 /** 利用側が書体名を差してよい口。プリミティブでもセマンティックでもない第3の種別（決定2-7） */
-export const fontInputNames = (): string[] =>
-  fontStackNames.flatMap((stack) => fontSlots.map((slot) => fontInputName(stack, slot)));
+export const fontInputNames = (): string[] => [
+  ...fontStackNames.flatMap((stack) => fontSlots.map((slot) => fontInputName(stack, slot))),
+  // 太さの口（決定1-13）。書体名と同じく利用側が差す
+  ...fontWeightRoles.map((role) => fontWeightInputName(role)),
+];
 
 /**
  * タイポグラフィのセマンティック。
@@ -176,6 +189,10 @@ export const typographySemanticVars = (): string[] => [
   '     サイズ側の項と**足して**使う:',
   '       letter-spacing: calc(var(--sg-text-label-tracking) + var(--sg-tracking-caps)); */',
   '  --sg-tracking-caps: var(--sg-letter-spacing-caps);',
+  '',
+  '',
+  '  /* 太さの役割（決定1-13）。書体スタックと同じく、プリミティブが差し込み口を包む */',
+  ...fontWeightRoles.map((r) => `  --sg-weight-${r}: var(--sg-font-weight-${r});`),
   '',
   '  /* 書体だけの役割。サイズと直交するので段を持たない（決定1-11） */',
   ...FONT_ROLES.flatMap((r) => [
