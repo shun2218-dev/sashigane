@@ -689,3 +689,64 @@ describe('面の役割の追加（決定5-13）', () => {
     expect(steps.filter((s) => s < 100).length, '暗色の面600 に文字の3段を置ける').toBeLessThan(2);
   });
 });
+
+/**
+ * 識別色の上限（決定5-5 改訂、Issue #48）。
+ *
+ * **上限を決めるのは色相ではなく段である。** 色相だけでは4色すら二色覚下で分けられず、
+ * 決定5-8 が系列ごとに段を変えて識別を成立させている。
+ * したがって**マークとして使える段の数**が系列数の上限になる。
+ */
+describe('識別色の上限（決定5-5）', () => {
+  /**
+   * 面に対して 3:1 を満たす段。全360色相の最悪で判定する。
+   *
+   * **識別色のランプで測る。** 上限の根拠は「識別色がマークとして使える段の数」であり、
+   * 識別色は primary とは別のランプで彩度も違う（決定5-3）。
+   * いまは primary で測っても同じ集合になるが、**それは結果であって根拠ではない。**
+   */
+  const usableSteps = (mode: 'light' | 'dark'): number[] => {
+    const surface = mode === 'light' ? g.lightSurfaceStep : g.darkSurfaceStep;
+    return steps.filter((s) =>
+      palettes.every(({ pal }) =>
+        pal.categorical.every(
+          (ramp) => contrastBetween(ramp.byStep[s]!, pal.neutral.byStep[surface]!) >= g.markMin,
+        ),
+      ),
+    );
+  };
+
+  it('系列数は、両モードで使える段の数を超えない', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const usable = usableSteps(mode);
+      expect(
+        cfg.categorical.count,
+        `${mode}: マークとして使える段は ${usable.join(', ')}（${usable.length}段）しかない`,
+      ).toBeLessThanOrEqual(usable.length);
+    }
+  });
+
+  /**
+   * **色相だけでは足りないことを検査で持つ。** ここが満たされてしまうなら、
+   * 決定5-8（系列ごとに段を変える）の理由が消えている。
+   */
+  it('色相だけでは系列数を分けられない（段が識別を担っている）', () => {
+    const pal = palettes[0]!.pal;
+    const n = cfg.categorical.count;
+    const step = 500;
+    const L = pal.lightnesses[steps.indexOf(step)]!;
+    const C = pal.primary.byStep[step]!.C;
+    let best = -Infinity;
+    for (let H0 = 0; H0 < 360; H0 += 5) {
+      best = Math.max(
+        best,
+        minPerceptualDistance(
+          Array.from({ length: n }, (_, i) => ({ L, C, H: (H0 + (360 / n) * i) % 360 })),
+        ),
+      );
+    }
+    expect(best, `色相だけで ${n} 色を分けられてしまった（最良 ${best.toFixed(3)}）`).toBeLessThan(
+      cfg.categorical.minDistance,
+    );
+  });
+});
