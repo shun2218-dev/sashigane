@@ -318,6 +318,43 @@ if (!existsSync(THEME)) {
   process.exit(1);
 }
 const themeCss = readFileSync(THEME, 'utf8');
+
+/**
+ * 写像した色の役割の名前。**生成した theme.css から取る**（手で並べるとずれる）。
+ *
+ * `--color-accent` → `accent`、`--color-chart-1` → `chart-1`。
+ * これに `/` 修飾子が付いた形（`text-accent/50`）を落とす（決定3-2 改訂、Issue #85）。
+ */
+const colorNames = [...themeCss.matchAll(/^\s*--color-([a-z0-9-]+)\s*:/gm)].map((m) => m[1]);
+
+/**
+ * **アルファ修飾子は色の値を変える**（決定3-2 改訂）。
+ *
+ * `text-accent/50` は `color-mix(in oklab, var(--color-accent) 50%, transparent)` に
+ * 展開され、前景だけが下地へ寄る。**`opacity: 0.5` と結果は同じ**である。
+ * 決定1-15 の測定によれば、どの役割も 4.5:1 を割らない α は 1.000 なので、
+ * `/99` でも割る。生成器が解いた値が、利用側の1文字で別の値になる。
+ *
+ * `bg-danger/15` も落とす。決定3-2 は当初これを「status の淡い背景をそのまま表現できる」
+ * と書いていたが、決定5-13（面はアルファで作らない）・決定5-14（淡い塗りは保留）と
+ * 両立しない。**塗った箇所の前景は面の文脈のまま残る**（決定5-12 と同じ穴）。
+ *
+ * **分数と区別する。** `w-1/2` `aspect-3/4` `top-1/2` の `/` は分数であって
+ * アルファではない。`/` の手前が**写像した色の役割名で終わっているか**で判定する。
+ * 禁止する記号を並べるのではなく、**色の役割を列挙して当てる**（教訓5）。
+ *
+ * **角括弧つき（`bg-danger/[0.15]`）はここへ届かない。** `ALLOWED_CLASS_TOKEN` が
+ * `[` を許さないので、手前の `arbitrary` が捕まえて `continue` する。
+ * 塞がっていることに変わりはないが、**捕まえる検出器はこちらではない。**
+ * 割合の形も数字だけを見る（自己レビュー B1）。
+ */
+const alphaModifier = (name) => {
+  const at = name.lastIndexOf('/');
+  if (at === -1) return null;
+  if (!/^\d{1,3}$/.test(name.slice(at + 1))) return null;
+  const head = name.slice(0, at);
+  return colorNames.some((c) => head === c || head.endsWith(`-${c}`));
+};
 const scaledAllowed = SCALED_BARE.map((r) => ({
   ...r,
   // 鍵の小数点は CSS の識別子としてエスケープされている（--transition-duration-141\.4）。
@@ -340,6 +377,12 @@ const findClassViolations = (text) => {
         continue;
       }
       const name = bareName(token[0]);
+      // 1つのトークンを2種類の違反として二重に報告しない（自己レビュー B2）。
+      // いまの規則では重ならないが、重ならないことを規則の中身に依存させない
+      if (alphaModifier(name)) {
+        out.push({ kind: 'alpha', line: lineOf(text, at + token.index), what: token[0] });
+        continue;
+      }
       for (const rule of FORBIDDEN_BARE) {
         const m = rule.re.exec(name);
         if (!m || rule.allow(m[1])) continue;
@@ -482,7 +525,20 @@ const FIXTURES = [
   // 決定2-3 の正規表現が誤検出していた2件
   { text: 'h1 { font-size: var(--sg-text-heading-1); }', expect: null },
   { text: 'svg { fill: var(--sg-color-chart-1); }', expect: null },
-  { text: '<div class="p-4 bg-danger hover:bg-danger/80 md:p-6">', expect: null },
+  { text: '<div class="p-4 bg-danger md:p-6">', expect: null },
+  /*
+   * アルファ修飾子（決定3-2 改訂、Issue #85）。**前景も塗りも落とす。**
+   * 分数の `/` と取り違えないことを、通る側の対照で確かめる
+   */
+  { text: '<div class="text-accent/50">', expect: 'alpha' },
+  { text: '<div class="hover:bg-danger/80">', expect: 'alpha' },
+  { text: '<div class="border-accent-mark/20">', expect: 'alpha' },
+  // 役割名が数字で終わっていても分数と取り違えない
+  { text: '<div class="bg-chart-1/15">', expect: 'alpha' },
+  // 角括弧つきは任意値記法の側が先に捕まえる。**塞がっていることに変わりはない**
+  { text: '<div class="bg-chart-1/[0.15]">', expect: 'arbitrary' },
+  { text: '.a { @apply text-muted/70; }', expect: 'alpha' },
+  { text: '<div class="w-1/2 top-1/2 aspect-3/4 basis-1/3">', expect: null },
   { text: 'const c = <b className={`p-4 ${extra}`} />', expect: null },
   /*
    * Issue #63: **文書が案内している逃げ道が実際に効くこと。**
@@ -525,6 +581,20 @@ if (selfTestFailures.length) {
    本体
    ============================================================ */
 
+/**
+ * **この検査がいま守っているものについて**（自己レビュー B4）。
+ *
+ * このリポジトリに Tailwind の利用者はまだいない。サンプルページは素の CSS で、
+ * `/` 修飾子も任意値記法も1つも書かれていない。
+ * **クラスに関する規則（arbitrary / bare-number / no-scale / alpha）は、
+ * 現時点では常に 0 件になる。** 守っているのは将来の利用側である
+ * （レジストリ配布では利用側リポジトリにコードが落ちる。原則6）。
+ *
+ * 陰性対照があるので「検出器が壊れている」とは区別できるが、
+ * **「対象が無い」とは区別できていない**（教訓2 の「緑は対象が無かったかもしれない」）。
+ * 変数の参照に関する規則（primitive / unknown / internal）は
+ * `tokens.css` と `standalone.html` を実際に見ているので、こちらは対象がある。
+ */
 const files = execSync('git ls-files', { encoding: 'utf8' })
   .split('\n')
   .filter((f) => f && TARGET_EXT.test(f))
@@ -551,6 +621,10 @@ const MESSAGE = {
   'bare-number':
     'テーマを参照しない素の数値ユーティリティです。スケールを素通りします（決定3-5）。' +
     'この形は @theme では止められないので、ここでしか塞げません',
+  alpha:
+    'アルファ修飾子は色の値を変えます（決定3-2 改訂、Issue #85）。前景に付ければ opacity と' +
+    '同じ壊れ方をし（決定1-15）、塗りに付ければ前景が面の文脈のまま残ります（決定5-12）。' +
+    '生成器が解いた段をそのまま使ってください',
   'no-scale':
     '不透明度はスケールを持ちません（決定1-15）。中間の値は前景と背景を同時に下地へ寄せるので、' +
     'コントラスト保証の外へ出ます。塗りの状態変化は bg-accent-strong / bg-danger-strong、' +
