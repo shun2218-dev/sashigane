@@ -342,15 +342,18 @@ const colorNames = [...themeCss.matchAll(/^\s*--color-([a-z0-9-]+)\s*:/gm)].map(
  * **分数と区別する。** `w-1/2` `aspect-3/4` `top-1/2` の `/` は分数であって
  * アルファではない。`/` の手前が**写像した色の役割名で終わっているか**で判定する。
  * 禁止する記号を並べるのではなく、**色の役割を列挙して当てる**（教訓5）。
+ *
+ * **角括弧つき（`bg-danger/[0.15]`）はここへ届かない。** `ALLOWED_CLASS_TOKEN` が
+ * `[` を許さないので、手前の `arbitrary` が捕まえて `continue` する。
+ * 塞がっていることに変わりはないが、**捕まえる検出器はこちらではない。**
+ * 割合の形も数字だけを見る（自己レビュー B1）。
  */
 const alphaModifier = (name) => {
   const at = name.lastIndexOf('/');
   if (at === -1) return null;
-  const amount = name.slice(at + 1);
-  if (!/^(\d{1,3}|\[[\d.]+\])$/.test(amount)) return null;
+  if (!/^\d{1,3}$/.test(name.slice(at + 1))) return null;
   const head = name.slice(0, at);
-  const role = colorNames.find((c) => head === c || head.endsWith(`-${c}`));
-  return role ? { role, amount } : null;
+  return colorNames.some((c) => head === c || head.endsWith(`-${c}`));
 };
 const scaledAllowed = SCALED_BARE.map((r) => ({
   ...r,
@@ -374,8 +377,11 @@ const findClassViolations = (text) => {
         continue;
       }
       const name = bareName(token[0]);
+      // 1つのトークンを2種類の違反として二重に報告しない（自己レビュー B2）。
+      // いまの規則では重ならないが、重ならないことを規則の中身に依存させない
       if (alphaModifier(name)) {
         out.push({ kind: 'alpha', line: lineOf(text, at + token.index), what: token[0] });
+        continue;
       }
       for (const rule of FORBIDDEN_BARE) {
         const m = rule.re.exec(name);
@@ -575,6 +581,20 @@ if (selfTestFailures.length) {
    本体
    ============================================================ */
 
+/**
+ * **この検査がいま守っているものについて**（自己レビュー B4）。
+ *
+ * このリポジトリに Tailwind の利用者はまだいない。サンプルページは素の CSS で、
+ * `/` 修飾子も任意値記法も1つも書かれていない。
+ * **クラスに関する規則（arbitrary / bare-number / no-scale / alpha）は、
+ * 現時点では常に 0 件になる。** 守っているのは将来の利用側である
+ * （レジストリ配布では利用側リポジトリにコードが落ちる。原則6）。
+ *
+ * 陰性対照があるので「検出器が壊れている」とは区別できるが、
+ * **「対象が無い」とは区別できていない**（教訓2 の「緑は対象が無かったかもしれない」）。
+ * 変数の参照に関する規則（primitive / unknown / internal）は
+ * `tokens.css` と `standalone.html` を実際に見ているので、こちらは対象がある。
+ */
 const files = execSync('git ls-files', { encoding: 'utf8' })
   .split('\n')
   .filter((f) => f && TARGET_EXT.test(f))
