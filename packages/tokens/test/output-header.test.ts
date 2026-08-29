@@ -9,8 +9,11 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  DOCS_URL,
+  UNRELEASED,
+  VERSION,
+  docsUrl,
   generatePalette,
+  producedBy,
   outputHeader,
   toScss,
   toThemeCss,
@@ -37,12 +40,60 @@ describe('生成物のヘッダ', () => {
 
   it('すべての生成物が規則の在り処を絶対 URL で持つ', () => {
     for (const [name, gen] of Object.entries(OUTPUTS)) {
-      expect(gen(palette).slice(0, 800), name).toContain(DOCS_URL);
+      expect(gen(palette).slice(0, 800), name).toContain(docsUrl());
     }
   });
 
   it('在り処は絶対 URL である（配布先にリポジトリは無い）', () => {
-    expect(DOCS_URL).toMatch(/^https:\/\//);
+    expect(docsUrl()).toMatch(/^https:\/\//);
+  });
+
+  /**
+   * バージョンの扱い（決定4-6）。**利用側が持っているのはスナップショットである。**
+   * 在り処が `HEAD` を指したままだと、手元の CSS には無い決定を読むことになる。
+   */
+  it('リリース済みなら在り処をタグに固定し、未リリースなら HEAD を指す', () => {
+    expect(docsUrl('1.2.3')).toContain('/tree/v1.2.3/docs');
+    expect(docsUrl(UNRELEASED)).toContain('/tree/HEAD/docs');
+  });
+
+  it('すべての生成物がバージョンを書く（落ちた先で分かる唯一の手がかり）', () => {
+    for (const [name, gen] of Object.entries(OUTPUTS)) {
+      expect(gen(palette).slice(0, 800), name).toContain(producedBy());
+    }
+  });
+
+  /**
+   * **リリース済みの経路は普段1度も実行されない**（自己レビュー B3）。
+   * `version` は `0.0.0` のまま長く続き、最初のタグを切る日に初めて動く。
+   * そこで初めて壊れていると分かる形にしない。
+   */
+  it('リリース済みのヘッダは、ツール名とバージョンを離さずに書く', () => {
+    const released = outputHeader('line', 'x', palette, [], '1.2.3').join('\n');
+    expect(released).toContain('@sashigane/tokens v1.2.3 が生成する。');
+    expect(released).toContain('/tree/v1.2.3/docs');
+
+    const unreleased = outputHeader('line', 'x', palette, [], UNRELEASED).join('\n');
+    expect(unreleased).toContain('@sashigane/tokens（未リリース）が生成する。');
+    expect(unreleased).toContain('/tree/HEAD/docs');
+  });
+
+  /**
+   * **バージョンだけを探す検査は書けない。** リリース済みのときに在り処の URL へ
+   * 一致してしまうためである（`check-output-header.mjs` の陰性対照が捕まえた）。
+   */
+  it('バージョンだけでは、在り処の URL と区別がつかない', () => {
+    const released = outputHeader('line', 'x', palette, [], '1.2.3').join('\n');
+    const withoutLine = released.replace(producedBy('1.2.3'), '');
+    expect(withoutLine).not.toContain('@sashigane/tokens v1.2.3');
+    // それでも v1.2.3 は URL の中に残っている
+    expect(withoutLine).toContain('v1.2.3');
+  });
+
+  it('バージョンの出所は1箇所（トークン層の中。原則1・原則4）', async () => {
+    const pkg = await import('../package.json', { with: { type: 'json' } });
+    expect(VERSION).toBe(pkg.default.version);
+    expect(VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
   it('コメントの書き方が2通りあり、どちらも先頭から始まる', () => {

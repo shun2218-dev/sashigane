@@ -15,6 +15,7 @@
  *   1. 文書内の `--sg-*` が名前表に実在すること
  *   2. 「決定 N-M」「教訓 N」の参照が実在すること
  *   3. 決定3-3 の名前空間表が theme.css と一致すること
+ *   4. version を持つ package.json が1つだけであること（決定4-6）
  *
  * ## この検査が原理的に見逃す範囲（教訓5）
  *
@@ -36,6 +37,14 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const LAYERS = 'packages/tokens/dist/tokens.layers.json';
 const THEME = 'packages/tokens/dist/theme.css';
+
+/**
+ * バージョンの出所（決定4-6）。**リポジトリで1箇所だけが `version` を持つ。**
+ *
+ * 2箇所になった瞬間、片方だけ直したときに静かにずれる（決定2-6）——
+ * **決定4-6 が防ごうとしたことそのもの**である。文書に書くだけでは守られない（教訓3）。
+ */
+const VERSION_OWNER = 'packages/tokens/package.json';
 
 /**
  * 検査する文書。**一覧を手で持たない**（決定2-6、自己レビュー B1）。
@@ -238,6 +247,23 @@ for (const name of DOC_ONLY.keys()) {
   }
 }
 
+/* --- バージョンの出所（決定4-6） --- */
+{
+  const owners = execSync('git ls-files "package.json" "*/package.json" "*/*/package.json"', {
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .filter(Boolean)
+    .filter((f) => 'version' in JSON.parse(readFileSync(f, 'utf8')));
+
+  if (owners.length !== 1 || owners[0] !== VERSION_OWNER) {
+    errors.push(
+      `version を持つ package.json は ${VERSION_OWNER} だけであるべき（決定4-6）。` +
+        `実際: ${owners.join(', ') || 'どこにも無い'}`,
+    );
+  }
+}
+
 /* --- 名前空間表 --- */
 const rows = namespaceRows(decisions);
 if (!rows || rows.length === 0) {
@@ -269,3 +295,4 @@ if (errors.length) {
 console.log(`✓ ${docs.length} 文書の --sg-* が名前表と一致（文書にだけ現れる ${usedDocOnly.size} 件は理由つき）`);
 console.log(`✓ 決定（${knownDecisions.size} 件）と教訓（${knownLessons.size} 件）の参照がすべて実在する`);
 console.log(`✓ 決定3-3 の名前空間表 ${rows.length} 行が theme.css と一致`);
+console.log(`✓ version を持つ package.json は ${VERSION_OWNER} の1つだけ（決定4-6）`);
