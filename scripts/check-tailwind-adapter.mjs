@@ -167,6 +167,11 @@ const EXPECTATIONS = [
   ['bg-success-strong', true, '塗りを持つランプすべてに出す'],
   ['bg-info-strong', true, '塗りを持つランプすべてに出す'],
   ['bg-neutral-strong', false, '中間色は面であって塗りではない'],
+  /* 淡い塗りとその上の文字（決定5-16） */
+  ['bg-danger-subtle', true, '淡い塗り。帯・バッジの地'],
+  ['text-on-danger-subtle', true, '淡い塗りの上の文字。塗りに対して解いてある'],
+  ['bg-accent-subtle', true, 'status だけの役割ではない'],
+  ['bg-neutral-subtle', false, '中間色は面であって塗りではない'],
   /* 浮き（決定1-8 改訂）。**段はすべて役割として出す** */
   ['shadow-front', true, 'モーダル。落とすと浮きを書く手段が1つも無くなる（教訓7）'],
   /* 不透明度はスケールを持たない（決定1-15）。opacity-* は素の数値ユーティリティなので

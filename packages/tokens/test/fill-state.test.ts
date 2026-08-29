@@ -91,6 +91,91 @@ describe('塗りの1段強い段（決定5-15）', () => {
   });
 });
 
+describe('淡い塗り（決定5-16）', () => {
+  it('その色自身が、自分の淡い塗りの上で 4.5:1 を満たす', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      for (const p of palettes) {
+        for (const d of namedDepths) {
+          const r = surfaceRolesFor(p, mode)[d]!;
+          for (const ramp of [p.primary, ...statusNames.map((n) => p.status[n]!)]) {
+            const fill = ramp.byStep[r.colorSubtle]!;
+            expect(
+              contrastBetween(ramp.byStep[r.onSubtle]!, fill),
+              `${mode} depth${d}`,
+            ).toBeGreaterThanOrEqual(g.textMin);
+          }
+        }
+      }
+    }
+  });
+
+  it('解き直さないと割る（観測どおりの「淡い塗り＋その色の文字」は成立しない）', () => {
+    /**
+     * **退けた案のほうを測る。** `--sg-color-{名前}` をそのまま淡い塗りに載せると
+     * どうなるかを確かめる。割らなくなったら、段を解き直す理由が消えている。
+     */
+    let worst = Infinity;
+    for (const p of palettes) {
+      const r = surfaceRolesFor(p, 'light')[0]!;
+      for (const ramp of [p.primary, ...statusNames.map((n) => p.status[n]!)]) {
+        worst = Math.min(
+          worst,
+          contrastBetween(ramp.byStep[r.colorText]!, ramp.byStep[r.colorSubtle]!),
+        );
+      }
+    }
+    expect(worst).toBeLessThan(g.textMin);
+  });
+
+  it('中間色は text-default だけが載る（muted と faint は割る）', () => {
+    let worstDefault = Infinity;
+    let worstMuted = Infinity;
+    for (const mode of ['light', 'dark'] as const) {
+      for (const p of palettes) {
+        for (const d of namedDepths) {
+          const r = surfaceRolesFor(p, mode)[d]!;
+          for (const ramp of [p.primary, ...statusNames.map((n) => p.status[n]!)]) {
+            const fill = ramp.byStep[r.colorSubtle]!;
+            worstDefault = Math.min(
+              worstDefault,
+              contrastBetween(p.neutral.byStep[r.text.default]!, fill),
+            );
+            worstMuted = Math.min(
+              worstMuted,
+              contrastBetween(p.neutral.byStep[r.text.muted]!, fill),
+            );
+          }
+        }
+      }
+    }
+    expect(worstDefault).toBeGreaterThanOrEqual(g.textMin);
+    // **申告した制約そのもの。** 載せられるようになったら決定を見直す
+    expect(worstMuted).toBeLessThan(g.textMin);
+  });
+
+  it('淡い塗りは面のすぐ外側の段。深い面では一緒に動く', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const seen = new Set<number>();
+      for (const d of namedDepths) {
+        const r = surfaceRolesFor(sample, mode)[d]!;
+        expect(r.colorSubtle).toBe(r.gridline);
+        seen.add(r.colorSubtle);
+      }
+      // 面ごとに違う段を指す（page と surface で同じ段になっていない）
+      expect(seen.size).toBe(namedDepths.length);
+    }
+  });
+
+  it('塗りを持つランプすべてに出る', () => {
+    const css = toTokensCss(sample);
+    for (const r of fillRampNames) {
+      expect(css, `--sg-color-${r}-subtle`).toContain(`--sg-color-${r}-subtle:`);
+      expect(css, `--sg-color-on-${r}-subtle`).toContain(`--sg-color-on-${r}-subtle:`);
+    }
+    expect(css).not.toContain('--sg-color-neutral-subtle:');
+  });
+});
+
 describe('不透明度で薄めると保証が割れる（決定1-15 の根拠）', () => {
   it('塗りに opacity をかけると、塗りの上の文字が 4.5:1 を割る', () => {
     // サンプルページが実際に書いていた値。**最悪の色相で判定する**（決定5-1）

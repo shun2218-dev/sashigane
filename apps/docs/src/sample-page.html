@@ -228,6 +228,12 @@
      ------------------------------------------------------------------ */
   .hero { padding-block: var(--sg-space-9) var(--sg-space-8); }
   .hero .lead { color: var(--sg-color-text-muted); max-width: 46ch; margin-top: var(--sg-space-4); }
+  /* 強調したバッジ。淡い塗りは status だけの役割ではない（決定5-16） */
+  .plan .pill {
+    background: var(--sg-color-accent-subtle);
+    color: var(--sg-color-on-accent-subtle);
+    border-color: transparent;
+  }
   .hero .row { margin-top: var(--sg-space-5); }
   /* 「稼働中」の点。ループのスケールは遷移とは別（決定1-6） */
   .live i {
@@ -315,11 +321,18 @@
   .tag-success { background: var(--sg-color-success); color: var(--sg-color-on-success); }
   .tag-warning { background: var(--sg-color-warning); color: var(--sg-color-on-warning); }
   .tag-danger  { background: var(--sg-color-danger);  color: var(--sg-color-on-danger); }
-  .note-info    { color: var(--sg-color-info);    border-color: var(--sg-color-info-mark); }
-  .note-success { color: var(--sg-color-success); border-color: var(--sg-color-success-mark); }
-  .note-warning { color: var(--sg-color-warning); border-color: var(--sg-color-warning-mark); }
-  .note-danger  { color: var(--sg-color-danger);  border-color: var(--sg-color-danger-mark); }
-  .note p { color: var(--sg-color-text-muted); }
+  /* 帯は**淡い塗り**で組む（決定5-16）。roles.md が status の3変種の1つとして
+     観測したもので、不透明な塗り（.tag-*）とは別の役割である。
+
+     文字は on-*-subtle。**その色自身は載らない** —— 明色で danger の段500 を
+     段100 の上に置くと 4.02:1 で 4.5 に届かないので、段を解き直してある。 */
+  .note-info    { background: var(--sg-color-info-subtle);    color: var(--sg-color-on-info-subtle);    border-color: var(--sg-color-info-mark); }
+  .note-success { background: var(--sg-color-success-subtle); color: var(--sg-color-on-success-subtle); border-color: var(--sg-color-success-mark); }
+  .note-warning { background: var(--sg-color-warning-subtle); color: var(--sg-color-on-warning-subtle); border-color: var(--sg-color-warning-mark); }
+  .note-danger  { background: var(--sg-color-danger-subtle);  color: var(--sg-color-on-danger-subtle);  border-color: var(--sg-color-danger-mark); }
+  /* **text-muted は載せられない**（明色の深い面で 4.27）。淡い塗りの上で
+     保証があるのは text-default と on-*-subtle だけである（決定5-16 の保証しない範囲） */
+  .note p { color: var(--sg-color-text-default); }
 
   /* ------------------------------------------------------------------
      表・フォーム
