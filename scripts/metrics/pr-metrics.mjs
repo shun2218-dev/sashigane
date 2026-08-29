@@ -203,6 +203,13 @@ console.log(
   `**エージェントの初回コミットが CI を通った割合: ${pct(passed.length, ran.length)}**` +
     `（${passed.length} / ${ran.length}）`,
 );
+console.log(
+  '\n  ※ **この数が測っているのは「push 前に検査を走らせているか」である。**' +
+    '\n     CI が走らせるのは手元と同じ検査（pnpm test / typecheck / check:*）なので、' +
+    '\n     全部緑にしてから push すれば通るのは半ば同語反復である。' +
+    '\n     **「正しいコードを書けるか」は測っていない。** それを測るには、' +
+    '\n     手元で検出できない失敗（実ブラウザの見え方、視覚回帰）を CI が持つ必要がある',
+);
 {
   const why = new Map();
   for (const r of rows.filter((x) => !ran.includes(x))) {
@@ -215,11 +222,23 @@ console.log(
 }
 console.log(`\nリードタイム（Issue 作成 → マージ）の中央値: ${hours(median(withIssue.map((r) => r.leadHours)))}`);
 console.log(`  Issue に紐づいた PR: ${withIssue.length} / ${rows.length} 本`);
-console.log(
-  `\n自己レビューの回数: 中央値 ${median(rows.map((r) => r.reviews))} / ` +
-    `0 回の PR ${rows.filter((r) => r.reviews === 0).length} 本`,
-);
-console.log(`  ※ 0 回は**プロセス違反である**（development-process.md の手順5）`);
+{
+  const zero = rows.filter((r) => r.reviews === 0);
+  console.log(`\n自己レビューの回数: 中央値 ${median(rows.map((r) => r.reviews))}`);
+  console.log(
+    `  ※ 数えているのは**レビュー投稿の件数**であって、レビュー → 修正の往復回数ではない。` +
+      '\n     開発者が1人で「1回投稿 → 修正コミット」という運用なので近い値になっている。' +
+      '\n     **人が増えたら意味が変わる**',
+  );
+  if (zero.length) {
+    console.log(`\n  自己レビューが 0 回の PR（${zero.length} 本）:`);
+    for (const r of zero) console.log(`    #${r.number}  ${r.title}`);
+    console.log(
+      '    ※ **違反かどうかは判定しない。** 手順5 は「実装したら自己レビューする」であり、' +
+        '\n      実装でない PR（Issue を立てる、記録を紐づける）もある。**読む人が決める**',
+    );
+  }
+}
 
 const failures = ran.filter((r) => r.ci.kind === '失敗');
 console.log(`\n## CI 失敗の原因（${failures.length} 件）\n`);
