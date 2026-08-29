@@ -22,7 +22,7 @@
  *   - 「原則3」のような番号参照そのもの。ヘッダが在り処を説明していることで足りるとみなす
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { UNRELEASED, VERSION, docsUrl } from '../packages/tokens/src/output/header.ts';
+import { docsUrl, producedBy } from '../packages/tokens/src/output/header.ts';
 
 const DIST = 'packages/tokens/dist';
 if (!existsSync(DIST)) {
@@ -72,18 +72,10 @@ const REQUIRED = [
   {
     /**
      * 落ちた先で「どのスナップショットを持っているか」を知る唯一の手がかり（決定4-6）。
-     *
-     * **ツール名に続く形で見る。** バージョンだけを探すと、リリース済みのときに
-     * 在り処の URL（`.../tree/v0.1.0/docs`）へ一致してしまい、
-     * **ヘッダからバージョンの行が落ちても検査が通る。**
-     * 陰性対照が実際にこれを捕まえた。
+     * **ツール名に続く形で見る。** 理由は `producedBy` のコメントにある。
      */
     what: 'バージョン',
-    re: new RegExp(
-      `@sashigane/tokens${
-        VERSION === UNRELEASED ? '（未リリース）' : ` v${VERSION.replace(/\./g, '\\.')}`
-      }`,
-    ),
+    re: new RegExp(producedBy().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
   },
   { what: '見出し番号が何を指すかの説明', re: /decisions\.md|principles\.md/ },
 ];
@@ -110,12 +102,9 @@ const findViolations = (name, text) => {
    陰性対照 — 検出器が発火することを毎回確かめる（教訓2）
    ============================================================ */
 
-const VERSION_LABEL =
-  VERSION === UNRELEASED ? '（未リリース）' : ` v${VERSION}`;
-
 const OK_HEADER = [
   '// sashigane — 何か。',
-  `// 生成物。手で編集しない。@sashigane/tokens${VERSION_LABEL}が生成する。`,
+  `// 生成物。手で編集しない。${producedBy()}`,
   `// 規則と根拠: ${docsUrl()}`,
   '// 「決定1-2」は decisions.md の見出し。principles.md も同じ場所にある。',
 ].join('\n');
@@ -128,7 +117,7 @@ const FIXTURES = [
   {
     // バージョンが落ちても、他の行があるので**見た目には気づけない**（決定4-6）
     name: 'バージョン欠落',
-    text: `${OK_HEADER.replace(VERSION_LABEL, ' ')}\n// 決定1-2 に従う`,
+    text: `${OK_HEADER.replace(producedBy(), '@sashigane/tokens が生成する。')}\n// 決定1-2 に従う`,
     expect: /バージョン/,
   },
   { name: '正しいもの', text: `${OK_HEADER}\n// 決定1-2 に従う`, expect: null },

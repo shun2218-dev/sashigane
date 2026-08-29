@@ -58,6 +58,18 @@ export const docsUrl = (version: string = VERSION): string =>
     version === UNRELEASED ? 'HEAD' : `v${version}`
   }/docs`;
 
+/**
+ * 「何が生成したか」の1行（決定4-6）。**ツール名とバージョンを離さない。**
+ *
+ * バージョンだけを探すと、リリース済みのときに在り処の URL
+ * （`.../tree/v0.1.0/docs`）に一致してしまい、**この行が落ちても検査が通る。**
+ * `check-output-header.mjs` の陰性対照が実際にそれを捕まえた。
+ */
+export const producedBy = (version: string = VERSION): string =>
+  version === UNRELEASED
+    ? '@sashigane/tokens（未リリース）が生成する。'
+    : `@sashigane/tokens v${version} が生成する。`;
+
 /** コメントの書き方。CSS はブロック、SCSS / JS / d.ts は行コメント */
 export type CommentStyle = 'block' | 'line';
 
@@ -73,19 +85,22 @@ export const outputHeader = (
   what: string,
   palette: Palette,
   notes: readonly string[] = [],
+  /**
+   * **既定は現在のバージョン。** 引数にしてあるのは検査のためである（自己レビュー B3）。
+   *
+   * `0.0.0` のまま長く続くので、**リリース済みの経路は普段1度も実行されない。**
+   * 最初のタグを切る日に初めて動く形にしない。
+   */
+  version: string = VERSION,
 ): string[] => {
   // 受け継ぐのは色相だけ（決定5-1）。生成物がどの入力から出たかは、これで言い尽くせる。
   // 段 500 を添えるのは、色相だけでは人が色を思い浮かべられないため
   const anchor = palette.primary.byStep[500];
   const body = [
     `sashigane — ${what}`,
-    `生成物。手で編集しない。${
-      VERSION === UNRELEASED
-        ? '@sashigane/tokens（未リリース）が生成する。'
-        : `@sashigane/tokens v${VERSION} が生成する。`
-    }`,
+    `生成物。手で編集しない。${producedBy(version)}`,
     '',
-    `規則と根拠: ${docsUrl()}`,
+    `規則と根拠: ${docsUrl(version)}`,
     'コメント中の「決定1-2」「原則3」は、そこにある decisions.md / principles.md の見出し。',
     '',
     `primary の色相 ${palette.primary.hue.toFixed(1)}° から生成した` +

@@ -65,7 +65,8 @@ pnpm check:tailwind-adapter   # アダプタが期待どおりのユーティリ
 pnpm check:token-usage        # プリミティブ参照と Tailwind 任意値記法を禁止する（原則3）
 pnpm check:sample-page        # サンプルページが生成した変数だけで組まれていること（Issue #61）
 pnpm check:token-values       # tokens.js の値が tokens.css とずれていないこと
-pnpm check:docs-refs          # 文書が挙げている名前と参照が実在すること（Issue #91）
+pnpm check:docs-refs          # 文書が挙げている名前と参照が実在すること（Issue #91）と
+                              # version を持つ package.json が1つだけであること（決定4-6）
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
 ```
