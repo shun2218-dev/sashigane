@@ -31,6 +31,11 @@
  *     そのものだが、この検査は**書かれたのに出なかったもの**を見ていないので捕まえられない。
  *     打ち間違い（`bg-acent`）も同じ。Issue #96
  *   - **`style` 属性の生値と CSS-in-JS。** トークンを経由しないのでクラスが現れない
+ *   - **`packages/ui` の外に置かれたコンポーネント。** 走査対象は下の `TARGET` だけで、
+ *     **そこにしか置かないことは強制していない。** 決定4-1 がそう決めているだけである。
+ *     外に置くと `check:token-usage` は見るが間接の向こうは見えず、この検査は見ない——
+ *     **どちらも届かない。** 全ソースを走査対象にすると、`check:token-usage` が理由つきで
+ *     除外している素の CSS やサンプルページを Tailwind に食わせることになるので採らない
  *   - **`--sg-*` の参照**はこの検査の担当ではない。`check:token-usage` が
  *     ファイル全文を走査しており、そちらは間接の影響を受けない
  *
@@ -60,7 +65,10 @@ for (const f of ['tokens.css', 'theme.css']) {
 
 const { classify } = rulesFrom(join(dist, 'theme.css'));
 
-/** 走査対象。**コンポーネントはここにしか置かない**（決定4-1） */
+/**
+ * 走査対象。決定4-1 が「コンポーネントは `packages/ui`」と決めている。
+ * **強制はしていない。** 外に置かれたものは見えない（冒頭の見逃す範囲）。
+ */
 const TARGET = resolve('packages/ui/src');
 
 /* ============================================================
@@ -81,11 +89,20 @@ const compile = (sourceDir) => {
       `@import "${join(dist, 'theme.css')}" source(none);\n` +
       `@source "${sourceDir}";\n`,
   );
-  execFileSync(
-    'node_modules/.bin/tailwindcss',
-    ['-i', join(dir, 'in.css'), '-o', join(dir, 'out.css')],
-    { stdio: 'pipe' },
-  );
+  try {
+    execFileSync(
+      'node_modules/.bin/tailwindcss',
+      ['-i', join(dir, 'in.css'), '-o', join(dir, 'out.css')],
+      { stdio: 'pipe' },
+    );
+  } catch (e) {
+    // **黙って 0 件にしない。** ただし何をしようとして失敗したかは言う
+    console.error(`${sourceDir} を Tailwind でコンパイルできませんでした。`);
+    console.error('生成した入力 CSS が読めないか、tokens の生成物が壊れています。');
+    console.error('先に pnpm build:tokens を実行してください。\n');
+    console.error(String(e.stderr ?? e.message).trim());
+    process.exit(1);
+  }
   return readFileSync(join(dir, 'out.css'), 'utf8');
 };
 
@@ -290,11 +307,17 @@ if (found.length) {
   process.exit(1);
 }
 
-const fires = NEGATIVE_EXPECT.length;
+/**
+ * 内訳は **`NEGATIVE_EXPECT` から数え上げる。**
+ * 手で書いた数を混ぜると、対照を1件足したときに内訳だけが古いまま緑で通る
+ * （許す数値を theme.css から取るのと同じ判断。自己レビュー B2）。
+ */
+const byPlace = new Map();
+for (const e of NEGATIVE_EXPECT) byPlace.set(e.where, (byPlace.get(e.where) ?? 0) + 1);
 console.log(
-  `✓ 陰性対照 ${fires} 件が期待どおり発火し（cva ${
-    NEGATIVE_EXPECT.filter((e) => e.where.startsWith('cva')).length
-  } 件・オブジェクト引き 1 件・定数 1 件）、陽性対照は落ちなかった`,
+  `✓ 陰性対照 ${NEGATIVE_EXPECT.length} 件が期待どおり発火し（` +
+    [...byPlace].map(([where, n]) => `${where} ${n} 件`).join('・') +
+    '）、陽性対照は落ちなかった',
 );
 console.log(`✓ ${TARGET.replace(`${process.cwd()}/`, '')} が生成したクラス ${classes.size} 件に違反なし`);
 if (classes.size === 0) {
