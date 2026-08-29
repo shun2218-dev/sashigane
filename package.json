@@ -13,7 +13,7 @@
     "verify:coverage": "node scripts/metrics/verify-coverage.mjs",
     "metrics": "node scripts/metrics/pr-metrics.mjs",
     "test": "vitest run",
-    "typecheck": "tsc -b --pretty false packages/tokens apps/docs",
+    "typecheck": "tsc -b --pretty false packages/tokens packages/ui apps/docs",
     "check:tokens-isolation": "node scripts/check-tokens-isolation.mjs",
     "check:no-build-output": "node scripts/check-no-build-output.mjs",
     "check:docs-scales": "node scripts/check-docs-scales.mjs",
@@ -26,7 +26,8 @@
     "check:sample-page": "node scripts/check-sample-page.mjs",
     "check:token-values": "node scripts/check-token-values.mjs",
     "check:token-types": "node scripts/check-token-types.mjs",
-    "check:output-header": "node scripts/check-output-header.mjs"
+    "check:output-header": "node scripts/check-output-header.mjs",
+    "check:component-classes": "node scripts/check-component-classes.mjs"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.3.3",
