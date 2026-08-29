@@ -3846,17 +3846,27 @@ props:
 Nextra と VitePress は上の理由で落ちる。残るのは Fumadocs と Docusaurus と、
 現行の Vite を育てる案である。
 
-**Fumadocs を採る。決め手は成熟度ではなく相性である。**
+**Fumadocs を採る。**
 
-Fumadocs は Tailwind + shadcn 系なので、**サイト自体を sashigane のトークンで組める。**
-原則6 は「**トークンのみのインストールが実際に動くことが、層分離の証明になる**」と
-言っており、**サイトがトークンで組まれていれば、その証明が常時走っている状態になる。**
-Docusaurus は Infima という独自の CSS 基盤を持つので、ここが重くなる。
+> **2026-08-30 改訂。決め手として書いたことが誤っていた。**
+>
+> 当初は「Fumadocs は Tailwind + shadcn 系なので**サイト自体をトークンで組める**」を
+> 決め手にした。**測っていなかった。**
+> 実際に重ねると**ビルドが落ちる**（[experiments/fumadocs-adapter-coexistence.md](./experiments/fumadocs-adapter-coexistence.md)）。
+>
+> ```
+> Error: Cannot apply unknown utility class `sm:ps-7`
+> ```
+>
+> `fumadocs-ui/css/lib/base.css` の `@apply` が、`--*: initial` で
+> spacing を落とされて解決できない。**chrome をアダプタで組むことはできない。**
+>
+> 決め手は崩れたが、**採用は維持する。** 残る利点は
+> MDX・目次・検索が標準で付き、型表（`fumadocs-typescript`）と llms.txt が公式にあること。
+> 代償は**変化の速さ**である（上の表）。
 
-代償は**変化の速さ**である。上の表のとおりメジャーが速く動く。
-
-> **この軸（ドッグフーディング）は利用者が挙げたものではない。**
-> 教訓8 に従い、**軸として採るかどうかを先に確認してから使った。**
+**トークンは CSS 変数の層でなら chrome でも使える**（`tokens.css` を重ねてもビルドは通る）。
+アダプタが使えるのは**プレビューとサンプルページ**で、そちらは別ビルドにする。
 
 `registry-template` はドキュメントサイトの土台にはしない。実際に見ると
 **タイトル・1行説明・デモだけ**で、props も型も導入手順も無い。**配信の出発点である。**
@@ -3888,15 +3898,40 @@ packages/ui/src/<component>/examples/
 MDX の中に直接書く案は採らない。**サイトに閉じてしまい、配信 JSON に出せず、
 型検査も効かない。** 決定6-4 が「唯一の正から3つを出す」と言っていることと両立しない。
 
+#### 測って決めたこと（2026-08-30）
+
+[experiments/fumadocs-adapter-coexistence.md](./experiments/fumadocs-adapter-coexistence.md)。
+
+| | 決めたこと |
+|---|---|
+| **サイトをトークンで組む範囲** | chrome は**素の Tailwind**。アダプタは入れられない（ビルドが落ちる）。プレビューとサンプルページは**アダプタで別ビルド**する |
+| **プレビューの方式** | **iframe を使わない。** アダプタを通した出力に実行時のリセットは残らない（`--*` の出現数 0、`:root` は `--sg-*` 372 件のみ）ので、別ビルドの CSS を同じページに載せられる |
+| **デプロイ先** | **Vercel** |
+
+同名のクラスは 6 件出るが（`gap-2` `p-4` `px-4` `py-2` `rounded-sm` `duration-200`）、
+**値は全部一致する。** 決定3-3 が「値が一致する Tailwind 名だけに写像する」と
+決めているためである。さらに**サイト側の Tailwind に `packages/ui` を走査させなければ、
+衝突自体が起きない。**
+
+**これは規約であって検査ではない。**
+[Issue #102](https://github.com/shun2218-dev/sashigane/issues/102) で検査にする。
+
+##### iframe は要らなかった
+
+当初は「Fumadocs を使うならプレビューは iframe で隔離することになる」と書いていた。
+**測っていなかった。** そして**iframe を前提に置いて、そこから
+フレームワークの選択肢を狭めていた**（教訓8 と同じ形）。
+
+サンプルページも**埋め込む必要がない。** 独立した URL にして、
+テーマビルダーが選んだ色をパラメータで渡す。
+
 #### この決定に含まれないもの
 
-**決定済みとして扱わない**（教訓6）。Fumadocs を入れる PR で1つずつ決める。
+**決定済みとして扱わない**（教訓6）。
 
-- `ThemeBuilder` と `sample-page.html`、`standalone.html` の移行範囲。
-  `standalone.html` は `check:tokens-standalone` の検査対象でもある
-- レジストリ JSON の配信元を同じアプリに置くか
-- サイトをトークンで組む範囲（全部か、展示部分だけか）
-- デプロイ先。**いまデプロイの仕組みは1つも無い**
+- `sample-page.html`（684行）の扱い。いまは Vite の `?raw` で読んでいるが Next.js に無い。
+  **`check:sample-page` の参照先でもある**
+- レジストリ JSON の配信元を同じアプリの `public/r/` に置くか
 
 ---
 
