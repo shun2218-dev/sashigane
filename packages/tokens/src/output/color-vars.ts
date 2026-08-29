@@ -96,7 +96,7 @@ const semanticFor = (
       (step, i) => `  --sg-color-chart-${i + 1}: var(--sg-series-${i + 1}-${step});`,
     ),
     ...sequentialVars(mode, roles.surface),
-    ...elevationVars(mode, roles),
+    ...elevationVars(mode, roles, depth),
   ];
 };
 
@@ -116,17 +116,33 @@ const semanticFor = (
  *
  * 段は面の深さで解き直された `roles.border` から取るので、深い面では輪郭も一緒に動く。
  * **プリミティブとしては出せない。** 値がモードと面に依存するためである。
+ *
+ * **申告する限界（自己レビュー B2）。** 暗色で表せるのは `h` の順序であって量ではない。
+ * 明色は `offset` も `blur` も `h` に比例するが、暗色は境界の段を1段ずらすだけで、
+ * 段は3つしか無いので `h` を増やしても頭打ちになる。媒体を変えた以上避けられない。
+ *
+ * **明色は面に依らないので、面の文脈では出さない**（自己レビュー B1）。
+ * `:root` の1行が継承で届く。面ごとに同じ行を並べると、
+ * 「面ごとに違う値がある」という誤った読み方を誘う。
  */
-const elevationVars = (mode: 'light' | 'dark', roles: SurfaceRoles): string[] =>
-  elevationRoles.map((role) => {
-    const h = elevationHeight(role);
-    if (mode === 'dark') {
-      const step = roles.border[elevationOutline(role)];
-      return `  --sg-elevation-${role}: 0 0 0 var(--sg-border-width-0) var(--sg-neutral-${step});`;
-    }
-    const { offset, blur } = elevationGeometry(h);
-    return `  --sg-elevation-${role}: 0 ${offset}px ${blur}px var(--sg-shadow-ink);`;
-  });
+const elevationVars = (
+  mode: 'light' | 'dark',
+  roles: SurfaceRoles,
+  depth: number,
+): string[] => {
+  if (mode === 'light') {
+    if (depth > 0) return [];
+    return elevationRoles.map((role) => {
+      const { offset, blur } = elevationGeometry(elevationHeight(role));
+      return `  --sg-elevation-${role}: 0 ${offset}px ${blur}px var(--sg-shadow-ink);`;
+    });
+  }
+  return elevationRoles.map(
+    (role) =>
+      `  --sg-elevation-${role}: 0 0 0 var(--sg-border-width-0) ` +
+      `var(--sg-neutral-${roles.border[elevationOutline(role)]});`,
+  );
+};
 
 /**
  * 連続値の色帯（決定5-11）。**離散系列とは別の役割**である（roles.md）。
