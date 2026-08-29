@@ -73,7 +73,9 @@ const COLORISH = (prop) =>
  *
  * 字送りは決定1-9 を確定させるまで「スケールを持つべきかどうかすら決めていない」
  * 次元だったので、ここに入れられなかった。**入れられるようになったので入れる**（教訓3）。
- * 残っているのは `opacity` だけである。
+ *
+ * **不透明度もここから外れた。** 決定1-15 でスケールを持たないと決めたので、
+ * 別の判定（下記 FADING）に入れた。持たない側の決定でも検査にはできる。
  */
 const TYPOGRAPHIC = (prop) =>
   prop === 'font-size' ||
@@ -110,6 +112,26 @@ const ALLOWED_VALUE = new Set([
  */
 const ALLOWED_TYPO_VALUE = new Set(['inherit', 'initial', 'unset', '0', 'calc(', '+', ')']);
 
+/**
+ * 要素を薄めるプロパティ（決定1-15）。**許すのは 0 と 1 だけ。**
+ *
+ * 不透明度はスケールを持たない。中間の値は「色を薄める」ことであり、
+ * **前景と背景を同時に下地へ寄せるのでコントラスト保証の外へ出る。**
+ * サンプルページ自身が `opacity: 0.88` で 4.50:1 を 3.17:1 に落としていた。
+ *
+ * `0` と `1` は「見えない / 見える」であって薄めではないので許す。
+ * 出現・退場のアニメーションが観測されている（holosphere）。
+ *
+ * **この検査が見逃す範囲。** 色そのものが持つアルファ（`oklch(… / .25)`、
+ * Tailwind の `bg-danger/15`）はここでは見ない。あれは色の選択であり、
+ * 色システムが解くもの（影がその例。決定1-8）。
+ */
+const FADING = (prop) =>
+  prop === 'opacity' || prop === 'fill-opacity' || prop === 'stroke-opacity';
+
+/** 薄めるプロパティの値に許す語。**0 と 1 だけ**（決定1-15） */
+const ALLOWED_FADING_VALUE = new Set(['0', '1', 'inherit', 'initial', 'unset']);
+
 /** `var(--sg-…)` の中身。入れ子のフォールバックは使っていないので単純に取る */
 const VAR_REF = /var\(\s*(--[a-z0-9-]+)\s*\)/gi;
 
@@ -145,7 +167,9 @@ const rawValues = (html) =>
       ? ALLOWED_VALUE
       : TYPOGRAPHIC(prop)
         ? ALLOWED_TYPO_VALUE
-        : null;
+        : FADING(prop)
+          ? ALLOWED_FADING_VALUE
+          : null;
     if (!allowed) return [];
     // var(…) を取り除いた残りが、許可した語だけで構成されていること
     const rest = value.replace(VAR_REF, ' ').trim();
@@ -172,6 +196,9 @@ const FIXTURE = `
   .g { font-weight: 700; }
   .e { font-size: var(--sg-text-body); line-height: var(--sg-text-body-leading); }
   .f { letter-spacing: calc(var(--sg-text-label-tracking) + var(--sg-tracking-caps)); }
+  .h { opacity: 0.88; }
+  .i { opacity: 0; }
+  .j { opacity: 1; }
 </style>
 <div style="background: rgba(0,0,0,.2)"></div>
 `;
@@ -195,6 +222,10 @@ expect(
   fired.some((v) => v.prop === 'font-weight' && v.bad.includes('700')),
   '太さの生値を検出できていない（決定1-13 で太さは役割を持った）',
 );
+expect(
+  fired.some((v) => v.prop === 'opacity' && v.bad.includes('0.88')),
+  '中間の不透明度を検出できていない（決定1-15 でスケールを持たないと決めた）',
+);
 /*
  * **通る側の対照。** 落ちるべきものだけを並べると、
  * 「通すはずの書き方が落ちるようになった」ことに気づけない（教訓2、Issue #63）。
@@ -208,7 +239,11 @@ expect(
   !fired.some((v) => v.value.startsWith('calc(')),
   'calc() で加算項を足す書き方を落としている（決定1-9）',
 );
-expect(fired.length === 5, `許可した値まで落としている（${fired.length} 件）`);
+expect(
+  !fired.some((v) => v.prop === 'opacity' && (v.value === '0' || v.value === '1')),
+  '0 と 1 まで落としている（見えない / 見えるは薄めではない。決定1-15）',
+);
+expect(fired.length === 6, `許可した値まで落としている（${fired.length} 件）`);
 
 /* ============================================================
    本体

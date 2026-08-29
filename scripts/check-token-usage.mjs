@@ -28,7 +28,7 @@
  * **構造的に生成されなくなった。** ただし抜け道は任意値記法だけではない。
  *
  * v4 には**テーマを参照しない素の数値ユーティリティ**があり、`@theme` では止まらない。
- * `duration-137` `delay-137` `z-42` `opacity-37` `rotate-17` `order-9` `grid-cols-13` など。
+ * `duration-137` `delay-137` `z-42` `opacity-88` `rotate-17` `order-9` `grid-cols-13` など。
  * `duration-137` は決定1-6 のスケールを素通りする。**`p-5` と同じ性質の穴である。**
  *
  class 属性のトークンを「英数字と記号の許可集合」に照らし、`[` `]` `(` `)` を
@@ -36,7 +36,7 @@
  *
  * **素の数値は別に見る**（決定3-5、Issue #55）。括弧を持たないので許可集合では落ちない。
  * 対象は**スケールを持つ次元だけ**で、いまは `border-*`（決定1-7）と
- * `duration-*` `delay-*`（決定1-6）である。`z-42` `order-9` `opacity-37` などは
+ * `duration-*` `delay-*`（決定1-6）である。`z-42` `order-9` などは
  * スケールを持っていない次元なので**対象にしない**（原則7。観測してから決める）。
  * 許す数値は生成した `theme.css` から取るので、写像を増やせば自動で通るようになる。
  *
@@ -243,9 +243,11 @@ const findTokenViolations = (text, allowed, primitives) => {
  * `duration-137` は決定1-6 のスケールを、`border-4` は決定1-7 のスケールを素通りする。
  * `p-5` と同じ性質の穴だが、**`@theme` では構造的に止められない。lint でしか塞げない。**
  *
- * 対象は**スケールを持つ次元だけ**である。`z-42` `order-9` `grid-cols-13` `opacity-37`
+ * 対象は**スケールを持つ次元だけ**である。`z-42` `order-9` `grid-cols-13`
  * `rotate-17` `scale-77` `skew-9` `col-span-13` `row-span-7` `aspect-3/4` は
  * スケールを持っていない次元であり、トークンの管轄ではない（原則7。観測してから決める）。
+ * **`opacity-*` はここではなく FORBIDDEN_BARE が見る。** 観測してから決めた結果が
+ * 「持たない」だった次元で、段の外の値ではなく次元そのものを弾く（決定1-15）。
  *
  * 許す数値は**生成した theme.css から取る。** 手で並べると写像を増やしたときにずれる。
  */
@@ -275,6 +277,30 @@ const SCALED_BARE = [
     re: /^ring-(\d+(?:\.\d+)?)$/,
     namespace: /^\s*--ring-width-([0-9.\\\\]+)\s*:/gm,
     dimension: 'border-width（決定1-7）',
+  },
+];
+
+/**
+ * **持たないと決めた次元の素の数値ユーティリティ**（決定1-15）。
+ *
+ * `SCALED_BARE` は「スケールを持つ次元の、段の外の値」を弾く。こちらは逆で、
+ * **スケールを持たないと決めた次元そのもの**を弾く。
+ *
+ * 不透明度がそれである。中間の値は「色を薄める」ことであり、前景と背景を同時に
+ * 下地へ寄せるのでコントラスト保証の外へ出る（決定1-15）。
+ *
+ * **素の CSS の経路とそろえるために要る。** `check:sample-page` が
+ * `opacity: 0.88` を落とすのに `opacity-88` が書けると、
+ * **同じものに2つの道があって片方だけが安全**という形になる。
+ * 面（決定5-12）でも hover（決定5-13）でも動き（決定1-14）でも退けてきた形である。
+ *
+ * `opacity-0` と `opacity-100` は「見えない / 見える」であって薄めではないので許す。
+ */
+const FORBIDDEN_BARE = [
+  {
+    re: /^opacity-(\d+)$/,
+    allow: (v) => v === '0' || v === '100',
+    dimension: '不透明度（決定1-15）',
   },
 ];
 
@@ -314,6 +340,16 @@ const findClassViolations = (text) => {
         continue;
       }
       const name = bareName(token[0]);
+      for (const rule of FORBIDDEN_BARE) {
+        const m = rule.re.exec(name);
+        if (!m || rule.allow(m[1])) continue;
+        out.push({
+          kind: 'no-scale',
+          line: lineOf(text, at + token.index),
+          what: token[0],
+          dimension: rule.dimension,
+        });
+      }
       for (const rule of scaledAllowed) {
         const m = rule.re.exec(name);
         if (!m || rule.allowed.has(m[1]) || IS_ABSENCE(m[1])) continue;
@@ -382,7 +418,7 @@ const FIXTURES = [
   { text: 'a { color: var(--sg-color-text-mutedd); }', expect: 'unknown' },
   // 決定5-13: hover の控えは内部の値。参照すると hover していない要素に hover の色が乗る
   { text: 'a { color: var(--sg-color-hover-text-default); }', expect: 'internal' },
-  { text: 'a { background: var(--sg-color-hover-bg); }', expect: 'internal' },
+  { text: 'a { background: var(--sg-color-deeper-bg); }', expect: 'internal' },
   { text: '<div class="p-[20px]">', expect: 'arbitrary' },
   { text: '<div class="[mask-type:luminance]">', expect: 'arbitrary' },
   { text: '<div class="bg-(--sg-color-accent)">', expect: 'arbitrary' },
@@ -434,7 +470,15 @@ const FIXTURES = [
    * スケールを持たない次元は**対象外**。原則7 に従い、観測してから決める。
    * ここを弾き始めると、決めていない次元をトークンの管轄に引き込むことになる
    */
-  { text: '<div class="z-42 order-9 opacity-37 rotate-17 grid-cols-13">', expect: null },
+  { text: '<div class="z-42 order-9 rotate-17 grid-cols-13">', expect: null },
+  /*
+   * **不透明度だけは別**（決定1-15）。「観測してから決める」を済ませて、
+   * **持たない**と決めた次元である。素の CSS の経路（check:sample-page）が
+   * 0.88 を落とすので、Tailwind の経路も同じでなければ片道だけが安全になる
+   */
+  { text: '<div class="opacity-88">', expect: 'no-scale' },
+  { text: '<div class="hover:opacity-50">', expect: 'no-scale' },
+  { text: '<div class="opacity-0 opacity-100">', expect: null },
   // 決定2-3 の正規表現が誤検出していた2件
   { text: 'h1 { font-size: var(--sg-text-heading-1); }', expect: null },
   { text: 'svg { fill: var(--sg-color-chart-1); }', expect: null },
@@ -507,6 +551,10 @@ const MESSAGE = {
   'bare-number':
     'テーマを参照しない素の数値ユーティリティです。スケールを素通りします（決定3-5）。' +
     'この形は @theme では止められないので、ここでしか塞げません',
+  'no-scale':
+    '不透明度はスケールを持ちません（決定1-15）。中間の値は前景と背景を同時に下地へ寄せるので、' +
+    'コントラスト保証の外へ出ます。塗りの状態変化は bg-accent-strong / bg-danger-strong、' +
+    '面の状態変化は data-sg-interactive で表します（決定5-13・5-15）',
 };
 
 if (violations.length) {

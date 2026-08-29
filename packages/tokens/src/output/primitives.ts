@@ -228,18 +228,23 @@ export const spacingSemanticVars = (density: DensityLevel): string[] =>
 export const SKELETON_ANIMATION = 'skeleton var(--sg-duration-loop-1) ease-in-out infinite';
 
 /**
- * 透明度だけを動かす。色を持たないので、面の上でも塗りの上でも成立する。
+ * **地の色を「1段深い面」との間で動かす**（決定1-14 改訂、決定1-15）。
  *
- * **0.4 はトークンではない。** 不透明度はスケールを持つべきかすら決めていない次元で
- * （`scripts/check-sample-page.mjs` の「見逃す範囲」に名指しで残っている）、
- * ここに書いてあるのは**このアニメーションの定義の一部**である。
+ * 以前は透明度を `1 → 0.4` で動かしていた。`0.4` は
+ * 「pylabo の 0.25 と Tailwind 既定の 0.5 の中央付近に置いただけ」で根拠が無く、
+ * **決めていない次元の生値がトークン層に1つだけ残っている**状態だった。
  *
- * 観測もばらついていた。pylabo は 0.25、Tailwind 既定は 0.5。
- * **その中央付近に置いただけで、強い根拠は無い。** 隠さず書いておく。
+ * 不透明度はスケールを持たないと決めた（決定1-15）ので、ここも色で解く。
+ * 動く量は elevation と同じ**面の梯子1段分**で、新しい定数は持ち込まない。
+ *
+ * **0% と 100% を書かない。** 書かなければ要素の現在の地の色が両端になるので、
+ * 面の色を変数として出さずに済む（決定5-12 改訂で塞いだ道を開け直さない）。
+ *
+ * `--sg-color-deeper-bg` は面の文脈が控えている内部の値で、hover の規則と共有する。
+ * どちらも読んでいるのは「1段深い面の地」という同じ関係である。
  */
 export const SKELETON_KEYFRAMES = [
   '@keyframes skeleton {',
-  '  0%, 100% { opacity: 1; }',
-  '  50% { opacity: 0.4; }',
+  '  50% { background-color: var(--sg-color-deeper-bg); }',
   '}',
 ];

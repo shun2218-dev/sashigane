@@ -85,6 +85,18 @@ const semanticFor = (
     `  --sg-color-accent-mark: var(--sg-primary-${roles.colorMark});`,
     // 塗りの上に載せる文字（決定5-14）。ランプごとに解いてある
     `  --sg-color-on-accent: var(--sg-neutral-${roles.onFill.accent});`,
+    /**
+     * 塗りの1段強い段（決定5-15）。hover / 押下 / 選択で塗りを差し替える。
+     *
+     * **accent と danger にしか出さない。** 観測4本の塗りボタンは
+     * 「主要動作」と「破壊的動作」の2種類しかなく（pdf-merge-app の shadcn も
+     * default / destructive）、warning / success / info の塗りを**押す**場面が無い（原則7）。
+     *
+     * 不透明度で薄める道は塞いだ（決定1-15）。塗りを `opacity` で変えると
+     * 塗りと文字が同時に下地へ寄り、4.50:1 が 3.17:1 まで落ちる。
+     */
+    `  --sg-color-accent-strong: var(--sg-primary-${roles.colorStrong});`,
+    `  --sg-color-danger-strong: var(--sg-danger-${roles.colorStrong});`,
     `  --sg-color-border-focus: var(--sg-primary-${roles.colorMark});`,
     ...statusNames.flatMap((n) => [
       `  --sg-color-${n}: var(--sg-${n}-${roles.colorText});`,
@@ -264,7 +276,15 @@ export const hoverMirrorVars = (
     .filter((n) => !mirrored.some((l) => l.trimStart().startsWith(`${n}:`)))
     .map((n) => `  ${n}: var(${n.replace('--sg-color-hover-', '--sg-color-')});`);
   return [
-    `  --sg-color-hover-bg: var(--sg-neutral-${next.surface});`,
+    /**
+     * **1段深い面の地。** hover の規則と、骨組み表示の明滅がどちらもこれを読む
+     * （決定5-13・決定1-14 改訂）。名前に hover を含めていないのはそのためである。
+     *
+     * 面の色は値として出さない（決定5-12 改訂）が、**これは面の色ではなく
+     * 「1段深い段」という関係**であり、塗るだけの道にはならない。
+     * 読めるのは `tokens.css` 自身の規則だけで、利用側からの参照は禁止している。
+     */
+    `  --sg-color-deeper-bg: var(--sg-neutral-${next.surface});`,
     ...mirrored,
     ...missing,
   ];
@@ -300,10 +320,10 @@ export const hoverMirrorNames = (palette: Palette): string[] => [
 ];
 
 export const hoverRuleVars = (palette: Palette): string[] => [
-  '  background-color: var(--sg-color-hover-bg);',
+  '  background-color: var(--sg-color-deeper-bg);',
   // 背景は変数ではなく background-color として移すので、名前の対応からは外れる
   ...hoverMirrorNames(palette)
-    .filter((n) => n !== '--sg-color-hover-bg')
+    .filter((n) => n !== '--sg-color-deeper-bg')
     .map((n) => `  ${n.replace('--sg-color-hover-', '--sg-color-')}: var(${n});`),
 ];
 
@@ -318,6 +338,9 @@ export const hoverRuleVars = (palette: Palette): string[] => [
  *   bg-*        面そのもの。前景ではない
  *   border-*    装飾。要件を持たない（決定5-12）
  *   on-*        要件はあるが**相手が塗り**で、ページ地ではない（決定5-14）
+ *   *-strong    要件はあるが**常に通常の塗りより厳しい側**にある（決定5-15）。
+ *               1段深い段なので、ページ地に対しても塗りの上の文字に対しても
+ *               通常の塗りより余裕が増えるだけで、丸めで割ることがない
  *   sequential-* 帯として読めればよく、特定の比を要求しない（決定5-11）
  *
  * **分類漏れは検査が捕まえる。** `test/values.test.ts` が、すべての `--sg-color-*` が
@@ -350,4 +373,7 @@ export const colorWithoutRequirement = (name: string): boolean =>
   name.startsWith('--sg-color-border-strong') ||
   name.startsWith('--sg-color-chart-gridline') ||
   name.startsWith('--sg-color-on-') ||
+  // 塗りの1段強い段（決定5-15）。通常の塗りより必ず端に近いので余裕は増えるだけ
+  name === '--sg-color-accent-strong' ||
+  name === '--sg-color-danger-strong' ||
   name.startsWith('--sg-color-sequential-');
