@@ -49,6 +49,24 @@
  * 素の Tailwind が出すのに我々が出さないものが、消えたものである。
  * **列挙が要らない**ので、ここでも許可リスト方式のままでいられる。
  *
+ * ## 過剰に検出するもの — **コメントに書いた名前も落ちる**
+ *
+ * Tailwind はコメントの中も素のテキストとして読む。したがって
+ * 「`rounded-md` は写像していない」と**説明を書くと、その説明が落ちる。**
+ * 決定6-3 の性質上、**まさにその説明が書かれる**コードである。
+ *
+ * 言語ごとのパーサでコメントだけを除くのは割に合わない（`check:token-usage` と同じ判断）。
+ * **逃げ道を用意する。**
+ *
+ *   落ちる    // rounded-md は写像していない
+ *   落ちる    // `rounded-md` は写像していない        ← バッククォートは効かない
+ *   落ちない  // rounded-* の t シャツ語彙は写像していない
+ *   落ちない  // text-{sm} や shadow-{sm} は写像していない
+ *
+ * `check:token-usage` の `--sg-space-N` と同じ作法である。
+ * **逃げ道が実際に効くことは陽性対照で確かめている**——Issue #63 で
+ * 「文書が案内していた逃げ道が一度も機能していなかった」をやっているため（教訓2）。
+ *
  * ## 対照（教訓2）
  *
  * 実行のたびに3つのフィクスチャへ検出器を当てる。
@@ -56,7 +74,8 @@
  *   陰性対照1  cva / オブジェクト引き / 定数1本の中に隠した違反で**発火すること**
  *   陰性対照2  cva の中に隠した shadcn 語彙が**消えたと検出されること**
  *   陽性対照   通るべき cva が**落ちないこと**、**消えたと言われないこと**、
- *              かつ**クラスが実際に生成されていること**
+ *              **クラスが実際に生成されていること**、
+ *              かつ**逃げ道（`rounded-*` `text-{sm}`）が効くこと**
  *
  * 陽性対照で生成件数まで見るのは、**コンパイルが黙って何も出さなくても
  * 「違反ゼロ」に見えてしまう**ためである。0 件は「対象が無かった」かもしれない。
@@ -252,6 +271,8 @@ export const cardVariants = cva("text-default border-1 border-default p-4 durati
   defaultVariants: { tone: "accent", size: "sm" },
 });
 export const layout = "w-1/2 basis-1/3 opacity-100 border-0 md:p-6 hover:bg-accent-strong";
+// rounded-* の t シャツ語彙は写像していない。text-{sm} や shadow-{sm} も同じ
+// ↑ この2行が落ちないことが、案内している逃げ道が効いていることの対照である（教訓2）
 `;
 
 /**
@@ -365,13 +386,21 @@ const locate = (cls) => {
     .filter((e) => e.isFile())
     .map((e) => join(e.parentPath ?? e.path, e.name));
   const hits = [];
+  // 変種つき（md:p-[7px]）で生成された場合、ソースには変種ごと書かれている
+  const bare = cls.split(':').pop();
+  /**
+   * **部分一致で探さない。** `h-10` は `h-100` を含む行に、`p-4` は `p-40` に一致する。
+   * 消えたクラスの報告は「どこに書いたか」だけが手がかりなので、違う行を指すと直せない。
+   * クラス名として続きうる文字が前後に無いことを見る。
+   */
+  const boundary = (needle) =>
+    new RegExp(`(?<![A-Za-z0-9_-])${needle.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&')}(?![A-Za-z0-9_-])`);
+  const patterns = [boundary(cls), boundary(bare)];
   for (const file of files) {
-    // 変種つき（md:p-[7px]）で生成された場合、ソースには変種ごと書かれている
-    const bare = cls.split(':').pop();
     readFileSync(file, 'utf8')
       .split('\n')
       .forEach((line, i) => {
-        if (line.includes(cls) || line.includes(bare)) {
+        if (patterns.some((re) => re.test(line))) {
           hits.push(`${file.replace(`${process.cwd()}/`, '')}:${i + 1}`);
         }
       });
