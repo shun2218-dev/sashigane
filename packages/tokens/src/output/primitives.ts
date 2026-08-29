@@ -16,7 +16,6 @@ import {
   type DensityLevel,
   durationLoop,
   durationTransition,
-  elevation,
   fontInputName,
   fontSize,
   fontSlots,
@@ -90,9 +89,14 @@ export const primitiveVars = (): string[] => [
   '',
   '  /* border-width — px 固定。決定1-1 の例外（決定1-7） */',
   ...borderWidth.map((v, i) => `  --sg-border-width-${i}: ${v}px;`),
-  '',
-  '  /* elevation の高さ。影の仕様は色システムと組で決まる（決定1-8、未実装） */',
-  ...elevation.map((h) => `  --sg-elevation-${h}: ${h};`),
+
+  /* elevation は**プリミティブとして出せない**（決定1-8 改訂）。
+     モードで媒体が変わり（明色は影、暗色は輪郭）、暗色の輪郭は面の深さでも段が変わる。
+     プリミティブはモードにも面にも依存しない層なので、ここには置けない。
+     出るのは役割（--sg-elevation-raised / -overlay）だけで、color-vars.ts が持つ。
+
+     以前ここには `--sg-elevation-0: 0` 〜 `-3: 3` という高さの数字が出ていた。
+     CSS のどのプロパティにも入らない値であり、参照できる形をしていなかった。 */
   '',
   ...fontStackVars(),
 ];

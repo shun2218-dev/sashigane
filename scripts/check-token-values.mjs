@@ -66,10 +66,14 @@ const declarations = (block) => {
   return out;
 };
 
-const OKLCH = /^oklch\(([\d.]+) ([\d.]+) ([\d.]+)\)$/;
+// 透過を持つのは影の色だけである（決定1-8 改訂）。16進では8桁になる
+const OKLCH = /^oklch\(([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)$/;
 const asValue = (raw) => {
   const m = OKLCH.exec(raw);
-  if (m) return toHex({ L: Number(m[1]), C: Number(m[2]), H: Number(m[3]) });
+  if (m) {
+    const c = { L: Number(m[1]), C: Number(m[2]), H: Number(m[3]) };
+    return m[4] === undefined ? toHex(c) : toHex(c, Number(m[4]));
+  }
   // 書体スタックは差し込み口を含む。JS 側は既定へ展開した姿を持つ（決定1-11）
   return expandVarFallbacks(raw);
 };
@@ -88,11 +92,31 @@ for (const name of layers.primitives) {
   primitives.set(name, asValue(raw));
 }
 
+/**
+ * 浮きは**長さの列 + プリミティブへの参照**でできている（決定1-8 改訂）。
+ * 参照1つだけの値と同じ経路で解けるように、空白で切って要素ごとに解決する。
+ *
+ * 判定は**許可するものの列挙**にする（教訓5）。長さは数値と単位に限るので、
+ * 書体スタック（カンマとフォールバックを含む）はここに入らず、下の経路へ落ちる。
+ *
+ * **生成器の resolve() を import しない。** この検査は tokens.css と tokens.js を
+ * 突き合わせるものなので、両方を同じ関数で作ると突き合わせにならない。
+ */
+const ITEM = /^(0|-?[\d.]+(px|rem|em|ms|s)|var\(--sg-[a-z0-9-]+\))$/;
+
 const resolveFrom = (block, name) => {
   const raw = block.get(name);
   if (raw === undefined) return undefined;
-  const ref = /^var\((--sg-[a-z0-9-]+)\)$/.exec(raw);
-  return ref ? primitives.get(ref[1]) : asValue(raw);
+  const items = raw.split(/\s+/);
+  if (items.every((item) => ITEM.test(item))) {
+    return items
+      .map((item) => {
+        const ref = /^var\((--sg-[a-z0-9-]+)\)$/.exec(item);
+        return ref ? primitives.get(ref[1]) : item;
+      })
+      .join(' ');
+  }
+  return asValue(raw);
 };
 
 const fromCss = {

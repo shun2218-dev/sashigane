@@ -58,9 +58,14 @@ const DECLARATION = /^\s*(--sg-[a-z0-9-]+):\s*(.+);$/;
  * **名前と段の対応を colorPrimitiveVars 1箇所に閉じておくため**である。
  * 対応表を2箇所に持つと、片方だけ直したときに静かにずれる。
  */
-const parseOklch = (value: string): Oklch | null => {
-  const m = /^oklch\(([\d.]+) ([\d.]+) ([\d.]+)\)$/.exec(value.trim());
-  return m ? { L: Number(m[1]), C: Number(m[2]), H: Number(m[3]) } : null;
+const parseOklch = (value: string): { color: Oklch; alpha?: number } | null => {
+  const m = /^oklch\(([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)$/.exec(value.trim());
+  if (!m) return null;
+  return {
+    color: { L: Number(m[1]), C: Number(m[2]), H: Number(m[3]) },
+    // 透過を持つのは影の色だけである（決定1-8 改訂）。16進では8桁になる
+    alpha: m[4] === undefined ? undefined : Number(m[4]),
+  };
 };
 
 /**
@@ -118,10 +123,19 @@ const primitiveValues = (palette: Palette): Map<string, string> => {
     const m = DECLARATION.exec(line);
     if (!m) continue;
     const oklch = parseOklch(m[2]!);
-    out.set(m[1]!, oklch ? toHex(oklch) : expandVarFallbacks(m[2]!));
+    out.set(m[1]!, oklch ? toHex(oklch.color, oklch.alpha) : expandVarFallbacks(m[2]!));
   }
   return out;
 };
+
+/**
+ * セマンティックの値を作る要素。**許可するものを列挙する**（教訓5）。
+ *
+ * `var(--sg-x)` 1つだけの値と、影のように**長さの列 + 色の参照**でできた値の
+ * 両方をここで受ける。長さは数値と単位に限るので、**色の直値はどう書いても通らない。**
+ * 禁止リストにすると `#fff` は塞げても `rebeccapurple` が黙って通る。
+ */
+const ITEM = /^(0|-?[\d.]+(px|rem|em|ms|s)|var\(--sg-[a-z0-9-]+\))$/;
 
 /** セマンティックの `var(--sg-x)` を1段だけ解決する */
 const resolve = (lines: string[], primitives: Map<string, string>): Record<string, string> => {
@@ -129,17 +143,23 @@ const resolve = (lines: string[], primitives: Map<string, string>): Record<strin
   for (const line of lines) {
     const m = DECLARATION.exec(line);
     if (!m) continue;
-    const ref = /^var\((--sg-[a-z0-9-]+)\)$/.exec(m[2]!);
-    if (!ref) {
-      // セマンティックはプリミティブを参照する形でしか出していない。
-      // 直値が現れたら生成器の前提が変わっている
-      throw new Error(`セマンティックが var() 参照ではありません: ${line.trim()}`);
+    const items = m[2]!.trim().split(/\s+/);
+    if (!items.every((item) => ITEM.test(item))) {
+      // セマンティックはプリミティブへの参照と長さでしか組み立てていない。
+      // それ以外が現れたら生成器の前提が変わっている
+      throw new Error(`セマンティックの値に許可していない要素があります: ${line.trim()}`);
     }
-    const value = primitives.get(ref[1]!);
-    if (value === undefined) {
-      throw new Error(`未定義のプリミティブを参照しています: ${ref[1]}`);
-    }
-    out[m[1]!] = value;
+    out[m[1]!] = items
+      .map((item) => {
+        const ref = /^var\((--sg-[a-z0-9-]+)\)$/.exec(item);
+        if (!ref) return item;
+        const value = primitives.get(ref[1]!);
+        if (value === undefined) {
+          throw new Error(`未定義のプリミティブを参照しています: ${ref[1]}`);
+        }
+        return value;
+      })
+      .join(' ');
   }
   return out;
 };

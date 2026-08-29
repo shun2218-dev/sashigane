@@ -430,6 +430,40 @@ export const verifyPalette = (palette: Palette): Warning[] => {
   return warnings;
 };
 
+/**
+ * 影の色（決定1-8 改訂）。**濃さは値ではなく色システムから解く。**
+ *
+ * 影の暗さを「面の梯子1段分」と定義する。`bg-page` の上に落ちた影の最も濃い点が、
+ * 1段深い面（`bg-surface`）と同じ相対輝度になるアルファを解く。
+ * **暗色モードが面の梯子で表す「1段」と、明色モードの影が、同じ量になる。**
+ *
+ * 色は中間色ランプの暗端を取る。決定5-6 により primary の色相で着色されているので、
+ * 決定1-8 が要求した「影は純黒ではなく背景の色相を持たせる」が自動的に満たされる。
+ *
+ * **高さでは変えない。** 決定1-8 は「単位面積あたりの濃度は h とともに低下」と
+ * 書いていたが、物理どおり `1/h²` で落とすと h=3 の影が最も薄くなり、
+ * 浮きの順序が見た目で逆転する。h が表すのは広がりだけにする。
+ *
+ * **面の深さでも変えない。** 深い面ほど「1段分」に必要なアルファは上がる
+ * （全360色相で page 0.246〜0.253 → 3段目 0.331〜0.336）が、page で解いた
+ * 1つの値を全段で使っても、できる影の対比は 1.28〜1.31 に収まる（測定済み）。
+ * 面ごとに解き直すと、影の色が面の数だけ増える割に見た目が動かない。
+ */
+export interface ShadowInk {
+  /** 影の色。中間色ランプの暗端 */
+  color: Oklch;
+  /** 合成後が「1段深い面」と同じ相対輝度になるアルファ */
+  alpha: number;
+}
+export const shadowInkFor = (palette: Palette): ShadowInk => {
+  const y = (c: Oklch) => relativeLuminance(oklchToLinearRgb(c));
+  const [page, next] = cfg.guarantees.surfaces.light;
+  const color = palette.neutral.byStep[cfg.steps[cfg.steps.length - 1]!]!;
+  const yPage = y(palette.neutral.byStep[page!]!);
+  const yNext = y(palette.neutral.byStep[next!]!);
+  return { color, alpha: (yPage - yNext) / (yPage - y(color)) };
+};
+
 /** 前景と背景のコントラスト比。テーマビルダーの警告と CI の両方で使う */
 export const contrastBetween = (fg: Oklch, bg: Oklch): number =>
   contrastRatio(

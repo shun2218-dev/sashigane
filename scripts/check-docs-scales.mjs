@@ -27,6 +27,8 @@ import {
   breakpoint,
   breakpointNames,
   breakpointUnit,
+  elevation,
+  elevationGeometry,
   radius,
   root,
   spacing,
@@ -109,6 +111,30 @@ if (lsRows.length !== fontSize.length) {
   }
 }
 
+/* ---------- elevation 表: | h | ○○px | ○○px | ---------- */
+/*
+ * 単位付きで書いてあるので、上の rows() が拾う数値表とは混ざらない。
+ * h=0 は「影を書かなければよい」ので表に無く、行数は maxHeight と一致する。
+ */
+const elRows = [...doc.matchAll(/^\|\s*(\d+)\s*\|\s*(\d+)px\s*\|\s*(\d+)px\s*\|/gm)].map(
+  (m) => m.slice(1).map(Number),
+);
+if (elRows.length !== elevation.length - 1) {
+  errors.push(
+    `elevation の表が ${elRows.length} 行しか見つかりません（期待 ${elevation.length - 1} 行）。`,
+  );
+} else {
+  for (const [h, offset, blur] of elRows) {
+    const want = elevationGeometry(h);
+    if (offset !== want.offset) {
+      errors.push(`elevation[${h}] のオフセット: 表 ${offset} / 生成器 ${want.offset}`);
+    }
+    if (blur !== want.blur) {
+      errors.push(`elevation[${h}] のぼかし: 表 ${blur} / 生成器 ${want.blur}`);
+    }
+  }
+}
+
 /* ---------- README の概要表 ---------- */
 /*
  * README にも値を書いている（利用者が最初に見る場所なので、
@@ -157,4 +183,5 @@ if (errors.length) {
 console.log(`✓ font-size 表 ${fsRows.length} 行が生成器と一致`);
 console.log(`✓ line-height 表 ${lhRows.length} 行 × ${Object.keys(leadingFamilies).length} 系統が生成器と一致`);
 console.log(`✓ letter-spacing 表 ${lsRows.length} 行が生成器と一致`);
+console.log(`✓ elevation 表 ${elRows.length} 行が生成器と一致`);
 console.log(`✓ README の概要表 ${readmeExpectations.length} 項目が生成器と一致`);

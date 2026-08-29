@@ -9,7 +9,13 @@
  *   セマンティック --sg-{category}-{単語}   参照可
  */
 import type { Palette, Ramp, SurfaceRoles } from '../color/palette.ts';
-import { statusNames, steps, surfaceRolesFor } from '../color/palette.ts';
+import { shadowInkFor, statusNames, steps, surfaceRolesFor } from '../color/palette.ts';
+import {
+  elevationGeometry,
+  elevationHeight,
+  elevationOutline,
+  elevationRoles,
+} from '../scales.ts';
 import tokensJson from '../tokens.json' with { type: 'json' };
 
 const cfg = tokensJson.color;
@@ -19,13 +25,22 @@ const rampVars = (prefix: string, ramp: Ramp): string[] =>
   steps.map((s) => `  --sg-${prefix}-${s}: ${toCss(ramp.byStep[s]!)};`);
 
 /** プリミティブ。コンポーネントからの参照は lint で禁止される */
-export const colorPrimitiveVars = (p: Palette): string[] => [
-  '  /* 色 — primary から生成（決定5-1）。段は保証境界に解かれている（決定5-2） */',
-  ...rampVars('neutral', p.neutral),
-  ...rampVars('primary', p.primary),
-  ...statusNames.flatMap((n) => rampVars(n, p.status[n])),
-  ...p.categorical.flatMap((r, i) => rampVars(`series-${i + 1}`, r)),
-];
+export const colorPrimitiveVars = (p: Palette): string[] => {
+  const ink = shadowInkFor(p);
+  return [
+    '  /* 色 — primary から生成（決定5-1）。段は保証境界に解かれている（決定5-2） */',
+    ...rampVars('neutral', p.neutral),
+    ...rampVars('primary', p.primary),
+    ...statusNames.flatMap((n) => rampVars(n, p.status[n])),
+    ...p.categorical.flatMap((r, i) => rampVars(`series-${i + 1}`, r)),
+    '',
+    '  /* 影の色（決定1-8 改訂）。**唯一、透過を持つ色である。**',
+    '     中間色ランプの暗端に、面の梯子1段分になるアルファを解いて足したもの。',
+    '     色相は決定5-6 で primary から来るので、純黒の影にはならない。',
+    '     明色モードでしか使わない。暗色では影が機能しないため（測定済み） */',
+    `  --sg-shadow-ink: ${toCss(ink.color, ink.alpha)};`,
+  ];
+};
 
 /**
  * セマンティック。明色モードと暗色モードで**参照する段を変えるだけ**（決定5-2）。
@@ -81,7 +96,52 @@ const semanticFor = (
       (step, i) => `  --sg-color-chart-${i + 1}: var(--sg-series-${i + 1}-${step});`,
     ),
     ...sequentialVars(mode, roles.surface),
+    ...elevationVars(mode, roles, depth),
   ];
+};
+
+/**
+ * 浮き（決定1-8 改訂）。**モードで媒体が変わる。**
+ *
+ *   明色  影。offset = h × base、blur = その blurRatio 倍、色は --sg-shadow-ink
+ *   暗色  輪郭。h ごとに境界の段を深くする
+ *
+ * 暗色で影を出さないのは、**出せないから**である。影の色を純黒・アルファ 1.0 に
+ * しても、暗色の面に対して作れるコントラストは 1.08〜1.73:1 しかない
+ * （明色は 10.91〜19.27:1。全360色相で測定）。
+ *
+ * 明度差分も持てない。決定5-2 が端点をちょうど 4.500 に解いているため、暗色の面を
+ * 持ち上げられる余地は Δ ≤ 0.0074（面1段分は 0.0703）しかなく、足せば文字が要件を割る。
+ * **前景は面の文脈のまま背景だけが動く**ので、Issue #65 と同じ「塗るだけの道」になる。
+ *
+ * 段は面の深さで解き直された `roles.border` から取るので、深い面では輪郭も一緒に動く。
+ * **プリミティブとしては出せない。** 値がモードと面に依存するためである。
+ *
+ * **申告する限界（自己レビュー B2）。** 暗色で表せるのは `h` の順序であって量ではない。
+ * 明色は `offset` も `blur` も `h` に比例するが、暗色は境界の段を1段ずらすだけで、
+ * 段は3つしか無いので `h` を増やしても頭打ちになる。媒体を変えた以上避けられない。
+ *
+ * **明色は面に依らないので、面の文脈では出さない**（自己レビュー B1）。
+ * `:root` の1行が継承で届く。面ごとに同じ行を並べると、
+ * 「面ごとに違う値がある」という誤った読み方を誘う。
+ */
+const elevationVars = (
+  mode: 'light' | 'dark',
+  roles: SurfaceRoles,
+  depth: number,
+): string[] => {
+  if (mode === 'light') {
+    if (depth > 0) return [];
+    return elevationRoles.map((role) => {
+      const { offset, blur } = elevationGeometry(elevationHeight(role));
+      return `  --sg-elevation-${role}: 0 ${offset}px ${blur}px var(--sg-shadow-ink);`;
+    });
+  }
+  return elevationRoles.map(
+    (role) =>
+      `  --sg-elevation-${role}: 0 0 0 var(--sg-border-width-0) ` +
+      `var(--sg-neutral-${roles.border[elevationOutline(role)]});`,
+  );
 };
 
 /**
@@ -123,7 +183,8 @@ export type SurfaceName = (typeof surfaceNames)[number];
  * 暗色の 700 は梯子の最深段で、その hover が要求する 600 は成立しないためである。
  * ドロップダウンは overlay の中に hover する項目が並ぶ形なので、これは実用上の破綻になる。
  *
- * 浮いて見せるのは影と明度差分（決定1-8 の elevation）の責務である。**未実装。**
+ * 浮いて見せるのは elevation の責務である（決定1-8 改訂）。
+ * **暗色では同じ段になるので、`--sg-elevation-overlay` が無いと下地と同化する。**
  */
 const surfaceDepth: Record<SurfaceName, number> = {
   page: 0,
@@ -182,9 +243,17 @@ export const hoverMirrorVars = (
 ): string[] => {
   const next = surfaceRolesFor(palette, mode)[depth + 1];
   if (!next) return [];
-  const mirrored = semanticFor(mode, next, depth + 1).map((line) =>
-    line.replace(/^(\s*)--sg-color-/, '$1--sg-color-hover-'),
-  );
+  /**
+   * **控えるのは色だけである。** hover は面の文脈を1段深くするが、
+   * 浮き（`--sg-elevation-*`）は hover では変わらない。行に触れて浮き上がる
+   * 挙動は観測4本に1件も無い。
+   *
+   * 名前で絞らずに全部を控えると、`--sg-elevation-*` が
+   * **改名されないまま**控えの一覧に入り、内部の層とセマンティックの層が重なる。
+   */
+  const mirrored = semanticFor(mode, next, depth + 1)
+    .filter((line) => /^\s*--sg-color-/.test(line))
+    .map((line) => line.replace(/^(\s*)--sg-color-/, '$1--sg-color-hover-'));
   /**
    * 深い面では系列色を配れず、変数そのものが出ない（決定5-12）。
    * 控えの側が欠けると hover したときに値が無効になり、
