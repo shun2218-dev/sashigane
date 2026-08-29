@@ -587,18 +587,18 @@ const solveSurfaceRoles = (
      * チャート系列が全部くすんで見分けられなかった。このランプは明るい段ほど彩度が乗る。
      * **数値では気づけなかった判断**なので、規則の側に残す。
      */
+    const markStep = (textStep: number): number => {
+      const i = cfg.steps.indexOf(textStep as Step) - 1;
+      const candidate = cfg.steps[Math.max(i, 0)]!;
+      return meets(candidate, bg, g.markMin, colored) ? candidate : textStep;
+    };
+
     /**
      * 1段強い側。ランプの端まで来ていたら動かさない（動かす先が無い）。
      * 名前を持つ面ではどこでも端に達しないことを検査で確かめている。
      */
     const strongStep = (textStep: number): number =>
       outward[outward.indexOf(textStep) + 1] ?? textStep;
-
-    const markStep = (textStep: number): number => {
-      const i = cfg.steps.indexOf(textStep as Step) - 1;
-      const candidate = cfg.steps[Math.max(i, 0)]!;
-      return meets(candidate, bg, g.markMin, colored) ? candidate : textStep;
-    };
 
     /** 境界は装飾なので要件を持たない。面と一緒に深い側へずらす */
     const shift = (step: number): number =>
