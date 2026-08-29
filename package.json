@@ -11,6 +11,7 @@
     "prepare": "git config core.hooksPath .githooks",
     "scales": "node scripts/metrics/generate-scales.mjs",
     "verify:coverage": "node scripts/metrics/verify-coverage.mjs",
+    "metrics": "node scripts/metrics/pr-metrics.mjs",
     "test": "vitest run",
     "typecheck": "tsc -b --pretty false packages/tokens apps/docs",
     "check:tokens-isolation": "node scripts/check-tokens-isolation.mjs",
