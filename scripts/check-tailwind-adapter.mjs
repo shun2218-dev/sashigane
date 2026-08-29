@@ -35,6 +35,7 @@ writeFileSync(
   join(dir, 'content.html'),
   `<div class="
     p-0 p-1 p-2 p-3 p-4 p-6 p-8 p-12 p-16 p-24
+    duration-100 duration-141.4 duration-1000 delay-200 outline-2 ring-2
     p-5 p-7 p-9 p-20
     bg-red-500 bg-blue-500 bg-accent bg-danger bg-page bg-surface bg-inset
     max-w-6xl max-w-md w-2xl min-w-md
@@ -107,6 +108,14 @@ const EXPECTATIONS = [
    * ここは「生成されない」ことを期待できない。塞ぐのは check:token-usage（決定3-5）
    */
   ['border-4', true, '段の外だが Tailwind が素の px で作る。lint でしか塞げない'],
+  /* 幅は border-width と同じ次元。決定1-7 が「2 = フォーカスリング」と書いている */
+  ['outline-2', true, 'フォーカスリングの幅（決定1-7）'],
+  ['ring-2', true, 'フォーカスリングの幅（決定1-7）'],
+  /* duration（決定1-6）。名前は ms に合わせる。**小数の鍵も使える**（実測） */
+  ['duration-100', true, '遷移スケールの下端'],
+  ['duration-141.4', true, '√2 刻みの段。小数の鍵が使える'],
+  ['duration-1000', true, 'ループスケールの中央'],
+  ['delay-200', true, '写像していないので素の 200ms。観測ゼロ（原則7）。lint が弾く'],
   ['rounded-3xl', false, '24px。対応する段が無い'],
   ['shadow-lg', false, '影は未実装。名前空間をリセットしている'],
   /*
@@ -407,8 +416,16 @@ for (const [cls, token] of [
   ['border-1', '--sg-border-width-0'],
   ['border-2', '--sg-border-width-1'],
   ['border-3', '--sg-border-width-2'],
+  ['outline-2', '--sg-border-width-1'],
+  ['ring-2', '--sg-border-width-1'],
+  ['duration-100', '--sg-duration-0'],
+  ['duration-141.4', '--sg-duration-1'],
+  ['duration-1000', '--sg-duration-loop-1'],
 ]) {
-  const body = /\{([^}]*)\}/.exec(out.slice(out.search(new RegExp(`^\\s*\\.${cls}\\s*\\{`, 'm'))))?.[1] ?? '';
+  const body =
+    /\{([^}]*)\}/.exec(
+      out.slice(out.search(new RegExp(`^\\s*\\.${cssEscape(cls)}\\s*\\{`, 'm'))),
+    )?.[1] ?? '';
   if (!new RegExp(`var\\(${token}\\)`).test(body)) {
     failures.push(`${cls} が ${token} を指していない。素の px のままか、段がずれている`);
   }

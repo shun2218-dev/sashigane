@@ -50,8 +50,8 @@
  *   - `className={…}` の式の中に閉じ括弧を含む文字列がある場合、式として読めないので飛ばす
  *   - 除外したファイル（下記 EXCLUDED）
  *   - **未追跡のファイル**（`git ls-files` が対象。下記）
- *   - **`outline-<n>` `ring-<n>` `inset-ring-<n>` `stroke-<n>`。** 物理的には
- *     border-width と同じ「幅」の次元だが、Tailwind の名前空間が別で、まだ写像していない。
+ *   - **`inset-ring-<n>` `stroke-<n>`。** 物理的には border-width と同じ「幅」の次元だが、
+ *     観測がゼロなので写像しておらず（原則7）、まだ写像していない。
  *     写像すれば同じ形で塞げる（Issue #72）
  *   - **上の一覧は網羅ではない。** 素通りするユーティリティは列挙で数え切れない
  *     （Tailwind の全ユーティリティを知らないと数えられない）。
@@ -253,20 +253,38 @@ const SCALED_BARE = [
   {
     // border-4 / border-t-4 / border-x-4 …。方向つきも同じ名前空間を使う（実測）
     re: /^border(?:-[trblxyse])?-(\d+(?:\.\d+)?)$/,
-    namespace: /^\s*--border-width-([0-9.]+)\s*:/gm,
+    namespace: /^\s*--border-width-([0-9.\\\\]+)\s*:/gm,
     dimension: 'border-width（決定1-7）',
   },
   {
     re: /^duration-(\d+(?:\.\d+)?)$/,
-    namespace: /^\s*--transition-duration-([0-9.]+)\s*:/gm,
+    namespace: /^\s*--transition-duration-([0-9.\\\\]+)\s*:/gm,
     dimension: 'duration（決定1-6）',
   },
   {
     re: /^delay-(\d+(?:\.\d+)?)$/,
-    namespace: /^\s*--transition-delay-([0-9.]+)\s*:/gm,
+    namespace: /^\s*--transition-delay-([0-9.\\\\]+)\s*:/gm,
     dimension: 'duration（決定1-6）',
   },
+  {
+    re: /^outline-(\d+(?:\.\d+)?)$/,
+    namespace: /^\s*--outline-width-([0-9.\\\\]+)\s*:/gm,
+    dimension: 'border-width（決定1-7）',
+  },
+  {
+    re: /^ring-(\d+(?:\.\d+)?)$/,
+    namespace: /^\s*--ring-width-([0-9.\\\\]+)\s*:/gm,
+    dimension: 'border-width（決定1-7）',
+  },
 ];
+
+/**
+ * **`0` はスケールの外の値ではない。**「無し」である。
+ *
+ * `border-0` `ring-0` は境界や輪郭を消す書き方で、`--sg-space-0: 0` が段として
+ * 存在するのと同じ性質を持つ。段の外の値を弾く検査が、**消す手段まで奪ってはいけない。**
+ */
+const IS_ABSENCE = (value) => Number(value) === 0;
 
 const THEME = 'packages/tokens/dist/theme.css';
 if (!existsSync(THEME)) {
@@ -276,7 +294,9 @@ if (!existsSync(THEME)) {
 const themeCss = readFileSync(THEME, 'utf8');
 const scaledAllowed = SCALED_BARE.map((r) => ({
   ...r,
-  allowed: new Set([...themeCss.matchAll(r.namespace)].map((m) => m[1])),
+  // 鍵の小数点は CSS の識別子としてエスケープされている（--transition-duration-141\.4）。
+  // クラス名の側は `duration-141.4` なので、突き合わせる前に外す
+  allowed: new Set([...themeCss.matchAll(r.namespace)].map((m) => m[1].replace(/\\/g, ''))),
 }));
 
 /** 変種（`md:` `hover:`）と負号を落として、素のユーティリティ名だけにする */
@@ -296,7 +316,7 @@ const findClassViolations = (text) => {
       const name = bareName(token[0]);
       for (const rule of scaledAllowed) {
         const m = rule.re.exec(name);
-        if (!m || rule.allowed.has(m[1])) continue;
+        if (!m || rule.allowed.has(m[1]) || IS_ABSENCE(m[1])) continue;
         out.push({
           kind: 'bare-number',
           line: lineOf(text, at + token.index),
@@ -375,6 +395,9 @@ const FIXTURES = [
   { text: '<div class="delay-137">', expect: 'bare-number' },
   { text: '<div class="border-4">', expect: 'bare-number' },
   { text: '<div class="border-t-8">', expect: 'bare-number' },
+  { text: '<div class="duration-137">', expect: 'bare-number' },
+  { text: '<div class="ring-4">', expect: 'bare-number' },
+  { text: '<div class="outline-8">', expect: 'bare-number' },
   { text: '<div class="md:hover:border-4">', expect: 'bare-number' },
   { text: '.a { @apply border-4; }', expect: 'bare-number' },
   { text: 'const c = <b className={"text-[13px]"} />', expect: 'arbitrary' },
@@ -400,6 +423,10 @@ const FIXTURES = [
    * 「通すはずの書き方が落ちる」ことに気づけない（Issue #63 の教訓）
    */
   { text: '<div class="border-1 border-2 border-3">', expect: null },
+  { text: '<div class="duration-100 duration-141.4 duration-1000">', expect: null },
+  { text: '<div class="outline-2 ring-1 ring-3">', expect: null },
+  // 0 は「無し」であってスケールの外ではない。消す手段を奪わない
+  { text: '<div class="border-0 ring-0 outline-0 duration-0">', expect: null },
   { text: '<div class="border-t-2 md:border-x-3">', expect: null },
   /*
    * スケールを持たない次元は**対象外**。原則7 に従い、観測してから決める。
