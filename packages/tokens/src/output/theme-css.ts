@@ -16,6 +16,7 @@
 import type { Palette } from '../color/palette.ts';
 import {
   borderWidth,
+  durationTransition,
   fontWeightRoles,
   breakpoint,
   breakpointNames,
@@ -78,6 +79,14 @@ const FONT_UTILITIES = [
   ...FONT_ROLES.map((r) => ({ name: r.name, token: `--sg-text-${r.name}-family` })),
 ] as const;
 
+/**
+ * duration の鍵。**小数点は CSS の識別子でエスケープが要る。**
+ * `--transition-duration-141\.4` と書くと `duration-141.4` になる（実測）。
+ * 生成物の ms 表記（小数第1位まで）と同じ丸めを使う。
+ */
+const msKey = (ms: number): string =>
+  String(Number.parseFloat(ms.toFixed(1))).replace('.', '\\.');
+
 export const toThemeCss = (palette: Palette): string =>
   [
     ...outputHeader('block', 'Tailwind v4 用アダプタ。', palette, [
@@ -114,6 +123,29 @@ export const toThemeCss = (palette: Palette): string =>
     '     **写像するとスケールの段は素の数値を上書きする。** 段の外の border-4 などは',
     '     Tailwind が素の px で作り続けるので、そちらは lint で塞ぐ（決定3-5） */',
     ...borderWidth.map((px, index) => `  --border-width-${px}: var(--sg-border-width-${index});`),
+    '',
+    '  /* 幅は border-width と同じ次元である。決定1-7 は「2 = フォーカスリング」と',
+    '     用途まで書いているのに、Tailwind では名前空間が別で届いていなかった。',
+    '     観測でも holosphere（outline-2 ×16 / ring-1 ×7）と pdf-merge-app が使っている。',
+    '     stroke と inset-ring は観測ゼロなので写像しない（原則7） */',
+    ...borderWidth.map((px, index) => `  --outline-width-${px}: var(--sg-border-width-${index});`),
+    ...borderWidth.map((px, index) => `  --ring-width-${px}: var(--sg-border-width-${index});`),
+    '',
+    '  /* duration — 名前は ms の値に合わせる（決定3-3 の倍数規約と同じ考え方）。',
+    '     索引で写像すると duration-2 が 200ms になり、素の Tailwind（2ms）と食い違う。',
+    '     **小数の鍵は使える**（実測。--transition-duration-141\\.4 が duration-141.4 を作る）',
+    '     ので、√2 刻みのスケール（決定1-6）が全段そのまま届く。',
+    '',
+    '     **写像するのは遷移の段だけ。** 決定1-6 は遷移とループを知覚上の制約が違う',
+    '     別スケールとしている。同じ名前空間に混ぜると、ループの値を hover の遷移に',
+    '     当てられてしまい、**別スケールにした理由が Tailwind の経路で消える。**',
+    '     ループ周期に出口は要らない——アニメーションは data-sg-skeleton の1本である',
+    '     （決定1-14）。素の CSS からは var(--sg-duration-loop-*) で読める。',
+    '',
+    '     delay も写像しない。観測4本に transition-delay が1件も無い（原則7） */',
+    ...durationTransition.map(
+      (ms, i) => `  --transition-duration-${msKey(ms)}: var(--sg-duration-${i});`,
+    ),
     '',
     '  /* text — 素の t シャツ語彙は値が一致しないので使わない。',
     '     セマンティック役割名を使い、行高を対で束ねる（決定1-4・3-3） */',
