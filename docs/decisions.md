@@ -547,7 +547,7 @@ holosphere の `tracking-wide` は **11箇所すべてが `uppercase` と同時*
 
 | 観測 | 中身 | なぜ持たないか |
 |---|---|---|
-| pylabo +0.01〜0.06（4件） | 11.5〜12.5px・`font-weight: 700` の小さいラベル。**大文字化していない** | サイズ駆動では説明できない（逆算した係数が 0.05〜0.18 とばらつく）。**太さが効いている可能性があるが、font-weight は未決定**（[Issue #53](https://github.com/shun2218-dev/sashigane/issues/53)）。駆動要因を特定できていないものを規則にしない |
+| pylabo +0.01〜0.06（4件） | 11.5〜12.5px・`font-weight: 700` の小さいラベル。**大文字化していない** | サイズ駆動では説明できない（逆算した係数が 0.05〜0.18 とばらつく）。**太さが効いている可能性がある**（当時 font-weight は未決定。[Issue #53](https://github.com/shun2218-dev/sashigane/issues/53) は決定1-13 で解いたが、**この係数は再測定していない**）。駆動要因を特定できていないものを規則にしない |
 | ichirizuka `.section > h2` +0.01 | 26px の見出し、大文字化なし | **サイズ駆動は負を予測するのに正。** 1件のみで、書体固有の光学補正の可能性がある |
 | ichirizuka `.wordmark-ja` +0.2 | 21px の**和文**ワードマーク | 観測1件。しかもワードマークはブランドの選択であり、決定1-11（書体名は利用側が差す）と同じ性質を持つ |
 | holosphere `Logo` `tracking-tight` | サイズを呼び出し側から継承するワードマーク | 同上 |
@@ -1219,8 +1219,15 @@ status の淡い背景（12〜15%）を pylabo と holosphere で観測してい
 
 ```
 --sg-space-5        --sg-font-size-3       --sg-radius-2
---sg-duration-2     --sg-elevation-1       --sg-blue-500
+--sg-duration-2     --sg-border-width-1    --sg-primary-500
 ```
+
+> **例を差し替えた（2026-08-29、[Issue #91](https://github.com/shun2218-dev/sashigane/issues/91)）。**
+> 当初は `--sg-elevation-1` と `--sg-blue-500` を挙げていた。前者は決定1-8 改訂で
+> **落とした名前**（高さの数字は CSS のどのプロパティにも入らない）、
+> 後者は**存在しない命名**である——色は決定5-1 で `primary` / `neutral` / status の
+> ランプ名になった。決定2-1 は色システムより前に書かれている。
+> **命名規約の例が、その規約に従っていない名前を挙げていた。**
 
 **全カテゴリで index 統一。** 挿入耐性は今回の判断基準にならない。
 全スケールが規則から生成されるため「段を挿入する」という操作が存在せず、
@@ -1711,8 +1718,8 @@ inline なしだと Tailwind 側の `--color-danger` を上書きしても効い
 |---|---|---|
 | `--container-*` | 落とす | container 幅は利用側の責務（決定1-10）。必要なら利用側が `@theme` で足す |
 | `--aspect-*` | 落とす | 媒体の比率であってデザイントークンではない |
-| `--font-weight-*` | 落とす | **まだ決めていない**（[#53](https://github.com/shun2218-dev/sashigane/issues/53)） |
-| `--shadow-*` | **写像する** | 浮きの役割（決定1-8 改訂）。`shadow-raised` / `shadow-overlay`。素の t シャツ語彙は落とす |
+| `--font-weight-*` | **写像する** | 太さの役割（決定1-13）。`font-base` / `font-emphasis` / `font-heading` / `font-strong`。素の t シャツ語彙（`font-bold`）は落とす |
+| `--shadow-*` | **写像する** | 浮きの役割（決定1-8 改訂）。`shadow-raised` / `shadow-overlay` / `shadow-front`。素の t シャツ語彙は落とす |
 | `--blur-*` / `--drop-shadow-*` / `--text-shadow-*` / `--inset-shadow-*` / `--perspective-*` | 落とす | 奥行きの表現だが、観測4本に1件も無い（原則7） |
 | `--breakpoint-*` | **写像する** | 決定1-10。落としたままだと `sm:` が1つも書けない |
 
@@ -1815,15 +1822,21 @@ inline なしだと Tailwind 側の `--color-danger` を上書きしても効い
 `--text-*--line-height` を使うとサイズと行高がペアで出力される。
 
 ```css
---text-body: var(--sg-font-size-3);
---text-body--line-height: var(--sg-line-height-3);
+--text-body: var(--sg-text-body);
+--text-body--line-height: var(--sg-text-body-leading);
 ```
 ```css
 .text-body {
-  font-size: var(--sg-font-size-3);
-  line-height: var(--tw-leading, var(--sg-line-height-3));
+  font-size: var(--sg-text-body);
+  line-height: var(--tw-leading, var(--sg-text-body-leading));
 }
 ```
+
+> **名前を実際の出力に合わせた（2026-08-29、Issue #91）。** 当初は実験記録
+> （[experiments/tailwind-v4-spacing.md](./experiments/tailwind-v4-spacing.md)）の
+> 手書きの入力をそのまま引いており、`--sg-line-height-3` と書いてあった。
+> **行高にその名前は無い。** 3系統あるので `--sg-line-height-{display|ui|prose}-N` で、
+> 写像が参照するのは**セマンティックの** `--sg-text-{役割}-leading` である（決定1-4）。
 
 `var(--tw-leading, …)` はフォールバック構造なので、これだけでは `leading-*` で上書きできる。
 **`--leading-*: initial` と `--spacing: initial` を両方入れると上書き手段が消滅する**

@@ -55,7 +55,6 @@ jobs:
       - name: 決定文書との一致
         run: pnpm check:docs-scales
 
-
       # トークンを生成する（以降の検査が dist/ を使う）
       - name: トークンの生成
         run: pnpm build:tokens
@@ -71,6 +70,11 @@ jobs:
       # 生成した Tailwind アダプタが期待どおりのユーティリティを出すこと
       - name: Tailwind アダプタ
         run: pnpm check:tailwind-adapter
+
+      # 文書が挙げている名前・参照が実装と合っていること（Issue #91）
+      # 名前表（dist/tokens.layers.json）と theme.css を読むので build:tokens の後
+      - name: 文書の名前と参照
+        run: pnpm check:docs-refs
 
       # 原則3: コンポーネントはセマンティックしか参照できないこと
       # 生成器が出す名前表（dist/tokens.layers.json）を許可リストとして使うため
@@ -103,7 +107,7 @@ jobs:
 
       # 生成物がコミットされていないこと（原則1）
       - name: 生成物が混入していないこと
-        run: node scripts/check-no-build-output.mjs
+        run: pnpm check:no-build-output
 
   # pnpm verify:coverage は観測対象4本のローカル clone を前提とするため CI では動かせない。
   # スケールを変更したら手元で実行し、docs/verification.md を更新すること。
