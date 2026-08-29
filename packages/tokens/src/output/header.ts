@@ -11,23 +11,52 @@
  * ヘッダが5ファイルに手書きで散っていると、直したつもりで1つ残る。
  * **ここ1箇所に閉じておき、リンク先の差し替えも1行で済ませる。**
  *
- * ## 入れないもの
+ * ## 入れるもの・入れないもの
  *
- * **生成日時とバージョンを入れない。** 内容が同じでも毎回 diff が出ると、
- * 利用側が「更新された」と誤認する。バージョンの扱いは未決定でもある
- * （docs/branching.md）。決まった時点で、リンクをタグ固定にするかどうかも一緒に決める。
+ * **生成日時は入れない。** 内容が同じでも毎回 diff が出ると、
+ * 利用側が「更新された」と誤認する。
+ *
+ * **バージョンは入れる**（決定4-6）。レジストリ方式では生成物が利用側リポジトリへ落ちるので、
+ * **落ちた先で「どのスナップショットを持っているか」を知る手がかりがこれしかない。**
+ * バージョンが上がるのはリリースのときだけなので、日時と違って毎回は動かない。
  */
+import pkg from '../../package.json' with { type: 'json' };
 import { toHex } from '../color/oklch.ts';
 import type { Palette } from '../color/palette.ts';
 
 /**
+ * バージョン（決定4-6）。**出所はこの1箇所だけ。**
+ *
+ * 単一バージョンだが、置き場所は**トークン層の中**である。
+ * 原則1 が「トークンが唯一の正」と言っており、原則4 は
+ * **トークン層が外を参照しないこと**を要求している（`check:tokens-isolation`）。
+ * リポジトリのルートを読みに行くと、`packages/tokens` を単体で取り出したときに壊れる。
+ *
+ * **生成器はブラウザでも動く**（テーマビルダーが `toTokensCss` を呼ぶ）ので、
+ * ファイルを読む形にはできない。JSON の import なら両方で成立する。
+ */
+export const VERSION: string = pkg.version;
+
+/** まだリリースしていないことを表す値。決定4-6 が「タグを打つまではこれ」と決めている */
+export const UNRELEASED = '0.0.0';
+
+/**
  * 規則と根拠の在り処。**差し替えるのはこの1行。**
  *
- * 今はリポジトリの docs を指している。`HEAD` は既定ブランチ（develop）に解決されるので、
- * 決定を足してもリンクが古びない。v1 の前にドキュメントサイトを用意する予定であり、
- * そのときはこの定数をサイトの URL に変える。生成物側は何も変わらない。
+ * **リリース済みならタグに固定し、未リリースなら `HEAD` を指す**（決定4-6）。
+ * 決定3-4 が「タグ固定にするかどうかはバージョンの扱いと一緒に決める」と保留していた点。
+ *
+ * 固定する理由は、**配布された生成物より新しい決定を読ませないため**である。
+ * 利用側が持っているのは取得した時点のスナップショットなので、
+ * `HEAD` を指すと「手元の CSS には無い決定」を読むことになる。
+ *
+ * 未リリースのあいだ `HEAD` にするのは、**固定する先が無い**からである。
+ * v1 の前にドキュメントサイトを用意する予定で、そのときはこの関数の中だけを変える。
  */
-export const DOCS_URL = 'https://github.com/shun2218-dev/sashigane/tree/HEAD/docs';
+export const docsUrl = (version: string = VERSION): string =>
+  `https://github.com/shun2218-dev/sashigane/tree/${
+    version === UNRELEASED ? 'HEAD' : `v${version}`
+  }/docs`;
 
 /** コメントの書き方。CSS はブロック、SCSS / JS / d.ts は行コメント */
 export type CommentStyle = 'block' | 'line';
@@ -50,9 +79,13 @@ export const outputHeader = (
   const anchor = palette.primary.byStep[500];
   const body = [
     `sashigane — ${what}`,
-    '生成物。手で編集しない。@sashigane/tokens が生成する。',
+    `生成物。手で編集しない。${
+      VERSION === UNRELEASED
+        ? '@sashigane/tokens（未リリース）が生成する。'
+        : `@sashigane/tokens v${VERSION} が生成する。`
+    }`,
     '',
-    `規則と根拠: ${DOCS_URL}`,
+    `規則と根拠: ${docsUrl()}`,
     'コメント中の「決定1-2」「原則3」は、そこにある decisions.md / principles.md の見出し。',
     '',
     `primary の色相 ${palette.primary.hue.toFixed(1)}° から生成した` +

@@ -9,7 +9,9 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  DOCS_URL,
+  UNRELEASED,
+  VERSION,
+  docsUrl,
   generatePalette,
   outputHeader,
   toScss,
@@ -37,12 +39,34 @@ describe('生成物のヘッダ', () => {
 
   it('すべての生成物が規則の在り処を絶対 URL で持つ', () => {
     for (const [name, gen] of Object.entries(OUTPUTS)) {
-      expect(gen(palette).slice(0, 800), name).toContain(DOCS_URL);
+      expect(gen(palette).slice(0, 800), name).toContain(docsUrl());
     }
   });
 
   it('在り処は絶対 URL である（配布先にリポジトリは無い）', () => {
-    expect(DOCS_URL).toMatch(/^https:\/\//);
+    expect(docsUrl()).toMatch(/^https:\/\//);
+  });
+
+  /**
+   * バージョンの扱い（決定4-6）。**利用側が持っているのはスナップショットである。**
+   * 在り処が `HEAD` を指したままだと、手元の CSS には無い決定を読むことになる。
+   */
+  it('リリース済みなら在り処をタグに固定し、未リリースなら HEAD を指す', () => {
+    expect(docsUrl('1.2.3')).toContain('/tree/v1.2.3/docs');
+    expect(docsUrl(UNRELEASED)).toContain('/tree/HEAD/docs');
+  });
+
+  it('すべての生成物がバージョンを書く（落ちた先で分かる唯一の手がかり）', () => {
+    const expected = VERSION === UNRELEASED ? '（未リリース）' : `v${VERSION}`;
+    for (const [name, gen] of Object.entries(OUTPUTS)) {
+      expect(gen(palette).slice(0, 800), name).toContain(expected);
+    }
+  });
+
+  it('バージョンの出所は1箇所（トークン層の中。原則1・原則4）', async () => {
+    const pkg = await import('../package.json', { with: { type: 'json' } });
+    expect(VERSION).toBe(pkg.default.version);
+    expect(VERSION).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
   it('コメントの書き方が2通りあり、どちらも先頭から始まる', () => {
