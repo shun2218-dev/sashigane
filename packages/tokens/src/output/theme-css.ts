@@ -26,7 +26,12 @@ import {
 } from '../scales.ts';
 import { statusNames } from '../color/palette.ts';
 import { outputHeader } from './header.ts';
-import { FONT_ROLES, TEXT_ROLES } from './primitives.ts';
+import {
+  FONT_ROLES,
+  SKELETON_ANIMATION,
+  SKELETON_KEYFRAMES,
+  TEXT_ROLES,
+} from './primitives.ts';
 
 /**
  * Tailwind の数値は index ではなく**基準の倍数**を表す規約（決定3-3）。
@@ -141,6 +146,20 @@ export const toThemeCss = (palette: Palette): string =>
     '     役割名を書体の役割（body / display / label）と衝突させないのはそのため。',
     '     衝突しないことは検査で確かめている */',
     ...fontWeightRoles.map((r) => `  --font-weight-${r}: var(--sg-weight-${r});`),
+    '',
+    '  /* 動き（決定1-14）。**骨組み表示だけを持つ。** 観測3本を満たすのはこれだけで、',
+    '     spin / accordion は1本ずつしか無い。周期は決定1-6 のループスケールから引く。',
+    '',
+    '     **keyframes をここに書く。** @theme の中に置くと、使われたときだけ出力される',
+    '     （実測）。素の CSS の利用者にも tokens.css 側で同じものを出してある。',
+    '',
+    '     イージングは**値を持たない。** 観測4本にカスタムの cubic-bezier は1件も無く、',
+    '     使われていたのは CSS の組み込み語だけだった。ease-linear は静的ユーティリティ',
+    '     なので生きているが、ease-in-out は --ease-* のリセットで消えていた。',
+    '     **語をそのまま戻すだけ**にする（値を決めない） */',
+    '  --ease-in-out: ease-in-out;',
+    `  --animate-skeleton: ${SKELETON_ANIMATION};`,
+    ...SKELETON_KEYFRAMES.map((l) => `  ${l}`),
     ...FONT_ROLES.filter((r) => r.tabular).map(
       (r) => `  --font-${r.name}--font-feature-settings: var(--sg-font-feature-tabular);`,
     ),

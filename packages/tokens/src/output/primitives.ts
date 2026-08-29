@@ -211,3 +211,22 @@ export { FONT_ROLES, TEXT_ROLES };
  */
 export const spacingSemanticVars = (density: DensityLevel): string[] =>
   spaceRoles.map((role) => `  --sg-space-${role}: var(--sg-space-${spaceStepFor(role, density)});`);
+
+/**
+ * 骨組み表示の動き（決定1-14）。
+ *
+ * **周期はループスケールの中央の段から引く**（決定1-6）。ループは3段しかなく、
+ * 中央を取るのは端に寄せる理由が無いためである。値をここで決めない。
+ *
+ * イージングは CSS の組み込み語をそのまま使う。**観測4本にカスタムの
+ * cubic-bezier は1件も無かった**ので、トークンとして値を持つ理由が無い。
+ */
+export const SKELETON_ANIMATION = 'skeleton var(--sg-duration-loop-1) ease-in-out infinite';
+
+/** 透明度だけを動かす。色を持たないので、面の上でも塗りの上でも成立する */
+export const SKELETON_KEYFRAMES = [
+  '@keyframes skeleton {',
+  '  0%, 100% { opacity: 1; }',
+  '  50% { opacity: 0.4; }',
+  '}',
+];

@@ -109,6 +109,13 @@ const EXPECTATIONS = [
   ['border-4', true, '段の外だが Tailwind が素の px で作る。lint でしか塞げない'],
   ['rounded-3xl', false, '24px。対応する段が無い'],
   ['shadow-lg', false, '影は未実装。名前空間をリセットしている'],
+  /* 動き（決定1-14）。骨組み表示だけを持つ */
+  ['animate-skeleton', true, '骨組み表示。観測3本を満たす唯一の動き'],
+  ['animate-spin', false, '観測1本。原則7 の3回に届かない'],
+  ['animate-bounce', false, '観測ゼロ'],
+  ['motion-reduce:animate-none', true, '動きを減らす設定を尊重する道（変種なので素で通る）'],
+  ['ease-in-out', true, 'CSS の組み込み語をそのまま戻した（値は持たない）'],
+  ['ease-linear', true, '静的ユーティリティ。リセットの影響を受けない'],
   ['font-body', true, '書体のセマンティック役割（決定1-11）'],
   ['font-display', true, '書体のセマンティック役割'],
   ['font-label', true, '書体のセマンティック役割'],
@@ -400,6 +407,33 @@ for (const [cls, token] of [
   const body = /\{([^}]*)\}/.exec(out.slice(out.search(new RegExp(`^\\s*\\.${cls}\\s*\\{`, 'm'))))?.[1] ?? '';
   if (!new RegExp(`var\\(${token}\\)`).test(body)) {
     failures.push(`${cls} が ${token} を指していない。素の px のままか、段がずれている`);
+  }
+}
+
+/*
+ * **骨組み表示の keyframes が実際に出ていること**（決定1-14）。
+ * `--animate-skeleton` だけ写像して keyframes が出ていないと、
+ * `animation: skeleton …` が名前の解決に失敗して**何も動かない。エラーにはならない**（教訓4）。
+ */
+if (!/@keyframes\s+skeleton\s*\{/.test(out)) {
+  failures.push('animate-skeleton は出ているのに @keyframes skeleton が出ていない');
+}
+/*
+ * 周期は**ループスケールから引く**こと（決定1-6）。素の秒数を書いていないこと。
+ *
+ * `@theme inline` なので（決定3-2）、ユーティリティの中身は写像の**値がそのまま**入る。
+ * `var(--animate-skeleton)` にはならない。そこに `var(--sg-duration-loop-*)` が
+ * 残っていれば、周期がスケール由来だと分かる。
+ */
+{
+  const body = /\{([^}]*)\}/.exec(out.slice(out.search(/^\s*\.animate-skeleton\s*\{/m)))?.[1] ?? '';
+  if (!/var\(--sg-duration-loop-\d+\)/.test(body)) {
+    failures.push(
+      `animate-skeleton の周期がループスケール由来でない（素の秒数を書いている）: ${body.trim()}`,
+    );
+  }
+  if (!/\bskeleton\b/.test(body)) {
+    failures.push('animate-skeleton が keyframes の名前を持っていない');
   }
 }
 
