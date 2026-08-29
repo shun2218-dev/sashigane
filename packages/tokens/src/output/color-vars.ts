@@ -21,6 +21,20 @@ import tokensJson from '../tokens.json' with { type: 'json' };
 const cfg = tokensJson.color;
 import { toCss } from '../color/oklch.ts';
 
+/**
+ * 塗りを持つランプ（決定5-14・5-15）。**役割名とランプ変数名の対応をここ1箇所で持つ。**
+ *
+ * `accent` だけランプ変数名が `primary` で違う。対応表を2箇所に持つと、
+ * 片方だけ直したときに静かにずれる（決定2-6）。**生成も写像も検査もここから回す。**
+ *
+ * **中間色は入らない。** 面そのものであって塗りではない。
+ */
+export const fillRamps: readonly { role: string; ramp: string }[] = [
+  { role: 'accent', ramp: 'primary' },
+  ...statusNames.map((n) => ({ role: n as string, ramp: n as string })),
+];
+export const fillRampNames: readonly string[] = fillRamps.map((f) => f.role);
+
 const rampVars = (prefix: string, ramp: Ramp): string[] =>
   steps.map((s) => `  --sg-${prefix}-${s}: ${toCss(ramp.byStep[s]!)};`);
 
@@ -83,8 +97,6 @@ const semanticFor = (
     `  --sg-color-chart-gridline: var(--sg-neutral-${roles.gridline});`,
     `  --sg-color-accent: var(--sg-primary-${roles.colorText});`,
     `  --sg-color-accent-mark: var(--sg-primary-${roles.colorMark});`,
-    // 塗りの上に載せる文字（決定5-14）。ランプごとに解いてある
-    `  --sg-color-on-accent: var(--sg-neutral-${roles.onFill.accent});`,
     /**
      * 塗りの1段強い段（決定5-15）。hover / 押下 / 選択で塗りを差し替える。
      *
@@ -100,13 +112,19 @@ const semanticFor = (
      * 不透明度で薄める道は塞いだ（決定1-15）。塗りを `opacity` で変えると
      * 塗りと文字が同時に下地へ寄り、4.50:1 が 3.17:1 まで落ちる。
      */
-    `  --sg-color-accent-strong: var(--sg-primary-${roles.colorStrong});`,
+    ...fillRamps.map(
+      ({ role, ramp }) =>
+        `  --sg-color-${role}-strong: var(--sg-${ramp}-${roles.colorStrong});`,
+    ),
+    // 塗りの上に載せる文字（決定5-14）。ランプごとに解いてある
+    ...fillRamps.map(
+      ({ role }) =>
+        `  --sg-color-on-${role}: var(--sg-neutral-${roles.onFill[role as 'accent']});`,
+    ),
     `  --sg-color-border-focus: var(--sg-primary-${roles.colorMark});`,
     ...statusNames.flatMap((n) => [
       `  --sg-color-${n}: var(--sg-${n}-${roles.colorText});`,
       `  --sg-color-${n}-mark: var(--sg-${n}-${roles.colorMark});`,
-      `  --sg-color-${n}-strong: var(--sg-${n}-${roles.colorStrong});`,
-      `  --sg-color-on-${n}: var(--sg-neutral-${roles.onFill[n]});`,
     ]),
     // 段が足りない面では出さない。親の面の値をそのまま継承する（決定5-12）
     ...(roles.series ?? []).map(
@@ -370,12 +388,6 @@ export const colorRequirements = (
   return out;
 };
 
-/**
- * 塗りを持つランプの名前（決定5-14・5-15）。`on-*` と `-strong` はこの一覧に沿って出る。
- * **中間色は入らない。** 面そのものであって塗りではない。
- */
-export const fillRampNames: readonly string[] = ['accent', ...statusNames];
-
 /** 要件を持たないことを**明示する**接頭辞。ここも検査が使う */
 export const colorWithoutRequirement = (name: string): boolean =>
   name.startsWith('--sg-color-bg-') ||
@@ -385,6 +397,6 @@ export const colorWithoutRequirement = (name: string): boolean =>
   name.startsWith('--sg-color-chart-gridline') ||
   name.startsWith('--sg-color-on-') ||
   // 塗りの1段強い段（決定5-15）。通常の塗りより必ず端に近いので余裕は増えるだけ。
-  // **境界の border-strong とは別物**なので、塗りのランプ名を列挙して当てる
+  // **境界の border-strong とは別物**なので、塗りのランプの一覧に当てる
   fillRampNames.some((r) => name === `--sg-color-${r}-strong`) ||
   name.startsWith('--sg-color-sequential-');

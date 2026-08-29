@@ -216,6 +216,11 @@ export const elevationGeometry = (h: number): ElevationGeometry => ({
  * 需要表にダイアログが無い」として落としていたが、これは**観測4本がモーダルを
  * 持っていなかった**というだけで、設計の答えではない（教訓7、Issue #88）。
  * 逃げ道を全部塞いである以上、役割が無いことは**書く手段が無い**ことになる。
+ *
+ * **`h=0` だけは役割を持たない。** 影を書かなければ平坦だからである。
+ * `--sg-space-0: 0` を持っているのとは事情が違う。余白には「0 を指定する」
+ * という書き方が要る（`gap: var(--sg-space-0)`）が、`box-shadow` には
+ * **`none` という語が CSS の側にある。** 無いことを表す変数を足す理由がない。
  */
 export type ElevationRole = keyof typeof tokens.elevation.roles;
 export const elevationRoles = Object.keys(tokens.elevation.roles) as ElevationRole[];
