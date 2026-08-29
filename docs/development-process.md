@@ -69,14 +69,22 @@ pnpm check:docs-refs          # 文書が挙げている名前と参照が実在
                               # version を持つ package.json が1つだけであること（決定4-6）
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
+pnpm check:component-classes  # コンポーネントが書いたクラスを生成 CSS の側から見る（決定6-2）
 ```
 
 `check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` `check:token-values`
-`check:token-types` `check:output-header` `check:sample-page` `check:docs-refs` は
-`dist/` を読むので、先に `pnpm build:tokens` が要る。CI はその順で走らせている。
+`check:token-types` `check:output-header` `check:sample-page` `check:docs-refs`
+`check:component-classes` は `dist/` を読むので、先に `pnpm build:tokens` が要る。
+CI はその順で走らせている。
 
-`check:token-usage` `check:sample-page` `check:docs-refs` は実行のたびに、
-まず意図的な違反を含むフィクスチャへ検出器を当てる。
+**`check:token-usage` と `check:component-classes` は同じ原則3 を別の側から見る。**
+前者はソースの `class=` の位置から読み、後者は Tailwind に走査させて出力を読む。
+前者は**間接（cva・オブジェクト引き・定数）を1段挟むと見えない**ので、
+コンポーネントを守っているのは後者である（決定6-2）。
+規則は `scripts/lib/class-rules.mjs` に1つだけ置いて共有している。
+
+`check:token-usage` `check:sample-page` `check:docs-refs` `check:component-classes` は
+実行のたびに、まず意図的な違反を含むフィクスチャへ検出器を当てる。
 **発火しなければ検査自体が落ちる。** 0 件という結果を、検査が壊れている状態と
 区別できるようにするため（教訓2）。
 
