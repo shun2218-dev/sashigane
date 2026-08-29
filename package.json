@@ -17,6 +17,7 @@
     "check:tokens-isolation": "node scripts/check-tokens-isolation.mjs",
     "check:no-build-output": "node scripts/check-no-build-output.mjs",
     "check:docs-scales": "node scripts/check-docs-scales.mjs",
+    "check:docs-refs": "node scripts/check-docs-refs.mjs",
     "build:tokens": "pnpm --filter @sashigane/tokens build",
     "check:tokens-standalone": "node scripts/check-tokens-standalone.mjs",
     "check:tailwind-adapter": "node scripts/check-tailwind-adapter.mjs",

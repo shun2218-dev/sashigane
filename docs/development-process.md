@@ -65,15 +65,16 @@ pnpm check:tailwind-adapter   # アダプタが期待どおりのユーティリ
 pnpm check:token-usage        # プリミティブ参照と Tailwind 任意値記法を禁止する（原則3）
 pnpm check:sample-page        # サンプルページが生成した変数だけで組まれていること（Issue #61）
 pnpm check:token-values       # tokens.js の値が tokens.css とずれていないこと
+pnpm check:docs-refs          # 文書が挙げている名前と参照が実在すること（Issue #91）
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
 ```
 
 `check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` `check:token-values`
-`check:token-types` `check:output-header` `check:sample-page` は `dist/` を読むので、
-先に `pnpm build:tokens` が要る。CI はその順で走らせている。
+`check:token-types` `check:output-header` `check:sample-page` `check:docs-refs` は
+`dist/` を読むので、先に `pnpm build:tokens` が要る。CI はその順で走らせている。
 
-`check:token-usage` と `check:sample-page` は実行のたびに、
+`check:token-usage` `check:sample-page` `check:docs-refs` は実行のたびに、
 まず意図的な違反を含むフィクスチャへ検出器を当てる。
 **発火しなければ検査自体が落ちる。** 0 件という結果を、検査が壊れている状態と
 区別できるようにするため（教訓2）。
