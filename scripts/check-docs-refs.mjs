@@ -31,32 +31,30 @@
  * 実行のたびに、意図的な違反を含むフィクスチャへ同じ検出器を当て、
  * **発火しなければこの検査自体を失敗させる。**
  */
+import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 
 const LAYERS = 'packages/tokens/dist/tokens.layers.json';
 const THEME = 'packages/tokens/dist/theme.css';
 
-/** 検査する文書。**verification.md を入れてある** — どの検査も見ていない文書があること自体が穴だった */
-const DOCS = [
-  'README.md',
-  'CLAUDE.md',
-  'docs/decisions.md',
-  'docs/principles.md',
-  'docs/development-process.md',
-  'docs/branching.md',
-  'docs/lessons.md',
-  'docs/agent-failures.md',
-  'docs/roles.md',
-  'docs/verification.md',
-  'docs/experiments/color-vision.md',
-  'docs/experiments/font-family.md',
-  'docs/experiments/neutral-hue.md',
-  'docs/experiments/phase2-holosphere.md',
-  'docs/experiments/phase2-ichirizuka.md',
-  'docs/experiments/sample-page.md',
-  'docs/experiments/sequential.md',
-  'docs/experiments/tailwind-v4-spacing.md',
+/**
+ * 検査する文書。**一覧を手で持たない**（決定2-6、自己レビュー B1）。
+ *
+ * 手で並べると、文書を足したときに足し忘れた分だけ**黙って検査されない。**
+ * `check-token-usage.mjs` と同じく `git ls-files` から集める。
+ *
+ * **verification.md も入る。** どの検査も見ていない文書があること自体が穴だった。
+ */
+const EXCLUDED = [
+  // 生成物の配布先に置く説明。--sg-* も決定番号も出てこない
+  { re: /^packages\/tokens\/dist\//, why: '生成物' },
 ];
+
+const docFiles = () =>
+  execSync('git ls-files "*.md"', { encoding: 'utf8' })
+    .split('\n')
+    .filter((f) => f && existsSync(f))
+    .filter((f) => !EXCLUDED.some((e) => e.re.test(f)));
 
 /**
  * **文書にだけ現れてよい `--sg-*` の名前**（教訓5 の許可リスト方式）。
@@ -97,9 +95,14 @@ const sgNames = (text) =>
     line: text.slice(0, m.index).split('\n').length,
   }));
 
-/** 「決定 N-M」「教訓 N」の参照 */
+/**
+ * 「決定 N-M」「保留 N-M」「教訓 N」の参照。
+ *
+ * **`保留` も拾う**（自己レビュー B3）。`decisions.md` には `### 保留 4-5` があり、
+ * 集める側は拾っている。片方だけの語彙にすると、参照が静かに照合されない。
+ */
 const refs = (text) => [
-  ...[...text.matchAll(/決定\s?(\d+-\d+)/g)].map((m) => ({
+  ...[...text.matchAll(/(?:決定|保留)\s?(\d+-\d+)/g)].map((m) => ({
     kind: 'decision',
     id: m[1],
     line: text.slice(0, m.index).split('\n').length,
@@ -147,6 +150,7 @@ const expect = (cond, msg) => {
   const fixture = [
     '`--sg-color-accent` は現役、`--sg-nonexistent-9` は存在しない。',
     '決定5-16 は実在し、決定9-9 は実在しない。教訓7 は実在し、教訓99 は実在しない。',
+    '保留4-5 も参照として拾う（集める側が拾っているので、照合する側も拾う）。',
     '`--sg-space-{段}` と `--sg-color-*` は雛形なので見ない。',
   ].join('\n');
 
@@ -167,6 +171,7 @@ const expect = (cond, msg) => {
   const r = refs(fixture);
   expect(r.some((x) => x.kind === 'decision' && x.id === '9-9'), '決定の参照を拾えていない');
   expect(r.some((x) => x.kind === 'lesson' && x.id === '99'), '教訓の参照を拾えていない');
+  expect(r.some((x) => x.kind === 'decision' && x.id === '4-5'), '保留の参照を拾えていない');
 }
 
 /* ============================================================
@@ -195,16 +200,16 @@ const decisions = readFileSync('docs/decisions.md', 'utf8');
 const knownDecisions = new Set(
   [...decisions.matchAll(/^### (?:決定|保留) (\d+-\d+)/gm)].map((m) => m[1]),
 );
-const lessonCount = [...readFileSync('docs/lessons.md', 'utf8').matchAll(/^### (\d+)\./gm)].length;
+/** **個数ではなく番号の集合。** 教訓を廃止して番号が飛んだときに、実在するものを落とさない */
+const knownLessons = new Set(
+  [...readFileSync('docs/lessons.md', 'utf8').matchAll(/^### (\d+)\./gm)].map((m) => m[1]),
+);
 
 const errors = [];
 const usedDocOnly = new Set();
 
-for (const f of DOCS) {
-  if (!existsSync(f)) {
-    errors.push(`検査対象 ${f} が存在しない（DOCS の一覧が古い）`);
-    continue;
-  }
+const docs = docFiles();
+for (const f of docs) {
   const text = readFileSync(f, 'utf8');
 
   for (const { name, line } of sgNames(text)) {
@@ -220,8 +225,8 @@ for (const f of DOCS) {
     if (kind === 'decision' && !knownDecisions.has(id)) {
       errors.push(`${f}:${line}  決定${id} が decisions.md に無い`);
     }
-    if (kind === 'lesson' && Number(id) > lessonCount) {
-      errors.push(`${f}:${line}  教訓${id} が lessons.md に無い（${lessonCount} まで）`);
+    if (kind === 'lesson' && !knownLessons.has(id)) {
+      errors.push(`${f}:${line}  教訓${id} が lessons.md に無い`);
     }
   }
 }
@@ -261,6 +266,6 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`✓ ${DOCS.length} 文書の --sg-* が名前表と一致（文書にだけ現れる ${usedDocOnly.size} 件は理由つき）`);
-console.log(`✓ 決定（${knownDecisions.size} 件）と教訓（${lessonCount} 件）の参照がすべて実在する`);
+console.log(`✓ ${docs.length} 文書の --sg-* が名前表と一致（文書にだけ現れる ${usedDocOnly.size} 件は理由つき）`);
+console.log(`✓ 決定（${knownDecisions.size} 件）と教訓（${knownLessons.size} 件）の参照がすべて実在する`);
 console.log(`✓ 決定3-3 の名前空間表 ${rows.length} 行が theme.css と一致`);
