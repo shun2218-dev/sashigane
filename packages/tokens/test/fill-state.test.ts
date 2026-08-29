@@ -14,6 +14,7 @@ import {
   hexToOklch,
   oklchToLinearRgb,
   relativeLuminance,
+  fillRampNames,
   statusNames,
   surfaceNames,
   surfaceRolesFor,
@@ -40,7 +41,7 @@ describe('塗りの1段強い段（決定5-15）', () => {
           const r = surfaceRolesFor(p, mode)[d]!;
           for (const [name, ramp] of [
             ['accent', p.primary],
-            ['danger', p.status.danger],
+            ...statusNames.map((n) => [n, p.status[n]!] as const),
           ] as const) {
             const on = p.neutral.byStep[r.onFill[name]]!;
             const normal = contrastBetween(on, ramp.byStep[r.colorText]!);
@@ -78,13 +79,15 @@ describe('塗りの1段強い段（決定5-15）', () => {
     }
   });
 
-  it('出すのは accent と danger だけ（押せる塗りは2種類。原則7）', () => {
+  it('塗りを持つランプすべてに出る（規則が同一のランプ間で非対称を作らない）', () => {
     const css = toTokensCss(sample);
-    expect(css).toContain('--sg-color-accent-strong:');
-    expect(css).toContain('--sg-color-danger-strong:');
-    for (const n of statusNames.filter((s) => s !== 'danger')) {
-      expect(css, `--sg-color-${n}-strong`).not.toContain(`--sg-color-${n}-strong:`);
+    for (const r of fillRampNames) {
+      expect(css, `--sg-color-${r}-strong`).toContain(`--sg-color-${r}-strong:`);
+      // 塗りの上の文字も同じ一覧に沿って出ている（決定5-14）
+      expect(css, `--sg-color-on-${r}`).toContain(`--sg-color-on-${r}:`);
     }
+    // 中間色は面であって塗りではないので出ない
+    expect(css).not.toContain('--sg-color-neutral-strong:');
   });
 });
 

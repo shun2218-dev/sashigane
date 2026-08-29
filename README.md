@@ -133,7 +133,7 @@ hover も同じ考え方で、塗るのではなく宣言します。
 Tailwind のアルファ修飾子（`text-accent/50`、`bg-danger/15`）も同じ理由で塞いでいます。
 
 ```css
-/* 塗りの状態変化は、塗りの段を1段ずらす */
+/* 塗りの状態変化は、塗りの段を1段ずらす（accent と状態色4つに `-strong` があります） */
 .btn-primary:hover { background: var(--sg-color-accent-strong); }
 ```
 
@@ -146,8 +146,9 @@ Tailwind のアルファ修飾子（`text-accent/50`、`bg-danger/15`）も同�
 （観測した4本のうち1本は影を1つも使わず、罫線だけで階層を作っていました）。
 
 ```css
-.card    { box-shadow: var(--sg-elevation-raised); }
-.popover { box-shadow: var(--sg-elevation-overlay); }
+.card    { box-shadow: var(--sg-elevation-raised); }   /* カード */
+.popover { box-shadow: var(--sg-elevation-overlay); }  /* 重なるもの */
+.modal   { box-shadow: var(--sg-elevation-front); }    /* 前面 */
 ```
 
 **暗色モードでは同じ1行が影ではなく輪郭を出します。** 暗い面の上では、

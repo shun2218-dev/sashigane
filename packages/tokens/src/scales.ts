@@ -212,8 +212,10 @@ export const elevationGeometry = (h: number): ElevationGeometry => ({
  * elevation はモードで媒体が変わる（明色は影、暗色は輪郭）ので、
  * 値がモード非依存であるプリミティブ層に置けない。役割名でだけ出す。
  *
- * h=3（前面／モーダル）は出さない。roles.md のコンポーネント需要表に
- * ダイアログが無く、観測4本で3回以上書き直されたものに入っていない（原則7）。
+ * **段はすべて出す。** 当初は h=3（前面／モーダル）を「roles.md のコンポーネント
+ * 需要表にダイアログが無い」として落としていたが、これは**観測4本がモーダルを
+ * 持っていなかった**というだけで、設計の答えではない（教訓7、Issue #88）。
+ * 逃げ道を全部塞いである以上、役割が無いことは**書く手段が無い**ことになる。
  */
 export type ElevationRole = keyof typeof tokens.elevation.roles;
 export const elevationRoles = Object.keys(tokens.elevation.roles) as ElevationRole[];

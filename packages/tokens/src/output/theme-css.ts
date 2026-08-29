@@ -27,6 +27,7 @@ import {
   spacing,
 } from '../scales.ts';
 import { statusNames } from '../color/palette.ts';
+import { fillRampNames } from './color-vars.ts';
 import { outputHeader } from './header.ts';
 import { FONT_ROLES, TEXT_ROLES } from './primitives.ts';
 
@@ -251,13 +252,13 @@ export const toThemeCss = (palette: Palette): string =>
     '  --color-on-accent: var(--sg-color-on-accent);',
     '',
     '  /* 塗りの1段強い段（決定5-15）。hover / 押下 / 選択で塗りを差し替える。',
-    '     bg-accent-strong のように使う。**accent と danger にしか無い** —',
-    '     観測4本の塗りボタンは主要動作と破壊的動作の2種類だけである（原則7）。',
+    '     bg-accent-strong のように使う。**塗りを持つランプすべてに出す。**',
+    '     規則が同一のランプ間で非対称を作ると、利用側から見ると逃げ道の有無になる。',
     '',
     '     **不透明度で薄める道は無い**（決定1-15）。opacity-* は素の数値',
-    '     ユーティリティなので @theme では止まらず、lint が塞いでいる（決定3-5） */',
-    '  --color-accent-strong: var(--sg-color-accent-strong);',
-    '  --color-danger-strong: var(--sg-color-danger-strong);',
+    '     ユーティリティなので @theme では止まらず、lint が塞いでいる（決定3-5）。',
+    '     アルファ修飾子（bg-danger/80）も塞いである（決定3-2 改訂） */',
+    ...fillRampNames.map((r) => `  --color-${r}-strong: var(--sg-color-${r}-strong);`),
     ...statusNames.map((n) => `  --color-on-${n}: var(--sg-color-on-${n});`),
     '',
     ...statusNames.flatMap((n) => [

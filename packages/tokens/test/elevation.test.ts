@@ -189,16 +189,20 @@ describe('暗色の輪郭（決定1-8 改訂）', () => {
 });
 
 describe('出力の形', () => {
-  it('出すのは役割2つだけ。高さの数字は CSS に出ない', () => {
-    expect(elevationRoles).toEqual(['raised', 'overlay']);
-    expect(elevationRoles.map(elevationHeight)).toEqual([1, 2]);
+  it('段はすべて役割として出る。高さの数字は CSS に出ない', () => {
+    expect(elevationRoles).toEqual(['raised', 'overlay', 'front']);
+    expect(elevationRoles.map(elevationHeight)).toEqual([1, 2, 3]);
 
     const css = toTokensCss(sample);
     for (const h of [0, 1, 2, 3]) {
       expect(css, `--sg-elevation-${h}`).not.toContain(`--sg-elevation-${h}:`);
     }
-    // h=3（前面／モーダル）は roles.md のコンポーネント需要表に無い（原則7）
-    expect(css).not.toContain('--sg-elevation-front');
+    /**
+     * **h=0 だけは役割を持たない。** 影を書かなければ平坦なので、
+     * 「何も無いことを表す変数」を出す意味が無い（`--sg-space-0: 0` とは違い、
+     * box-shadow には `none` という語がある）。
+     */
+    expect(css).not.toContain('--sg-elevation-flat');
   });
 
   it('明色は影、暗色は輪郭。同じ名前で媒体が入れ替わる', () => {
