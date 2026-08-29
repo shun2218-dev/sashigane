@@ -26,12 +26,7 @@ import {
 } from '../scales.ts';
 import { statusNames } from '../color/palette.ts';
 import { outputHeader } from './header.ts';
-import {
-  FONT_ROLES,
-  SKELETON_ANIMATION,
-  SKELETON_KEYFRAMES,
-  TEXT_ROLES,
-} from './primitives.ts';
+import { FONT_ROLES, TEXT_ROLES } from './primitives.ts';
 
 /**
  * Tailwind の数値は index ではなく**基準の倍数**を表す規約（決定3-3）。
@@ -147,19 +142,19 @@ export const toThemeCss = (palette: Palette): string =>
     '     衝突しないことは検査で確かめている */',
     ...fontWeightRoles.map((r) => `  --font-weight-${r}: var(--sg-weight-${r});`),
     '',
-    '  /* 動き（決定1-14）。**骨組み表示だけを持つ。** 観測3本を満たすのはこれだけで、',
-    '     spin / accordion は1本ずつしか無い。周期は決定1-6 のループスケールから引く。',
+    '  /* 動き（決定1-14）。**animate-* は写像しない。** 骨組み表示は',
+    '     data-sg-skeleton で作る（tokens.css 側）。',
     '',
-    '     **keyframes をここに書く。** @theme の中に置くと、使われたときだけ出力される',
-    '     （実測）。素の CSS の利用者にも tokens.css 側で同じものを出してある。',
+    '     ユーティリティも用意すると、素の CSS の経路だけが prefers-reduced-motion を',
+    '     尊重し、Tailwind の経路では利用側が motion-reduce: を書くことになる。',
+    '     **同じものに2つの道があって片方だけが安全**という形は、面（決定5-12）でも',
+    '     hover（決定5-13）でも退けてきた。忘れても何も言われないので危ない。',
     '',
     '     イージングは**値を持たない。** 観測4本にカスタムの cubic-bezier は1件も無く、',
     '     使われていたのは CSS の組み込み語だけだった。ease-linear は静的ユーティリティ',
     '     なので生きているが、ease-in-out は --ease-* のリセットで消えていた。',
     '     **語をそのまま戻すだけ**にする（値を決めない） */',
     '  --ease-in-out: ease-in-out;',
-    `  --animate-skeleton: ${SKELETON_ANIMATION};`,
-    ...SKELETON_KEYFRAMES.map((l) => `  ${l}`),
     ...FONT_ROLES.filter((r) => r.tabular).map(
       (r) => `  --font-${r.name}--font-feature-settings: var(--sg-font-feature-tabular);`,
     ),

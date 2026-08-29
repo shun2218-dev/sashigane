@@ -223,7 +223,16 @@ export const spacingSemanticVars = (density: DensityLevel): string[] =>
  */
 export const SKELETON_ANIMATION = 'skeleton var(--sg-duration-loop-1) ease-in-out infinite';
 
-/** 透明度だけを動かす。色を持たないので、面の上でも塗りの上でも成立する */
+/**
+ * 透明度だけを動かす。色を持たないので、面の上でも塗りの上でも成立する。
+ *
+ * **0.4 はトークンではない。** 不透明度はスケールを持つべきかすら決めていない次元で
+ * （`scripts/check-sample-page.mjs` の「見逃す範囲」に名指しで残っている）、
+ * ここに書いてあるのは**このアニメーションの定義の一部**である。
+ *
+ * 観測もばらついていた。pylabo は 0.25、Tailwind 既定は 0.5。
+ * **その中央付近に置いただけで、強い根拠は無い。** 隠さず書いておく。
+ */
 export const SKELETON_KEYFRAMES = [
   '@keyframes skeleton {',
   '  0%, 100% { opacity: 1; }',

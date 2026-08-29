@@ -109,11 +109,15 @@ const EXPECTATIONS = [
   ['border-4', true, '段の外だが Tailwind が素の px で作る。lint でしか塞げない'],
   ['rounded-3xl', false, '24px。対応する段が無い'],
   ['shadow-lg', false, '影は未実装。名前空間をリセットしている'],
-  /* 動き（決定1-14）。骨組み表示だけを持つ */
-  ['animate-skeleton', true, '骨組み表示。観測3本を満たす唯一の動き'],
+  /*
+   * 動き（決定1-14）。**animate-* は1つも写像しない。**
+   * 骨組み表示は data-sg-skeleton で作る。ユーティリティも用意すると、
+   * Tailwind の経路だけが prefers-reduced-motion を尊重しなくなる
+   */
+  ['animate-skeleton', false, '骨組み表示は data-sg-skeleton で作る（決定1-14）'],
+  ['animate-pulse', false, '素の Tailwind の動き。名前空間をリセットしている'],
   ['animate-spin', false, '観測1本。原則7 の3回に届かない'],
-  ['animate-bounce', false, '観測ゼロ'],
-  ['motion-reduce:animate-none', true, '動きを減らす設定を尊重する道（変種なので素で通る）'],
+  ['motion-reduce:animate-none', true, '変種なので素で通る。トークンの写像ではない'],
   ['ease-in-out', true, 'CSS の組み込み語をそのまま戻した（値は持たない）'],
   ['ease-linear', true, '静的ユーティリティ。リセットの影響を受けない'],
   ['font-body', true, '書体のセマンティック役割（決定1-11）'],
@@ -411,29 +415,17 @@ for (const [cls, token] of [
 }
 
 /*
- * **骨組み表示の keyframes が実際に出ていること**（決定1-14）。
- * `--animate-skeleton` だけ写像して keyframes が出ていないと、
- * `animation: skeleton …` が名前の解決に失敗して**何も動かない。エラーにはならない**（教訓4）。
- */
-if (!/@keyframes\s+skeleton\s*\{/.test(out)) {
-  failures.push('animate-skeleton は出ているのに @keyframes skeleton が出ていない');
-}
-/*
- * 周期は**ループスケールから引く**こと（決定1-6）。素の秒数を書いていないこと。
- *
- * `@theme inline` なので（決定3-2）、ユーティリティの中身は写像の**値がそのまま**入る。
- * `var(--animate-skeleton)` にはならない。そこに `var(--sg-duration-loop-*)` が
- * 残っていれば、周期がスケール由来だと分かる。
+ * **骨組み表示は tokens.css 側の1本だけ**であること（決定1-14）。
+ * アダプタが animate-* を出すと、Tailwind の経路だけが
+ * prefers-reduced-motion を尊重しなくなる。**出ていないことを見る。**
  */
 {
-  const body = /\{([^}]*)\}/.exec(out.slice(out.search(/^\s*\.animate-skeleton\s*\{/m)))?.[1] ?? '';
-  if (!/var\(--sg-duration-loop-\d+\)/.test(body)) {
-    failures.push(
-      `animate-skeleton の周期がループスケール由来でない（素の秒数を書いている）: ${body.trim()}`,
-    );
+  const themeCss = readFileSync(join(dist, 'theme.css'), 'utf8');
+  if (/--animate-[a-z-]+\s*:/.test(themeCss)) {
+    failures.push('アダプタが --animate-* を写像している。骨組み表示は data-sg-skeleton の1本にする');
   }
-  if (!/\bskeleton\b/.test(body)) {
-    failures.push('animate-skeleton が keyframes の名前を持っていない');
+  if (/@keyframes/.test(themeCss)) {
+    failures.push('アダプタが @keyframes を出している。tokens.css 側と重複する');
   }
 }
 
