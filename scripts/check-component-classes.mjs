@@ -25,11 +25,12 @@
  *
  *   - **Tailwind が候補として読めないもの。** `p-${n}` のような実行時の組み立ては
  *     Tailwind 自身が拾わないので CSS が生成されない。`check:token-usage` と同じ限界である
- *   - **ユーティリティに一致しない文字列。** `rounded-md` は写像していない名前なので
- *     （decisions.md の radius は値が一致する Tailwind 名だけに写像している）
- *     **CSS が生成されず、エラーも出ず、角丸が付かない。** 教訓4 の「静かに失敗するもの」
- *     そのものだが、この検査は**書かれたのに出なかったもの**を見ていないので捕まえられない。
- *     打ち間違い（`bg-acent`）も同じ。Issue #96
+ *   - **どちらのテーマにも無い名前。** `bg-primary` `text-muted-foreground` `border-input`
+ *     のような shadcn 固有の名前と、打ち間違い（`bg-acent`）は、**素の Tailwind でも
+ *     生成されない**ので差に出ない。書いても黙って消えたままである（決定6-3）。
+ *     届かせるには「ソースに書かれた class 候補」が要るが、**候補抽出は Tailwind が
+ *     握っていて外から呼べない**（CLI は候補を出さない）。自前で抽出すると、
+ *     決定6-2 が退けた「全文字列リテラルを既定拒否」（誤発火 33/96）に戻る
  *   - **`style` 属性の生値と CSS-in-JS。** トークンを経由しないのでクラスが現れない
  *   - **`packages/ui` の外に置かれたコンポーネント。** 走査対象は下の `TARGET` だけで、
  *     **そこにしか置かないことは強制していない。** 決定4-1 がそう決めているだけである。
@@ -39,12 +40,23 @@
  *   - **`--sg-*` の参照**はこの検査の担当ではない。`check:token-usage` が
  *     ファイル全文を走査しており、そちらは間接の影響を受けない
  *
+ * ## もう1つ見るもの — **書いたのに消えたクラス**（決定6-3、Issue #96）
+ *
+ * 写像していない名前を書くと、**CSS が生成されず、エラーも出ない。**
+ * 上の規則は「生成されたもの」しか見ないので、原理的に捕まえられない。
+ *
+ * そこで**同じソースを素の Tailwind でもコンパイルして差を取る。**
+ * 素の Tailwind が出すのに我々が出さないものが、消えたものである。
+ * **列挙が要らない**ので、ここでも許可リスト方式のままでいられる。
+ *
  * ## 対照（教訓2）
  *
- * 実行のたびに2つのフィクスチャへ検出器を当てる。
+ * 実行のたびに3つのフィクスチャへ検出器を当てる。
  *
- *   陰性対照  cva / オブジェクト引き / 定数1本の中に隠した違反で**発火すること**
- *   陽性対照  通るべき cva が**落ちないこと**、かつ**クラスが実際に生成されていること**
+ *   陰性対照1  cva / オブジェクト引き / 定数1本の中に隠した違反で**発火すること**
+ *   陰性対照2  cva の中に隠した shadcn 語彙が**消えたと検出されること**
+ *   陽性対照   通るべき cva が**落ちないこと**、**消えたと言われないこと**、
+ *              かつ**クラスが実際に生成されていること**
  *
  * 陽性対照で生成件数まで見るのは、**コンパイルが黙って何も出さなくても
  * 「違反ゼロ」に見えてしまう**ためである。0 件は「対象が無かった」かもしれない。
@@ -81,13 +93,17 @@ const TARGET = resolve('packages/ui/src');
  * **陰性対照のフィクスチャ文字列まで拾って** 198 件のセレクタが出た（Issue #95）。
  * 走査範囲を明示的に閉じてから `@source` で開く。
  */
-const compile = (sourceDir) => {
+const compile = (sourceDir, { stock = false } = {}) => {
   const dir = mkdtempSync(join(tmpdir(), 'sashigane-ui-'));
   writeFileSync(
     join(dir, 'in.css'),
-    `@import "${join(dist, 'tokens.css')}";\n` +
-      `@import "${join(dist, 'theme.css')}" source(none);\n` +
-      `@source "${sourceDir}";\n`,
+    stock
+      ? // **素の Tailwind。** 我々の写像を1つも入れない。
+        // 「同じソースから素の Tailwind なら出るのに、我々では出ないもの」を取るため
+        `@import "tailwindcss" source(none);\n@source "${sourceDir}";\n`
+      : `@import "${join(dist, 'tokens.css')}";\n` +
+        `@import "${join(dist, 'theme.css')}" source(none);\n` +
+        `@source "${sourceDir}";\n`,
   );
   try {
     execFileSync(
@@ -150,13 +166,38 @@ const unescapeClass = (s) =>
     .replace(/\\([0-9a-fA-F]{1,6})[ ]?/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
     .replace(/\\(.)/g, '$1');
 
-const generatedClasses = (sourceDir) => {
-  const css = compile(sourceDir).replace(COMMENT, '');
+const generatedClasses = (sourceDir, opts) => {
+  const css = compile(sourceDir, opts).replace(COMMENT, '');
   const out = new Set();
   for (const prelude of preludes(css)) {
     for (const m of prelude.matchAll(CLASS_SELECTOR)) out.add(unescapeClass(m[1]));
   }
   return out;
+};
+
+/**
+ * **書いたのに消えたクラス**（決定6-3、Issue #96）。
+ *
+ * 同じソースを**素の Tailwind でもコンパイルして差を取る。**
+ * 素の Tailwind が出すのに我々が出さないものは、**書かれたのに CSS にならなかった**もの。
+ *
+ * 原因は2つあり、**どちらも書いた人には同じに見える（何も起きない）。**
+ *
+ *   写像していない語彙   rounded-md text-sm font-medium shadow-sm
+ *                        （decisions.md は「値が一致する Tailwind 名だけに写像する」）
+ *   スケールの外の値     h-10 p-5（決定3-1 が構造的に止めている）
+ *
+ * **列挙が要らない。** 「素の Tailwind にはあるが我々には無い名前」は差から出るので、
+ * 禁止リストを持たなくてよい（教訓5）。
+ *
+ * **2つの原因を分けて報告しない。** 書いた人が受け取るべき事実は
+ * 「これは生成されない」であって、内訳ではない。`h-10` を
+ * 「素の数値」としても「消えた」としても報告すると、同じ1件が2回出る。
+ */
+const droppedClasses = (sourceDir) => {
+  const ours = generatedClasses(sourceDir);
+  const stock = generatedClasses(sourceDir, { stock: true });
+  return [...stock].filter((c) => !ours.has(c)).sort();
 };
 
 const violationsIn = (sourceDir) => {
@@ -213,6 +254,29 @@ export const cardVariants = cva("text-default border-1 border-default p-4 durati
 export const layout = "w-1/2 basis-1/3 opacity-100 border-0 md:p-6 hover:bg-accent-strong";
 `;
 
+/**
+ * 陰性対照その2 — **書いたのに消えるもの**（決定6-3）。
+ *
+ * shadcn を書き慣れた手が最初に書く語彙をそのまま並べた。
+ * **どれも間接の向こうに置く。** 直書きしか見ない検出器では意味が確かめられない。
+ */
+const DROPPED = `import { cva } from "class-variance-authority";
+export const v = cva("rounded-md text-sm shadow-sm", {
+  variants: { size: { lg: "h-10 text-base font-medium rounded-3xl" } },
+});
+`;
+
+/** 消えることを検出すべきクラスと、消える理由 */
+const DROPPED_EXPECT = [
+  { what: 'rounded-md', why: '写像していない語彙（6px に対応する段が無い）' },
+  { what: 'rounded-3xl', why: '写像していない語彙' },
+  { what: 'text-sm', why: '写像していない語彙（素の t シャツ）' },
+  { what: 'text-base', why: '写像していない語彙（素の t シャツ）' },
+  { what: 'font-medium', why: '写像していない語彙（素の t シャツ）' },
+  { what: 'shadow-sm', why: '写像していない語彙（高さではなく大きさ）' },
+  { what: 'h-10', why: 'スケールの外の値（決定3-1 が構造的に止めている）' },
+];
+
 /** 陽性対照で最低限これだけは生成されていること。0 件を「違反なし」と読まないため */
 const POSITIVE_MUST_GENERATE = ['bg-accent', 'p-6', 'w-1/2', 'hover:bg-accent-strong'];
 
@@ -232,6 +296,24 @@ const failures = [];
       failures.push(`陰性対照が発火しない: ${e.what}（${e.where}、期待 ${e.kind}）`);
     }
   }
+}
+
+{
+  const dir = fixtureDir('drop', DROPPED);
+  const dropped = new Set(droppedClasses(dir));
+  for (const e of DROPPED_EXPECT) {
+    if (!dropped.has(e.what)) {
+      failures.push(`陰性対照が発火しない: ${e.what} が消えたことを検出できていない（${e.why}）`);
+    }
+  }
+}
+
+{
+  const posDir = fixtureDir('pos', POSITIVE);
+  const dropped = droppedClasses(posDir);
+  // **通るべきものが「消えた」と言われないこと。**
+  // 我々にしか無い名前（bg-accent など）は素の Tailwind が出さないので、差には出ない
+  for (const c of dropped) failures.push(`陽性対照が「消えた」と報告された: ${c}`);
 }
 
 {
@@ -263,6 +345,7 @@ if (!existsSync(TARGET)) {
 }
 
 const { classes, found } = violationsIn(TARGET);
+const dropped = droppedClasses(TARGET);
 
 /**
  * 違反したクラスがソースのどこにあるかを探す。
@@ -307,6 +390,25 @@ if (found.length) {
   process.exit(1);
 }
 
+if (dropped.length) {
+  console.error('書かれているのに CSS が生成されないクラスがあります。\n');
+  for (const cls of dropped) {
+    console.error(`  ✗ ${cls}  ${locate(cls)}`);
+  }
+  console.error(
+    '\nこれらは素の Tailwind なら生成されますが、このシステムでは生成されません。' +
+      '\n**エラーにならないので、書いたままにすると何も起きないまま気づけません**（教訓4）。\n' +
+      '\n理由は2つのどちらかです。\n' +
+      '  1. 写像していない語彙。rounded-md / text-sm / font-medium / shadow-sm など、\n' +
+      '     素の t シャツ語彙は写像していません（決定3-3・1-8）。役割の名前を使ってください\n' +
+      '     （rounded-sm / text-body / font-body / shadow-raised）\n' +
+      '  2. スケールの外の値。h-10 や p-5 は段が無いので生成されません（決定3-1）。\n' +
+      '     近い段に寄せてください\n' +
+      '\n生成される名前の一覧は packages/tokens/dist/theme.css にあります。',
+  );
+  process.exit(1);
+}
+
 /**
  * 内訳は **`NEGATIVE_EXPECT` から数え上げる。**
  * 手で書いた数を混ぜると、対照を1件足したときに内訳だけが古いまま緑で通る
@@ -319,7 +421,12 @@ console.log(
     [...byPlace].map(([where, n]) => `${where} ${n} 件`).join('・') +
     '）、陽性対照は落ちなかった',
 );
+console.log(
+  `✓ 陰性対照（消えるもの）${DROPPED_EXPECT.length} 件が期待どおり検出され、` +
+    '陽性対照は「消えた」と報告されなかった',
+);
 console.log(`✓ ${TARGET.replace(`${process.cwd()}/`, '')} が生成したクラス ${classes.size} 件に違反なし`);
+console.log('✓ 書かれているのに生成されないクラスは無い（決定6-3）');
 if (classes.size === 0) {
   console.log(
     '  **ただし生成されたクラスは 0 件である。** いま守っているものは無い（教訓2）。' +
