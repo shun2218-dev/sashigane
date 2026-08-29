@@ -423,7 +423,9 @@ const FIXTURES = [
    * 「通すはずの書き方が落ちる」ことに気づけない（Issue #63 の教訓）
    */
   { text: '<div class="border-1 border-2 border-3">', expect: null },
-  { text: '<div class="duration-100 duration-141.4 duration-1000">', expect: null },
+  { text: '<div class="duration-100 duration-141.4 duration-400">', expect: null },
+  // ループの段は写像しない（決定1-6・1-14）。遷移に流し込む道を作らない
+  { text: '<div class="duration-1000">', expect: 'bare-number' },
   { text: '<div class="outline-2 ring-1 ring-3">', expect: null },
   // 0 は「無し」であってスケールの外ではない。消す手段を奪わない
   { text: '<div class="border-0 ring-0 outline-0 duration-0">', expect: null },

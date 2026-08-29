@@ -35,7 +35,7 @@ writeFileSync(
   join(dir, 'content.html'),
   `<div class="
     p-0 p-1 p-2 p-3 p-4 p-6 p-8 p-12 p-16 p-24
-    duration-100 duration-141.4 duration-1000 delay-200 outline-2 ring-2
+    duration-100 duration-141.4 duration-1000 duration-400 delay-200 outline-2 ring-2
     p-5 p-7 p-9 p-20
     bg-red-500 bg-blue-500 bg-accent bg-danger bg-page bg-surface bg-inset
     max-w-6xl max-w-md w-2xl min-w-md
@@ -114,7 +114,7 @@ const EXPECTATIONS = [
   /* duration（決定1-6）。名前は ms に合わせる。**小数の鍵も使える**（実測） */
   ['duration-100', true, '遷移スケールの下端'],
   ['duration-141.4', true, '√2 刻みの段。小数の鍵が使える'],
-  ['duration-1000', true, 'ループスケールの中央'],
+  ['duration-1000', true, '素の 1000ms。**ループの段は写像しない**（決定1-6・1-14）。lint が弾く'],
   ['delay-200', true, '写像していないので素の 200ms。観測ゼロ（原則7）。lint が弾く'],
   ['rounded-3xl', false, '24px。対応する段が無い'],
   ['shadow-lg', false, '影は未実装。名前空間をリセットしている'],
@@ -200,12 +200,21 @@ let mappedNames = 0;
     console.error(`${layersPath} がありません。先に pnpm build:tokens を実行してください。`);
     process.exit(1);
   }
+  /*
+   * **コメントを先に落とす。** 説明の中で `var(--sg-duration-loop-*)` のように
+   * 名前に触れると、それを写像だと読んでしまう。Issue #63 と同じ形である。
+   * 長さは保たなくてよい（位置を使わないため）
+   */
+  const strip = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
   const known = new Set([
     ...[...tokensCss.matchAll(/^\s*(--sg-[a-z0-9-]+)\s*:/gm)].map((m) => m[1]),
     ...JSON.parse(readFileSync(layersPath, 'utf8')).inputs,
   ]);
   const referenced = new Set(
-    [...themeCss.matchAll(/var\(\s*(--sg-[a-z0-9-]+)/g)].map((m) => m[1]),
+    [...strip(themeCss).matchAll(/var\(\s*(--sg-[a-z0-9-]+)/g)]
+      .map((m) => m[1])
+      // 末尾が `-` のものは説明のための書き方。宣言としてありえない（Issue #63）
+      .filter((n) => !n.endsWith('-')),
   );
   mappedNames = referenced.size;
   if (referenced.size === 0) {
@@ -420,7 +429,6 @@ for (const [cls, token] of [
   ['ring-2', '--sg-border-width-1'],
   ['duration-100', '--sg-duration-0'],
   ['duration-141.4', '--sg-duration-1'],
-  ['duration-1000', '--sg-duration-loop-1'],
 ]) {
   const body =
     /\{([^}]*)\}/.exec(

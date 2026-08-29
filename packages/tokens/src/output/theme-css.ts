@@ -16,7 +16,6 @@
 import type { Palette } from '../color/palette.ts';
 import {
   borderWidth,
-  durationLoop,
   durationTransition,
   fontWeightRoles,
   breakpoint,
@@ -137,12 +136,15 @@ export const toThemeCss = (palette: Palette): string =>
     '     **小数の鍵は使える**（実測。--transition-duration-141\\.4 が duration-141.4 を作る）',
     '     ので、√2 刻みのスケール（決定1-6）が全段そのまま届く。',
     '',
-    '     delay は写像しない。観測4本に transition-delay が1件も無い（原則7） */',
+    '     **写像するのは遷移の段だけ。** 決定1-6 は遷移とループを知覚上の制約が違う',
+    '     別スケールとしている。同じ名前空間に混ぜると、ループの値を hover の遷移に',
+    '     当てられてしまい、**別スケールにした理由が Tailwind の経路で消える。**',
+    '     ループ周期に出口は要らない——アニメーションは data-sg-skeleton の1本である',
+    '     （決定1-14）。素の CSS からは var(--sg-duration-loop-*) で読める。',
+    '',
+    '     delay も写像しない。観測4本に transition-delay が1件も無い（原則7） */',
     ...durationTransition.map(
       (ms, i) => `  --transition-duration-${msKey(ms)}: var(--sg-duration-${i});`,
-    ),
-    ...durationLoop.map(
-      (ms, i) => `  --transition-duration-${msKey(ms)}: var(--sg-duration-loop-${i});`,
     ),
     '',
     '  /* text — 素の t シャツ語彙は値が一致しないので使わない。',
