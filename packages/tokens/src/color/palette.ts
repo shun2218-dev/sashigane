@@ -621,10 +621,16 @@ const solveSurfaceRoles = (
       outward[outward.indexOf(textStep) + 1] ?? textStep;
 
     /**
-     * 淡い塗り（決定5-16）。**面のすぐ外側の段**を取る。
-     * 要件を持たない段なので「最も浅い」がそのまま「最も淡い」になる。
+     * **面のすぐ外側の段。** 2つの役割がここから来る（自己レビュー B1）。
+     *
+     *   gridline     チャートのグリッド線。UI の境界より薄い第4の段（決定5-13）
+     *   colorSubtle  淡い塗り。色のついた地（決定5-16）
+     *
+     * **役割は違うが規則は同じ**である。どちらも「面のすぐ外側」で、
+     * 要件を持たないので「最も浅い」がそのまま「最も薄い／最も淡い」になる。
+     * 同じ式を2箇所に書くと、片方だけ直したときに静かにずれる（決定2-6）。
      */
-    const subtle = outward[0] ?? surfaceStep;
+    const justOutside = outward[0] ?? surfaceStep;
 
     /**
      * 淡い塗りの上で、**その色自身**が 4.5:1 を満たす最も浅い段（決定5-16）。
@@ -634,10 +640,10 @@ const solveSurfaceRoles = (
      * 同じ場面に並んだバッジで文字の濃さが揃わない（決定5-3 と同じ考え方）。
      */
     const onSubtle = (() => {
-      const after = outward.indexOf(subtle) + 1;
+      const after = outward.indexOf(justOutside) + 1;
       const meetsOnSubtle = (step: number): boolean =>
         colored.every(
-          (r) => contrastBetween(r.byStep[step]!, r.byStep[subtle]!) >= g.textMin,
+          (r) => contrastBetween(r.byStep[step]!, r.byStep[justOutside]!) >= g.textMin,
         );
       return outward.slice(after).find(meetsOnSubtle) ?? outward[outward.length - 1]!;
     })();
@@ -689,11 +695,11 @@ const solveSurfaceRoles = (
         strong: shift(mode === 'light' ? 400 : 600),
       },
       /** 面のすぐ外側。border.subtle より必ず薄い */
-      gridline: outward[0] ?? surfaceStep,
+      gridline: justOutside,
       colorText,
       colorMark: markStep(colorText),
       colorStrong: strongStep(colorText),
-      colorSubtle: subtle,
+      colorSubtle: justOutside,
       onSubtle,
       onFill: {
         accent: onFillFor(palette.primary),

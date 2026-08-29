@@ -16,6 +16,7 @@ import {
   relativeLuminance,
   fillRampNames,
   statusNames,
+  steps,
   surfaceNames,
   surfaceRolesFor,
   toTokensCss,
@@ -155,10 +156,13 @@ describe('淡い塗り（決定5-16）', () => {
 
   it('淡い塗りは面のすぐ外側の段。深い面では一緒に動く', () => {
     for (const mode of ['light', 'dark'] as const) {
+      const order = mode === 'light' ? [...steps] : [...steps].reverse();
       const seen = new Set<number>();
       for (const d of namedDepths) {
         const r = surfaceRolesFor(sample, mode)[d]!;
-        expect(r.colorSubtle).toBe(r.gridline);
+        // **一致ではなく規則を検査する。** gridline と同じ値になるのは
+        // 同じ式から来ているからで、値を突き合わせても原因は固定できない
+        expect(r.colorSubtle).toBe(order[order.indexOf(r.surface) + 1]);
         seen.add(r.colorSubtle);
       }
       // 面ごとに違う段を指す（page と surface で同じ段になっていない）
