@@ -73,7 +73,9 @@ const COLORISH = (prop) =>
  *
  * 字送りは決定1-9 を確定させるまで「スケールを持つべきかどうかすら決めていない」
  * 次元だったので、ここに入れられなかった。**入れられるようになったので入れる**（教訓3）。
- * 残っているのは `opacity` だけである。
+ *
+ * **不透明度もここから外れた。** 決定1-15 でスケールを持たないと決めたので、
+ * 別の判定（下記 FADING）に入れた。持たない側の決定でも検査にはできる。
  */
 const TYPOGRAPHIC = (prop) =>
   prop === 'font-size' ||
@@ -110,6 +112,28 @@ const ALLOWED_VALUE = new Set([
  */
 const ALLOWED_TYPO_VALUE = new Set(['inherit', 'initial', 'unset', '0', 'calc(', '+', ')']);
 
+/**
+ * 要素を薄めるプロパティ（決定1-15）。**許すのは 0 と 1 だけ。**
+ *
+ * 不透明度はスケールを持たない。中間の値は「色を薄める」ことであり、
+ * **前景と背景を同時に下地へ寄せるのでコントラスト保証の外へ出る。**
+ * サンプルページ自身が `opacity: 0.88` で 4.50:1 を 3.17:1 に落としていた。
+ *
+ * `0` と `1` は「見えない / 見える」であって薄めではないので許す。
+ * 出現・退場のアニメーションが観測されている（holosphere）。
+ *
+ * **この検査が見逃す範囲。** 色に付けたアルファは見ない。
+ * 生成器が解いて出したもの（`oklch(… / .25)`。影がその例）は対比を保証済みだが、
+ * **利用側が前景に付けたアルファ（`color: rgb(… / .5)`）は `opacity` と同じ壊れ方をする。**
+ * このページは色を `var(--sg-*)` でしか書かないので現状は届かないが、
+ * **原理的に見逃す**（決定1-15 の「触れない範囲」、Issue #85）。
+ */
+const FADING = (prop) =>
+  prop === 'opacity' || prop === 'fill-opacity' || prop === 'stroke-opacity';
+
+/** 薄めるプロパティの値に許す語。**0 と 1 だけ**（決定1-15） */
+const ALLOWED_FADING_VALUE = new Set(['0', '1', 'inherit', 'initial', 'unset']);
+
 /** `var(--sg-…)` の中身。入れ子のフォールバックは使っていないので単純に取る */
 const VAR_REF = /var\(\s*(--[a-z0-9-]+)\s*\)/gi;
 
@@ -145,7 +169,9 @@ const rawValues = (html) =>
       ? ALLOWED_VALUE
       : TYPOGRAPHIC(prop)
         ? ALLOWED_TYPO_VALUE
-        : null;
+        : FADING(prop)
+          ? ALLOWED_FADING_VALUE
+          : null;
     if (!allowed) return [];
     // var(…) を取り除いた残りが、許可した語だけで構成されていること
     const rest = value.replace(VAR_REF, ' ').trim();
@@ -155,6 +181,21 @@ const rawValues = (html) =>
       .filter((t) => !allowed.has(t.toLowerCase()));
     return bad.length ? [{ line, prop, value, bad }] : [];
   });
+
+/**
+ * **骨組みは面を名乗っている要素に付ける**（決定1-14 改訂、自己レビュー B3）。
+ *
+ * 明滅は地の色を動かすので、`data-sg-surface` を持たない要素に付けると
+ * 動かす地が無く `transparent` から補間される。**エラーにはならない**（教訓4）。
+ * 見た目も「点滅しないだけ」なので、目視でも気づけない。
+ *
+ * **このページが現に踏んだ。** 透明度で動かしていた頃は包んでいる div に付けており、
+ * 色に変えた瞬間に動かなくなった。文書で持つと同じことが繰り返される（教訓3）。
+ */
+const skeletonWithoutSurface = (html) =>
+  [...html.matchAll(/<[a-z][^>]*\bdata-sg-skeleton\b[^>]*>/gi)]
+    .filter((m) => !/\bdata-sg-surface\s*=/.test(m[0]))
+    .map((m) => ({ line: html.slice(0, m.index).split('\n').length, tag: m[0] }));
 
 /** ページが参照している `--sg-*` の名前（重複を保つ。回数が観測になる） */
 const sgRefs = (html) => [...html.matchAll(VAR_REF)].map((m) => m[1]).filter((n) => n.startsWith('--sg-'));
@@ -172,6 +213,9 @@ const FIXTURE = `
   .g { font-weight: 700; }
   .e { font-size: var(--sg-text-body); line-height: var(--sg-text-body-leading); }
   .f { letter-spacing: calc(var(--sg-text-label-tracking) + var(--sg-tracking-caps)); }
+  .h { opacity: 0.88; }
+  .i { opacity: 0; }
+  .j { opacity: 1; }
 </style>
 <div style="background: rgba(0,0,0,.2)"></div>
 `;
@@ -195,6 +239,10 @@ expect(
   fired.some((v) => v.prop === 'font-weight' && v.bad.includes('700')),
   '太さの生値を検出できていない（決定1-13 で太さは役割を持った）',
 );
+expect(
+  fired.some((v) => v.prop === 'opacity' && v.bad.includes('0.88')),
+  '中間の不透明度を検出できていない（決定1-15 でスケールを持たないと決めた）',
+);
 /*
  * **通る側の対照。** 落ちるべきものだけを並べると、
  * 「通すはずの書き方が落ちるようになった」ことに気づけない（教訓2、Issue #63）。
@@ -208,7 +256,23 @@ expect(
   !fired.some((v) => v.value.startsWith('calc(')),
   'calc() で加算項を足す書き方を落としている（決定1-9）',
 );
-expect(fired.length === 5, `許可した値まで落としている（${fired.length} 件）`);
+expect(
+  !fired.some((v) => v.prop === 'opacity' && (v.value === '0' || v.value === '1')),
+  '0 と 1 まで落としている（見えない / 見えるは薄めではない。決定1-15）',
+);
+expect(fired.length === 6, `許可した値まで落としている（${fired.length} 件）`);
+
+/* 骨組みの検出器にも陰性対照を持つ */
+const SKELETON_FIXTURE = `
+<div data-sg-skeleton></div>
+<div data-sg-surface="inset" data-sg-skeleton></div>
+<div data-sg-skeleton data-sg-surface="inset"></div>
+`;
+const skeletonFired = skeletonWithoutSurface(SKELETON_FIXTURE);
+expect(
+  skeletonFired.length === 1,
+  `面を名乗らない骨組みの検出が期待どおりでない（${skeletonFired.length} 件。期待 1 件）`,
+);
 
 /* ============================================================
    本体
@@ -235,6 +299,7 @@ const inputs = new Set(layers.inputs);
 const internals = new Set(layers.internals);
 
 const violations = rawValues(html);
+const looseSkeletons = skeletonWithoutSurface(html);
 const refs = sgRefs(html);
 const unknown = [...new Set(refs)].filter(
   (n) => !semantics.has(n) && !primitives.has(n) && !inputs.has(n) && !internals.has(n),
@@ -301,5 +366,16 @@ if (violations.length) {
   );
 }
 
-if (unknown.length || internalRefs.length || violations.length) process.exit(1);
+if (looseSkeletons.length) {
+  console.error('\n面を名乗っていない要素に data-sg-skeleton が付いている（決定1-14 改訂）:');
+  for (const v of looseSkeletons) console.error(`  ${PAGE}:${v.line}  ${v.tag}`);
+  console.error('\n明滅は地の色を動かすので、動かす地が無いと transparent から補間される。');
+  console.error('エラーにならず、見た目も「点滅しないだけ」なので気づけない（教訓4）。');
+  console.error('骨組みそのものに付けること: <div data-sg-surface="inset" data-sg-skeleton>');
+}
+
+if (unknown.length || internalRefs.length || violations.length || looseSkeletons.length) {
+  process.exit(1);
+}
 console.log('\n✓ 生値は無く、参照している名前はすべて名前表にある（内部の値は踏んでいない）');
+console.log('✓ 骨組みはすべて面を名乗っている（決定1-14 改訂）');

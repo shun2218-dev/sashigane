@@ -159,6 +159,13 @@ const EXPECTATIONS = [
   ['font-emphasis', true, '太さの役割。既定 500'],
   ['font-heading', true, '太さの役割。既定 600'],
   ['font-strong', true, '太さの役割。既定 700'],
+  /* 塗りの1段強い段（決定5-15）。accent と danger にしか無い */
+  ['bg-accent-strong', true, '塗りの状態変化。1段濃い側へずらす'],
+  ['bg-danger-strong', true, '破壊的動作の塗りの状態変化'],
+  ['bg-warning-strong', false, '押せる塗りは主要動作と破壊的動作の2種類だけ（原則7）'],
+  /* 不透明度はスケールを持たない（決定1-15）。opacity-* は素の数値ユーティリティなので
+     @theme では止まらない。**ここでは「出る」ことを確かめ、lint が塞ぐ**（決定3-5） */
+  ['opacity-88', true, '素の数値ユーティリティ。@theme では止まらず、check:token-usage が塞ぐ'],
   ['blur-sm', false, '--blur-*。ぼかしはスケールを持たない次元'],
   ['backdrop-blur-md', false, '--blur-*'],
 

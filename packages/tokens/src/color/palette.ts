@@ -498,6 +498,14 @@ export interface SurfaceRoles {
   /** 色つきランプのうち、マークに使う段（3:1）。決定5-7 */
   colorMark: number;
   /**
+   * 塗りの**1段強い段**（決定5-15）。hover / 押下 / 選択で塗りを差し替えるときに使う。
+   *
+   * 面から遠ざかる向きへ1段動かすので、**塗りは必ず濃く（暗色では明るく）なる。**
+   * 塗りの上の文字はランプの端にあり（決定5-14）、塗りが端へ寄れば対比は増えるだけである。
+   * 全360色相・全モード・全面で最悪 6.04:1（通常は 4.50:1）。
+   */
+  colorStrong: number;
+  /**
    * 塗りの上に載せる文字の段（決定5-14）。**ランプごとに解く。**
    *
    * これまでは `bg-page` を流用していた。値としては正しかったが、
@@ -585,6 +593,13 @@ const solveSurfaceRoles = (
       return meets(candidate, bg, g.markMin, colored) ? candidate : textStep;
     };
 
+    /**
+     * 1段強い側。ランプの端まで来ていたら動かさない（動かす先が無い）。
+     * 名前を持つ面ではどこでも端に達しないことを検査で確かめている。
+     */
+    const strongStep = (textStep: number): number =>
+      outward[outward.indexOf(textStep) + 1] ?? textStep;
+
     /** 境界は装飾なので要件を持たない。面と一緒に深い側へずらす */
     const shift = (step: number): number =>
       order[Math.min(order.indexOf(step) + depth, order.length - 1)]!;
@@ -635,6 +650,7 @@ const solveSurfaceRoles = (
       gridline: outward[0] ?? surfaceStep,
       colorText,
       colorMark: markStep(colorText),
+      colorStrong: strongStep(colorText),
       onFill: {
         accent: onFillFor(palette.primary),
         ...(Object.fromEntries(

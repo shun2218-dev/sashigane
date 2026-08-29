@@ -152,7 +152,7 @@
     /* ブラウザ既定の buttonface を消す。**指定しないと UA の灰色が残り、
        面の文脈から外れたまま見た目が成立してしまう**（教訓4） */
     background: transparent;
-    transition: opacity var(--sg-duration-2), border-color var(--sg-duration-1);
+    transition: background-color var(--sg-duration-2), border-color var(--sg-duration-1);
   }
   /* 塗りの上の文字。**on-accent の役割が無い**ので面の背景色を借りている。
      accent は文字用の段（4.5:1）なので、面の色を載せれば同じ比が裏返しで成立する。
@@ -162,7 +162,16 @@
   .btn-primary { background: var(--sg-color-accent); color: var(--sg-color-on-accent); }
   .btn-danger { background: var(--sg-color-danger); color: var(--sg-color-on-danger); }
   .btn-ghost { border-color: var(--sg-color-border-default); color: var(--sg-color-text-default); }
-  .btn:hover { opacity: 0.88; }
+  /* 塗りの hover は**塗りの段を差し替える**（決定5-15）。
+     以前は .btn:hover { opacity: 0.88 } と書いていたが、要素の opacity は
+     **塗りと文字を同時に下地へ寄せる**ので、決定5-14 が塗りの側から解いた
+     4.50:1 が hover 中だけ 3.17:1 まで落ちていた（全360色相の最悪。決定1-15）。
+
+     輪郭だけのボタンは塗りを持たないので、面の文脈で解く（決定5-13）。
+     data-sg-interactive を付けると hover 中だけ1段深い面になる。
+     **このページに hover の色は1つも書いていない**という主張はここでも保たれる。 */
+  .btn-primary:hover { background: var(--sg-color-accent-strong); }
+  .btn-danger:hover { background: var(--sg-color-danger-strong); }
 
   /* 面の内側の余白は骨格の側なので役割で書く。密度で動くのはこれと page / section だけ。
      浮きは役割で書く（決定1-8 改訂）。明色では影、暗色では輪郭が出る。
@@ -229,7 +238,10 @@
     background: var(--sg-color-success-mark);
     animation: pulse var(--sg-duration-loop-1) ease-in-out infinite;
   }
-  @keyframes pulse { 50% { opacity: 0.3; } }
+  /* 明滅も色で解く（決定1-15）。マークの段と文字の段を往復するので、
+     動く量は1段分で、どちらの端でも 3:1 を割らない。
+     **0% と 100% を書かない**ので、両端は要素の現在の色になる */
+  @keyframes pulse { 50% { background-color: var(--sg-color-success); } }
   @media (prefers-reduced-motion: reduce) { .live i { animation: none; } }
 
   .stats { display: flex; flex-wrap: wrap; gap: var(--sg-space-6); margin-top: var(--sg-space-7); }
@@ -261,7 +273,11 @@
 
   /* 骨組み表示（決定1-14）。**動きの指定は書かない。**
      周期もイージングも tokens.css の [data-sg-skeleton] が持っており、
-     動きを減らす設定の尊重もそちらで済んでいる */
+     動きを減らす設定の尊重もそちらで済んでいる。
+
+     **地の色を動かすので、付ける先は面を名乗っている要素である**（決定1-14 改訂）。
+     以前は親の div に付けて透明度で子ごと薄めていたが、色に変えると
+     親には動かす地が無く、transparent から補間されて**静かに壊れる**（教訓4） */
   .skeleton { border-radius: var(--sg-radius-1); }
   .skeleton-line { height: var(--sg-space-3); }
   .skeleton-line + .skeleton-line { margin-top: var(--sg-space-2); }
@@ -413,7 +429,7 @@
     </p>
     <div class="row">
       <button class="btn btn-primary" type="button">はじめる</button>
-      <button class="btn btn-ghost" type="button">仕組みを読む</button>
+      <button class="btn btn-ghost" type="button" data-sg-interactive>仕組みを読む</button>
       <span class="pill live"><i></i> 全360色相で保証</span>
     </div>
     <div class="stats num">
@@ -493,10 +509,12 @@
 
         <div style="margin-top: var(--sg-space-5)">
           <p class="caption">読み込み中の骨組み。周期はループスケールから来ています。</p>
-          <div data-sg-skeleton style="margin-top: var(--sg-space-3)">
-            <div class="skeleton skeleton-line" data-sg-surface="inset"></div>
-            <div class="skeleton skeleton-line" data-sg-surface="inset"></div>
-            <div class="skeleton skeleton-line short" data-sg-surface="inset"></div>
+          <!-- data-sg-skeleton は**骨組みそのもの**に付ける。地の色を動かすので、
+               面を名乗っていない要素に付けても動く地が無い（決定1-14 改訂） -->
+          <div style="margin-top: var(--sg-space-3)">
+            <div class="skeleton skeleton-line" data-sg-surface="inset" data-sg-skeleton></div>
+            <div class="skeleton skeleton-line" data-sg-surface="inset" data-sg-skeleton></div>
+            <div class="skeleton skeleton-line short" data-sg-surface="inset" data-sg-skeleton></div>
           </div>
         </div>
       </article>
@@ -568,7 +586,7 @@
         <div class="row">
           <button class="btn btn-primary" type="button">生成する</button>
           <button class="btn btn-danger" type="button">消す</button>
-          <button class="btn btn-ghost" type="button">やめる</button>
+          <button class="btn btn-ghost" type="button" data-sg-interactive>やめる</button>
         </div>
       </form>
     </div>
@@ -582,7 +600,7 @@
         <h3 class="h3">tokens</h3>
         <p class="price num">¥0 <small>/ 月</small></p>
         <ul><li>CSS 変数のみ</li><li>React 非依存</li><li>SCSS / Tailwind アダプタ</li></ul>
-        <button class="btn btn-ghost" type="button">入れる</button>
+        <button class="btn btn-ghost" type="button" data-sg-interactive>入れる</button>
       </article>
       <article class="card plan picked" data-sg-surface="surface">
         <div class="row"><h3 class="h3">component</h3><span class="pill">おすすめ</span></div>
@@ -594,7 +612,7 @@
         <h3 class="h3">base</h3>
         <p class="price num">¥0 <small>/ 月</small></p>
         <ul><li>全部</li><li>registry:base</li><li>更新は取り込み直し</li></ul>
-        <button class="btn btn-ghost" type="button">入れる</button>
+        <button class="btn btn-ghost" type="button" data-sg-interactive>入れる</button>
       </article>
     </div>
   </section>
@@ -629,7 +647,7 @@
       </p>
       <div class="row">
         <button class="btn btn-primary" type="button">CSS をコピー</button>
-        <button class="btn btn-ghost" type="button">仕様を見る</button>
+        <button class="btn btn-ghost" type="button" data-sg-interactive>仕様を見る</button>
       </div>
     </div>
   </section>
