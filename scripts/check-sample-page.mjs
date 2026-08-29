@@ -320,9 +320,48 @@ const internalRefs = [...new Set(refs)].filter((n) => internals.has(n));
   }
 }
 
+/**
+ * **意図して未使用のセマンティック**（原則3、自己レビュー B2）。
+ *
+ * 原則3 は「実際に使う場所が1つ以上あるものだけ定義する」と言っている。
+ * 未使用を表示するだけにしていると、**「意図して未使用」と「足したまま忘れた」の
+ * 区別がつかない。** 1個のうちは目で見て分かったが、増えると信号が薄まる。
+ *
+ * **ここに理由つきで並べたものだけを許し、それ以外が未使用なら落とす**（教訓5）。
+ * 理由が書けないものは、そもそも足すべきではない。
+ */
+const EXPECTED_UNUSED = new Map([
+  [
+    '--sg-color-bg-page',
+    'CSS が原理的に届かない場所（OG 画像など）のための値。このページは CSS なので使わないのが正しい（決定5-12 改訂）',
+  ],
+  [
+    '--sg-color-warning-strong',
+    '塗りの状態変化は役割として accent と danger で示している。ランプの一覧は規則で機械的に埋まる（決定5-15）',
+  ],
+  [
+    '--sg-color-success-strong',
+    '同上（決定5-15）',
+  ],
+  [
+    '--sg-color-info-strong',
+    '同上（決定5-15）',
+  ],
+  [
+    '--sg-elevation-front',
+    '浮きは役割として raised と overlay で示している。モーダルはこのページに置けない（決定1-8 改訂）',
+  ],
+]);
+
 /* --- 集計（落とすためではなく観測のため） --- */
 const usedSemantics = new Set(refs.filter((n) => semantics.has(n)));
 const unusedSemantics = [...semantics].filter((n) => !usedSemantics.has(n));
+/** 理由を書いていない未使用。**これは落とす**（原則3） */
+const unexplainedUnused = unusedSemantics.filter((n) => !EXPECTED_UNUSED.has(n));
+/** 使われるようになったのに一覧に残っているもの。**古い理由は消す** */
+const staleExpected = [...EXPECTED_UNUSED.keys()].filter(
+  (n) => !semantics.has(n) || usedSemantics.has(n),
+);
 const primitiveCounts = new Map();
 for (const n of refs.filter((x) => primitives.has(x))) {
   // --sg-space-3 → space、--sg-border-width-0 → border-width、--sg-radius-full → radius-full。
@@ -366,6 +405,18 @@ if (violations.length) {
   );
 }
 
+if (unexplainedUnused.length) {
+  console.error('\n理由を書いていない未使用のセマンティックがある（原則3）:');
+  for (const n of unexplainedUnused) console.error(`  ${n}`);
+  console.error('\n使う場所を作るか、check-sample-page.mjs の EXPECTED_UNUSED に');
+  console.error('**理由つきで**並べること。理由が書けないなら、足すべきではない。');
+}
+if (staleExpected.length) {
+  console.error('\nEXPECTED_UNUSED に古い項目がある（使われるようになったか、消えた）:');
+  for (const n of staleExpected) console.error(`  ${n}`);
+  console.error('\n未使用の理由が要らなくなったので、一覧から消すこと。');
+}
+
 if (looseSkeletons.length) {
   console.error('\n面を名乗っていない要素に data-sg-skeleton が付いている（決定1-14 改訂）:');
   for (const v of looseSkeletons) console.error(`  ${PAGE}:${v.line}  ${v.tag}`);
@@ -374,8 +425,16 @@ if (looseSkeletons.length) {
   console.error('骨組みそのものに付けること: <div data-sg-surface="inset" data-sg-skeleton>');
 }
 
-if (unknown.length || internalRefs.length || violations.length || looseSkeletons.length) {
+if (
+  unknown.length ||
+  internalRefs.length ||
+  violations.length ||
+  looseSkeletons.length ||
+  unexplainedUnused.length ||
+  staleExpected.length
+) {
   process.exit(1);
 }
 console.log('\n✓ 生値は無く、参照している名前はすべて名前表にある（内部の値は踏んでいない）');
 console.log('✓ 骨組みはすべて面を名乗っている（決定1-14 改訂）');
+console.log(`✓ 未使用のセマンティック ${unusedSemantics.length} 個はすべて理由が書いてある（原則3）`);

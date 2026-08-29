@@ -21,6 +21,20 @@ import tokensJson from '../tokens.json' with { type: 'json' };
 const cfg = tokensJson.color;
 import { toCss } from '../color/oklch.ts';
 
+/**
+ * 塗りを持つランプ（決定5-14・5-15）。**役割名とランプ変数名の対応をここ1箇所で持つ。**
+ *
+ * `accent` だけランプ変数名が `primary` で違う。対応表を2箇所に持つと、
+ * 片方だけ直したときに静かにずれる（決定2-6）。**生成も写像も検査もここから回す。**
+ *
+ * **中間色は入らない。** 面そのものであって塗りではない。
+ */
+export const fillRamps: readonly { role: string; ramp: string }[] = [
+  { role: 'accent', ramp: 'primary' },
+  ...statusNames.map((n) => ({ role: n as string, ramp: n as string })),
+];
+export const fillRampNames: readonly string[] = fillRamps.map((f) => f.role);
+
 const rampVars = (prefix: string, ramp: Ramp): string[] =>
   steps.map((s) => `  --sg-${prefix}-${s}: ${toCss(ramp.byStep[s]!)};`);
 
@@ -83,25 +97,34 @@ const semanticFor = (
     `  --sg-color-chart-gridline: var(--sg-neutral-${roles.gridline});`,
     `  --sg-color-accent: var(--sg-primary-${roles.colorText});`,
     `  --sg-color-accent-mark: var(--sg-primary-${roles.colorMark});`,
-    // 塗りの上に載せる文字（決定5-14）。ランプごとに解いてある
-    `  --sg-color-on-accent: var(--sg-neutral-${roles.onFill.accent});`,
     /**
      * 塗りの1段強い段（決定5-15）。hover / 押下 / 選択で塗りを差し替える。
      *
-     * **accent と danger にしか出さない。** 観測4本の塗りボタンは
-     * 「主要動作」と「破壊的動作」の2種類しかなく（pdf-merge-app の shadcn も
-     * default / destructive）、warning / success / info の塗りを**押す**場面が無い（原則7）。
+     * **塗りを持つ役割すべてに出す。** 当初は accent と danger だけにしていたが、
+     * その根拠は「観測4本の塗りボタンは主要動作と破壊的動作の2種類しかない
+     * （pdf-merge-app の shadcn も default / destructive）」だった。
+     * **shadcn の生成コードは過去の実装ですらない**（教訓7、Issue #88）。
+     *
+     * `-mark` も `on-*` も同じ規則で全ランプに出している。**規則が同一のランプ間で
+     * 非対称を作らない。** 逃げ道（プリミティブ参照・任意値記法・素の数値・
+     * 不透明度・アルファ修飾子）を全部塞いだので、**役割が無い＝書く手段が無い**である。
      *
      * 不透明度で薄める道は塞いだ（決定1-15）。塗りを `opacity` で変えると
      * 塗りと文字が同時に下地へ寄り、4.50:1 が 3.17:1 まで落ちる。
      */
-    `  --sg-color-accent-strong: var(--sg-primary-${roles.colorStrong});`,
-    `  --sg-color-danger-strong: var(--sg-danger-${roles.colorStrong});`,
+    ...fillRamps.map(
+      ({ role, ramp }) =>
+        `  --sg-color-${role}-strong: var(--sg-${ramp}-${roles.colorStrong});`,
+    ),
+    // 塗りの上に載せる文字（決定5-14）。ランプごとに解いてある
+    ...fillRamps.map(
+      ({ role }) =>
+        `  --sg-color-on-${role}: var(--sg-neutral-${roles.onFill[role as 'accent']});`,
+    ),
     `  --sg-color-border-focus: var(--sg-primary-${roles.colorMark});`,
     ...statusNames.flatMap((n) => [
       `  --sg-color-${n}: var(--sg-${n}-${roles.colorText});`,
       `  --sg-color-${n}-mark: var(--sg-${n}-${roles.colorMark});`,
-      `  --sg-color-on-${n}: var(--sg-neutral-${roles.onFill[n]});`,
     ]),
     // 段が足りない面では出さない。親の面の値をそのまま継承する（決定5-12）
     ...(roles.series ?? []).map(
@@ -373,7 +396,7 @@ export const colorWithoutRequirement = (name: string): boolean =>
   name.startsWith('--sg-color-border-strong') ||
   name.startsWith('--sg-color-chart-gridline') ||
   name.startsWith('--sg-color-on-') ||
-  // 塗りの1段強い段（決定5-15）。通常の塗りより必ず端に近いので余裕は増えるだけ
-  name === '--sg-color-accent-strong' ||
-  name === '--sg-color-danger-strong' ||
+  // 塗りの1段強い段（決定5-15）。通常の塗りより必ず端に近いので余裕は増えるだけ。
+  // **境界の border-strong とは別物**なので、塗りのランプの一覧に当てる
+  fillRampNames.some((r) => name === `--sg-color-${r}-strong`) ||
   name.startsWith('--sg-color-sequential-');
