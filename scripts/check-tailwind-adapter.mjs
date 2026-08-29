@@ -109,6 +109,17 @@ const EXPECTATIONS = [
   ['border-4', true, '段の外だが Tailwind が素の px で作る。lint でしか塞げない'],
   ['rounded-3xl', false, '24px。対応する段が無い'],
   ['shadow-lg', false, '影は未実装。名前空間をリセットしている'],
+  /*
+   * 動き（決定1-14）。**animate-* は1つも写像しない。**
+   * 骨組み表示は data-sg-skeleton で作る。ユーティリティも用意すると、
+   * Tailwind の経路だけが prefers-reduced-motion を尊重しなくなる
+   */
+  ['animate-skeleton', false, '骨組み表示は data-sg-skeleton で作る（決定1-14）'],
+  ['animate-pulse', false, '素の Tailwind の動き。名前空間をリセットしている'],
+  ['animate-spin', false, '観測1本。原則7 の3回に届かない'],
+  ['motion-reduce:animate-none', true, '変種なので素で通る。トークンの写像ではない'],
+  ['ease-in-out', true, 'CSS の組み込み語をそのまま戻した（値は持たない）'],
+  ['ease-linear', true, '静的ユーティリティ。リセットの影響を受けない'],
   ['font-body', true, '書体のセマンティック役割（決定1-11）'],
   ['font-display', true, '書体のセマンティック役割'],
   ['font-label', true, '書体のセマンティック役割'],
@@ -400,6 +411,21 @@ for (const [cls, token] of [
   const body = /\{([^}]*)\}/.exec(out.slice(out.search(new RegExp(`^\\s*\\.${cls}\\s*\\{`, 'm'))))?.[1] ?? '';
   if (!new RegExp(`var\\(${token}\\)`).test(body)) {
     failures.push(`${cls} が ${token} を指していない。素の px のままか、段がずれている`);
+  }
+}
+
+/*
+ * **骨組み表示は tokens.css 側の1本だけ**であること（決定1-14）。
+ * アダプタが animate-* を出すと、Tailwind の経路だけが
+ * prefers-reduced-motion を尊重しなくなる。**出ていないことを見る。**
+ */
+{
+  const themeCss = readFileSync(join(dist, 'theme.css'), 'utf8');
+  if (/--animate-[a-z-]+\s*:/.test(themeCss)) {
+    failures.push('アダプタが --animate-* を写像している。骨組み表示は data-sg-skeleton の1本にする');
+  }
+  if (/@keyframes/.test(themeCss)) {
+    failures.push('アダプタが @keyframes を出している。tokens.css 側と重複する');
   }
 }
 

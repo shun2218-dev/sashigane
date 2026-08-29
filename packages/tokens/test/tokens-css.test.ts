@@ -203,3 +203,36 @@ describe('tokens.css の hover（決定5-13）', () => {
     expect(css).not.toContain('--sg-color-bg-hover');
   });
 });
+
+/**
+ * 骨組み表示の動き（決定1-14）。
+ *
+ * **素の CSS の利用者にも届くこと**と、**動きを減らす設定を尊重すること**を見る。
+ * どちらも欠けてもエラーにならない——前者は何も動かず、後者は動きすぎるだけである（教訓4）。
+ */
+describe('tokens.css の動き（決定1-14）', () => {
+  it('keyframes と、それを使う規則が対で出ている', () => {
+    expect(css).toMatch(/@keyframes\s+skeleton\s*\{/);
+    const rule = blockOf('[data-sg-skeleton]');
+    expect(rule, '[data-sg-skeleton] が無い').not.toBeNull();
+    expect(rule!.body).toMatch(/\bskeleton\b/);
+  });
+
+  it('周期はループスケールから引いている（素の秒数を書いていない）', () => {
+    expect(blockOf('[data-sg-skeleton]')!.body).toMatch(/var\(--sg-duration-loop-\d+\)/);
+  });
+
+  it('動きを減らす設定で止まる', () => {
+    const at = css.indexOf('@media (prefers-reduced-motion: reduce)');
+    expect(at, 'prefers-reduced-motion のブロックが無い').toBeGreaterThan(-1);
+    const block = css.slice(at, css.indexOf('\n}', at));
+    expect(block).toContain('[data-sg-skeleton]');
+    expect(block).toMatch(/animation:\s*none/);
+  });
+
+  it('止める規則は、動かす規則より後にある（同じ詳細度なので順序で勝つ）', () => {
+    const on = css.indexOf('[data-sg-skeleton] {');
+    const off = css.indexOf('@media (prefers-reduced-motion: reduce)');
+    expect(off).toBeGreaterThan(on);
+  });
+});

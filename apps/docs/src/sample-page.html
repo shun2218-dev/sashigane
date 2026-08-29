@@ -256,6 +256,14 @@
   .band span:last-child { border-radius: 0 var(--sg-radius-1) var(--sg-radius-1) 0; }
   .band-scale { display: flex; justify-content: space-between; margin-top: var(--sg-space-1); }
 
+  /* 骨組み表示（決定1-14）。**動きの指定は書かない。**
+     周期もイージングも tokens.css の [data-sg-skeleton] が持っており、
+     動きを減らす設定の尊重もそちらで済んでいる */
+  .skeleton { border-radius: var(--sg-radius-1); }
+  .skeleton-line { height: var(--sg-space-3); }
+  .skeleton-line + .skeleton-line { margin-top: var(--sg-space-2); }
+  .skeleton-line.short { width: 55%; }
+
   /* 進捗。溝は「凹んだ面」そのものなので data-sg-surface="inset" で作る。
      **色を借りて塗らない**（決定5-12 改訂）。
      バーは accent-mark。印の段なので上に文字は載せられない（決定5-14） */
@@ -476,6 +484,15 @@
         <div style="margin-top: var(--sg-space-5)">
           <p class="caption">今月の生成回数（上限比）</p>
           <div class="meter" data-sg-surface="inset"><i style="width: 64%"></i></div>
+        </div>
+
+        <div style="margin-top: var(--sg-space-5)">
+          <p class="caption">読み込み中の骨組み。周期はループスケールから来ています。</p>
+          <div data-sg-skeleton style="margin-top: var(--sg-space-3)">
+            <div class="skeleton skeleton-line" data-sg-surface="inset"></div>
+            <div class="skeleton skeleton-line" data-sg-surface="inset"></div>
+            <div class="skeleton skeleton-line short" data-sg-surface="inset"></div>
+          </div>
         </div>
       </article>
     </div>

@@ -821,6 +821,130 @@ holosphere では 700 だった。`<strong>` やボタンのように**サイズ
 
 ---
 
+### 決定 1-14: 動きは骨組み表示だけを持つ。イージングは値を持たない
+
+> [Issue #47](https://github.com/shun2218-dev/sashigane/issues/47)。
+> Phase 2 の2本目で観測した穴 G5。**材料は揃っているのに出口だけが無かった。**
+
+#### 観測（4本すべてのソースを読んだ。ビルド出力は除く）
+
+| | ichirizuka | pylabo | holosphere | pdf-merge-app |
+|---|---|---|---|---|
+| 骨組み表示（pulse） | — | `@keyframes pulse` ×2 | `animate-pulse` **×40** | ×1 |
+| `motion-reduce:` | `animation: none !important` | — | **×62** | — |
+| イージング | — | `ease-in-out` | — | `ease-linear` ×4 / `ease-in-out` ×1 |
+| **カスタム `cubic-bezier`** | — | — | — | — |
+
+**骨組み表示だけが3本で観測される。** `spin` `accordion` `caret-blink` はどれも1本ずつで、
+原則7 の「3回以上」に届かない。
+
+**4本のどこにも自作の `cubic-bezier` が無い。** 使われていたのは CSS の組み込み語だけだった。
+
+#### 決定: 骨組み表示だけを持つ
+
+```css
+@keyframes skeleton { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
+
+[data-sg-skeleton] { animation: skeleton var(--sg-duration-loop-1) ease-in-out infinite; }
+```
+
+**周期はループスケールの中央の段から引く**（決定1-6）。ループは3段しかなく、
+端に寄せる理由が無い。**値をここで決めない。**
+
+**透明度だけを動かす。** 色を持たないので、面の上でも塗りの上でも成立する。
+骨組みの地の色は `data-sg-surface="inset"` で作る（決定5-12）。
+
+**動きは外側、地の色は内側**に置く。行が揃って明滅する。
+
+```html
+<div data-sg-skeleton>
+  <div data-sg-surface="inset"></div>
+  <div data-sg-surface="inset"></div>
+</div>
+```
+
+#### 道は1つ。`animate-*` は写像しない
+
+**Tailwind にユーティリティを用意しない。** 用意すると、こうなる。
+
+| 経路 | 動く | 動きを減らす設定 |
+|---|---|---|
+| `data-sg-skeleton` | ✓ | ✓ **トークン層が止める** |
+| `class="animate-skeleton"` | ✓ | ✗ 利用側が `motion-reduce:` を書く |
+
+**同じものに2つの道があって、片方だけが安全**という形になる。
+面（決定5-12）でも hover（決定5-13）でも退けてきた形である。しかも忘れても何も言われない。
+
+Tailwind の利用者も `tokens.css` を読み込むので、属性はそのまま使える。
+
+#### トークン層が keyframes を持つ
+
+**これはトークン層が「値」を超える。** それでも持つのは、`animation` ショートハンドが
+`名前 周期 イージング …` を要求し、**名前の指す `@keyframes` が無ければ何も動かないから**である。
+**エラーにはならない**（教訓4）。
+
+#### 動かす量はトークンではない
+
+```css
+@keyframes skeleton { 0%, 100% { opacity: 1 } 50% { opacity: 0.4 } }
+```
+
+**`0.4` はトークンではない。** 不透明度はスケールを持つべきかすら決めていない次元であり
+（`check-sample-page.mjs` の「見逃す範囲」に名指しで残っている）、
+ここにあるのは**このアニメーションの定義の一部**である。
+
+観測もばらついていた。**pylabo は 0.25、Tailwind 既定は 0.5。**
+その中央付近に置いただけで、**強い根拠は無い。** 不透明度を決めるときに見直す。
+
+#### 動きを減らす設定は、トークン層が尊重する
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  [data-sg-skeleton] { animation: none; }
+}
+```
+
+**利用側の責務にしない。** 決定5-9 が「status は色だけで伝えてはならない」と決めたのと
+同じ性質の制約で、**忘れても何も言われない**種類のものである。
+`prefers-reduced-motion` は「見せない」ではなく「動かさない」なので、
+アニメーションだけを止めて要素は残す。
+
+観測でも holosphere が `motion-reduce:` を **62 箇所**で書いていた。
+**書かなくて済むほうがよい。**
+
+#### イージングは値を持たない
+
+観測にカスタムの `cubic-bezier` が1件も無いので、**トークンとして値を持つ理由が無い。**
+
+ただし `--*: initial`（決定3-3）が `--ease-*` も落としており、
+**`ease-linear` は静的ユーティリティなので生きているのに `ease-in-out` は消えていた。**
+食い違いなので `ease-in-out` だけ戻す。**戻すのは CSS の組み込み語であって、値ではない。**
+
+```css
+--ease-in-out: ease-in-out;
+```
+
+#### 検討して退けた案
+
+- **`spin` などを一緒に持つ** — 観測1本ずつ。原則7 に届かない
+- **keyframes を持たず名前だけ写像する** — Tailwind 既定の `pulse` に乗ることになるが、
+  **素の CSS の利用者には届かない。** 原則4 は `tokens.css` 単体の利用者を一級として扱う
+- **属性とユーティリティの両方を用意する** — 一度そうしたが、自己レビューで退けた。
+  **Tailwind の経路だけが動きを減らす設定を尊重しなくなる**（上記）
+- **イージングに独自のアンカーを置く** — duration や字送りと同じ形にはできるが、
+  **観測がゼロ**である。需要が確かめられていないものを規則にしない（原則2）
+
+#### 検査
+
+- `test/tokens-css.test.ts` — keyframes とそれを使う規則が**対で**出ていること、
+  周期がループスケール由来であること、**動きを減らす設定で止まること**、
+  止める規則が動かす規則より後にあること。reduced-motion のブロックを消すと2件落ちる
+- `scripts/check-tailwind-adapter.mjs` — **`animate-*` が1つも出ないこと**、
+  アダプタが `@keyframes` を出していないこと（`tokens.css` と重複する）、
+  `ease-in-out` と `ease-linear` が書けること
+
+---
+
 ## 2. 命名規約
 
 ### 決定 2-1: プリミティブは index 統一
