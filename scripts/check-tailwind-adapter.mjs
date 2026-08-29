@@ -159,11 +159,19 @@ const EXPECTATIONS = [
   ['font-emphasis', true, '太さの役割。既定 500'],
   ['font-heading', true, '太さの役割。既定 600'],
   ['font-strong', true, '太さの役割。既定 700'],
-  ['blur-sm', false, '--blur-*。elevation と同じく未実装（決定1-8）'],
+  ['blur-sm', false, '--blur-*。ぼかしはスケールを持たない次元'],
   ['backdrop-blur-md', false, '--blur-*'],
-  ['drop-shadow-lg', false, '--drop-shadow-*'],
-  ['text-shadow-lg', false, '--text-shadow-*'],
-  ['inset-shadow-sm', false, '--inset-shadow-*'],
+
+  /* 浮き（決定1-8 改訂）。役割名だけを出し、素の t シャツ語彙は落とす。
+     暗色モードでは同じユーティリティが影ではなく輪郭を出す */
+  ['shadow-raised', true, '浮きの役割。カード・押下可能な面'],
+  ['shadow-overlay', true, '浮きの役割。重なるもの'],
+  ['shadow-sm', false, '素の t シャツ語彙。高さではなく大きさの語彙で、値も一致しない'],
+  ['shadow-lg', false, '素の t シャツ語彙'],
+  ['shadow-front', false, 'h=3 は出さない。モーダルの実需要が観測4本に無い（原則7）'],
+  ['drop-shadow-lg', false, '--drop-shadow-*。観測ゼロ'],
+  ['text-shadow-lg', false, '--text-shadow-*。観測ゼロ'],
+  ['inset-shadow-sm', false, '--inset-shadow-*。観測ゼロ'],
   ['perspective-normal', false, '--perspective-*'],
   ['aspect-video', false, '--aspect-*。媒体の比率であってトークンではない'],
   ['aspect-square', true, '静的ユーティリティ（aspect-ratio: 1/1）。テーマ由来ではないので落ちない'],

@@ -175,11 +175,53 @@ export const breakpoint = (name: BreakpointName): number =>
   tokens.breakpoint.steps[name];
 export const breakpointUnit = tokens.breakpoint.unit;
 
+/* ============================================================
+   elevation — 決定1-8（2026-08-29 改訂）
+   ============================================================ */
+
 /** elevation の高さ（決定1-8） */
 export const elevation: number[] = Array.from(
   { length: tokens.elevation.maxHeight + 1 },
   (_, i) => i,
 );
+
+/**
+ * 高さ h の影の幾何。**新しい長さの定数を持ち込まない。**
+ *
+ * 物理モデルは決定1-8 のまま——光源を上に置き、オフセットもぼかしも h に比例する。
+ * オフセットの単位に `base`（= root ÷ 4）を取ると、出る値は
+ * `4 / 8 / 12` と `8 / 16 / 24` で**全部 spacing の段に載る**（テストで確かめている）。
+ *
+ * `blurRatio` だけが新しい選択で、これは**光源の形**である
+ * （ぼかし ÷ オフセット = 光源の大きさ ÷ 光源の横ずれ）。root からは導けない。
+ */
+export interface ElevationGeometry {
+  /** 下方向のオフセット px。光源は上にある */
+  offset: number;
+  /** ぼかし px */
+  blur: number;
+}
+export const elevationGeometry = (h: number): ElevationGeometry => ({
+  offset: h * base,
+  blur: h * base * tokens.elevation.blurRatio,
+});
+
+/**
+ * 出す役割（決定1-8 改訂）。**高さの数字は出力しない。**
+ *
+ * elevation はモードで媒体が変わる（明色は影、暗色は輪郭）ので、
+ * 値がモード非依存であるプリミティブ層に置けない。役割名でだけ出す。
+ *
+ * h=3（前面／モーダル）は出さない。roles.md のコンポーネント需要表に
+ * ダイアログが無く、観測4本で3回以上書き直されたものに入っていない（原則7）。
+ */
+export type ElevationRole = keyof typeof tokens.elevation.roles;
+export const elevationRoles = Object.keys(tokens.elevation.roles) as ElevationRole[];
+export const elevationHeight = (role: ElevationRole): number =>
+  tokens.elevation.roles[role].height;
+/** 暗色モードでその役割が使う境界の段（`border.subtle` などの鍵） */
+export const elevationOutline = (role: ElevationRole): 'subtle' | 'default' | 'strong' =>
+  tokens.elevation.roles[role].outline as 'subtle' | 'default' | 'strong';
 
 /* ============================================================
    font-family — root から導出できない次元（決定1-11）

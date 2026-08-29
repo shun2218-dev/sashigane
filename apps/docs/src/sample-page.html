@@ -164,11 +164,14 @@
   .btn-ghost { border-color: var(--sg-color-border-default); color: var(--sg-color-text-default); }
   .btn:hover { opacity: 0.88; }
 
-  /* 面の内側の余白は骨格の側なので役割で書く。密度で動くのはこれと page / section だけ */
+  /* 面の内側の余白は骨格の側なので役割で書く。密度で動くのはこれと page / section だけ。
+     浮きは役割で書く（決定1-8 改訂）。明色では影、暗色では輪郭が出る。
+     **同じ1行で媒体が入れ替わる。** 暗色で影を出しても見えないため（測定済み） */
   .card {
     border: var(--sg-border-width-0) solid var(--sg-color-border-subtle);
     border-radius: var(--sg-radius-3);
     padding: var(--sg-space-surface);
+    box-shadow: var(--sg-elevation-raised);
   }
   .grid { display: grid; gap: var(--sg-space-5); }
   .cols-3 { grid-template-columns: repeat(3, 1fr); }
@@ -318,7 +321,8 @@
   tbody tr { cursor: default; }
 
   /* 重なる面。data-sg-surface="overlay" はどこに置いても同じ段になる（決定5-13）。
-     浮きは影と明度差分（決定1-8 の elevation）の担当で、そちらは未実装 */
+     **暗色ではカードと同じ段になる**ので、浮きが無いと下地と同化する。
+     elevation-overlay が明色では影を、暗色では1段深い輪郭を出す（決定1-8 改訂） */
   .anchor { position: relative; }
   .popover {
     position: absolute; inset-block-start: 0; inset-inline-end: 0;
@@ -326,6 +330,7 @@
     border: var(--sg-border-width-0) solid var(--sg-color-border-default);
     border-radius: var(--sg-radius-2);
     padding: var(--sg-space-3) var(--sg-space-4);
+    box-shadow: var(--sg-elevation-overlay);
   }
 
   label { display: grid; gap: var(--sg-space-1); }

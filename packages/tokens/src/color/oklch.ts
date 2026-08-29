@@ -67,14 +67,28 @@ const gamma = (v: number): number => {
   return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
 };
 
-/** CSS に出す文字列。oklch() をそのまま使う（ブラウザが gamut 変換する） */
-export const toCss = ({ L, C, H }: Oklch): string =>
-  `oklch(${L.toFixed(4)} ${C.toFixed(4)} ${H.toFixed(2)})`;
+/**
+ * CSS に出す文字列。oklch() をそのまま使う（ブラウザが gamut 変換する）。
+ *
+ * `alpha` を渡すのは影だけである（決定1-8 改訂）。**色は不透明が既定**で、
+ * 面もランプも透過を持たない。透過を持つと重なりで下地が透け、
+ * `bg-overlay` が成立しなくなる（roles.md「アルファ面は重なりに使えない」）。
+ */
+export const toCss = ({ L, C, H }: Oklch, alpha?: number): string =>
+  `oklch(${L.toFixed(4)} ${C.toFixed(4)} ${H.toFixed(2)}` +
+  `${alpha === undefined ? '' : ` / ${alpha.toFixed(4)}`})`;
 
-/** デバッグと比較のための16進表記 */
-export const toHex = (c: Oklch): string => {
+/** デバッグと比較のための16進表記。alpha を渡すと8桁（#rrggbbaa）になる */
+export const toHex = (c: Oklch, alpha?: number): string => {
   const [r, g, b] = oklchToLinearRgb(c).map((v) => Math.round(gamma(v) * 255));
-  return `#${[r, g, b].map((v) => v!.toString(16).padStart(2, '0')).join('')}`;
+  const hex = [r, g, b].map((v) => v!.toString(16).padStart(2, '0')).join('');
+  const a =
+    alpha === undefined
+      ? ''
+      : Math.round(Math.min(1, Math.max(0, alpha)) * 255)
+          .toString(16)
+          .padStart(2, '0');
+  return `#${hex}${a}`;
 };
 
 const toLinearChannel = (v: number): number =>

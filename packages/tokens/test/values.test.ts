@@ -73,10 +73,24 @@ describe('JS へ出す値', () => {
     }
   });
 
-  it('タイポグラフィは light と dark で同じ（テーマで変わるのは色だけ）', () => {
+  it('テーマで変わるのは色と浮きだけ（タイポグラフィと余白は動かない）', () => {
     for (const [name, v] of Object.entries(values.light)) {
       if (name.startsWith('--sg-color-')) continue;
+      // 浮きはモードで媒体そのものが変わる（明色は影、暗色は輪郭。決定1-8 改訂）。
+      // 色以外でテーマに依存する唯一の役割なので、名指しで除く
+      if (name.startsWith('--sg-elevation-')) continue;
       expect(values.dark[name], name).toBe(v);
+    }
+  });
+
+  it('浮きは light と dark で必ず変わる（暗色で影が素通りしていない）', () => {
+    const names = Object.keys(values.light).filter((n) => n.startsWith('--sg-elevation-'));
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
+      expect(values.dark[name], name).not.toBe(values.light[name]);
+      // 暗色は輪郭。影の色（透過を持つ8桁）が残っていたら媒体が入れ替わっていない
+      expect(values.dark[name], name).not.toMatch(/#[0-9a-f]{8}/);
+      expect(values.light[name], name).toMatch(/#[0-9a-f]{8}/);
     }
   });
 
