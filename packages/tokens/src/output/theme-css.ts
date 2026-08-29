@@ -259,6 +259,17 @@ export const toThemeCss = (palette: Palette): string =>
     '     ユーティリティなので @theme では止まらず、lint が塞いでいる（決定3-5）。',
     '     アルファ修飾子（bg-danger/80）も塞いである（決定3-2 改訂） */',
     ...fillRampNames.map((r) => `  --color-${r}-strong: var(--sg-color-${r}-strong);`),
+    '',
+    '  /* 淡い塗りと、その上の文字（決定5-16）。bg-danger-subtle / text-on-danger-subtle。',
+    '     **その色自身は載らない。** 明色で danger の段500 を段100 の上に置くと',
+    '     4.02:1 で 4.5 に届かないので、塗りに対して段を解き直してある。',
+    '',
+    '     **中間色は text-default しか載らない**（muted は明色の深い面で 4.27）。',
+    '     アルファ修飾子で淡い塗りを作る道は塞いである（決定3-2 改訂） */',
+    ...fillRampNames.flatMap((r) => [
+      `  --color-${r}-subtle: var(--sg-color-${r}-subtle);`,
+      `  --color-on-${r}-subtle: var(--sg-color-on-${r}-subtle);`,
+    ]),
     ...statusNames.map((n) => `  --color-on-${n}: var(--sg-color-on-${n});`),
     '',
     ...statusNames.flatMap((n) => [

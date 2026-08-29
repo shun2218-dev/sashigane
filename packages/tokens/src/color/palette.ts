@@ -506,6 +506,26 @@ export interface SurfaceRoles {
    */
   colorStrong: number;
   /**
+   * **淡い塗りの段**（決定5-16）。面から遠ざかる向きへ1段だけ動かした、色のついた地。
+   *
+   * `colorText` の塗りは不透明で強い。バッジや帯には**もっと弱い地**が要る
+   * （roles.md が pylabo と holosphere で独立に観測した status の3変種の1つ）。
+   *
+   * **要件を持たない。** 面そのものであって前景ではないからである。
+   * ページ地との差は 1.12〜1.25 で 3:1 に届かないが、
+   * status を色だけで伝えないと決めてある（決定5-9）ので、
+   * **塗りは意味の唯一の手がかりではない。** 面の梯子自身も 1.30 で成立させている。
+   */
+  colorSubtle: number;
+  /**
+   * 淡い塗りの上に載せる**その色自身**の段（決定5-16）。
+   *
+   * 観測された組み方は「淡い塗り＋その色の文字」だが、**そのままでは成立しない。**
+   * 明色で `danger` の段500 を段100 の上に置くと 4.02:1 で、4.5 に届かない。
+   * **淡い塗りを面とみなして段を解き直す**（決定5-12 と同じ考え方）。
+   */
+  onSubtle: number;
+  /**
    * 塗りの上に載せる文字の段（決定5-14）。**ランプごとに解く。**
    *
    * これまでは `bg-page` を流用していた。値としては正しかったが、
@@ -600,6 +620,34 @@ const solveSurfaceRoles = (
     const strongStep = (textStep: number): number =>
       outward[outward.indexOf(textStep) + 1] ?? textStep;
 
+    /**
+     * **面のすぐ外側の段。** 2つの役割がここから来る（自己レビュー B1）。
+     *
+     *   gridline     チャートのグリッド線。UI の境界より薄い第4の段（決定5-13）
+     *   colorSubtle  淡い塗り。色のついた地（決定5-16）
+     *
+     * **役割は違うが規則は同じ**である。どちらも「面のすぐ外側」で、
+     * 要件を持たないので「最も浅い」がそのまま「最も薄い／最も淡い」になる。
+     * 同じ式を2箇所に書くと、片方だけ直したときに静かにずれる（決定2-6）。
+     */
+    const justOutside = outward[0] ?? surfaceStep;
+
+    /**
+     * 淡い塗りの上で、**その色自身**が 4.5:1 を満たす最も浅い段（決定5-16）。
+     *
+     * 塗りが色を持つので、面（中間色）に対して解いた `colorText` は使えない。
+     * **塗りごとに解く。** 最も厳しいランプに合わせる——ランプごとに段が変わると、
+     * 同じ場面に並んだバッジで文字の濃さが揃わない（決定5-3 と同じ考え方）。
+     */
+    const onSubtle = (() => {
+      const after = outward.indexOf(justOutside) + 1;
+      const meetsOnSubtle = (step: number): boolean =>
+        colored.every(
+          (r) => contrastBetween(r.byStep[step]!, r.byStep[justOutside]!) >= g.textMin,
+        );
+      return outward.slice(after).find(meetsOnSubtle) ?? outward[outward.length - 1]!;
+    })();
+
     /** 境界は装飾なので要件を持たない。面と一緒に深い側へずらす */
     const shift = (step: number): number =>
       order[Math.min(order.indexOf(step) + depth, order.length - 1)]!;
@@ -647,10 +695,12 @@ const solveSurfaceRoles = (
         strong: shift(mode === 'light' ? 400 : 600),
       },
       /** 面のすぐ外側。border.subtle より必ず薄い */
-      gridline: outward[0] ?? surfaceStep,
+      gridline: justOutside,
       colorText,
       colorMark: markStep(colorText),
       colorStrong: strongStep(colorText),
+      colorSubtle: justOutside,
+      onSubtle,
       onFill: {
         accent: onFillFor(palette.primary),
         ...(Object.fromEntries(

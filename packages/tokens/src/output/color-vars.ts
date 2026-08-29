@@ -121,6 +121,24 @@ const semanticFor = (
       ({ role }) =>
         `  --sg-color-on-${role}: var(--sg-neutral-${roles.onFill[role as 'accent']});`,
     ),
+    /**
+     * 淡い塗りと、その上の文字（決定5-16）。**色のついた地である。**
+     *
+     * 不透明な塗り（`--sg-color-{名前}`）は強すぎる場面がある——バッジや帯がそれで、
+     * roles.md が pylabo と holosphere で独立に観測した status の3変種の1つである。
+     *
+     * **観測どおりの「淡い塗り＋その色の文字」は、そのままでは成立しない。**
+     * 明色で `danger` の段500 を段100 の上に置くと 4.02:1 で 4.5 に届かない。
+     * 淡い塗りを面とみなして段を解き直している（決定5-12 と同じ考え方）。
+     *
+     * **アイコンにも同じ段を使う。** 文字の段は 3:1 も必ず満たす。
+     * 決定5-7 がマークを1段明るい側に置いたのはチャート系列を見分けるためで、
+     * 帯の中のアイコンには当てはまらない。
+     */
+    ...fillRamps.flatMap(({ role, ramp }) => [
+      `  --sg-color-${role}-subtle: var(--sg-${ramp}-${roles.colorSubtle});`,
+      `  --sg-color-on-${role}-subtle: var(--sg-${ramp}-${roles.onSubtle});`,
+    ]),
     `  --sg-color-border-focus: var(--sg-primary-${roles.colorMark});`,
     ...statusNames.flatMap((n) => [
       `  --sg-color-${n}: var(--sg-${n}-${roles.colorText});`,
@@ -399,4 +417,6 @@ export const colorWithoutRequirement = (name: string): boolean =>
   // 塗りの1段強い段（決定5-15）。通常の塗りより必ず端に近いので余裕は増えるだけ。
   // **境界の border-strong とは別物**なので、塗りのランプの一覧に当てる
   fillRampNames.some((r) => name === `--sg-color-${r}-strong`) ||
+  // 淡い塗りは面であって前景ではない。その上の文字は**塗りに対して**解いてある（決定5-16）
+  fillRampNames.some((r) => name === `--sg-color-${r}-subtle`) ||
   name.startsWith('--sg-color-sequential-');

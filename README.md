@@ -135,6 +135,9 @@ Tailwind のアルファ修飾子（`text-accent/50`、`bg-danger/15`）も同�
 ```css
 /* 塗りの状態変化は、塗りの段を1段ずらす（accent と状態色4つに `-strong` があります） */
 .btn-primary:hover { background: var(--sg-color-accent-strong); }
+
+/* 帯やバッジには淡い地があります。文字は塗りに対して解いてあります */
+.note-danger { background: var(--sg-color-danger-subtle); color: var(--sg-color-on-danger-subtle); }
 ```
 
 ```html
