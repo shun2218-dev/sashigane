@@ -2,6 +2,13 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import type { HTMLAttributes } from 'react';
 
 /**
+ * 面の既定。**1箇所だけに書く**（自己レビュー I2）。
+ * cva の `defaultVariants` と引数のデフォルトと属性のフォールバックに散らすと、
+ * 片方だけ直したときにずれる。
+ */
+const DEFAULT_SURFACE = 'surface';
+
+/**
  * 面を1つ作る器。
  *
  * ## 面は塗らずに宣言する
@@ -48,7 +55,22 @@ const card = cva('p-surface rounded-sm border-1 border-border', {
       front: 'shadow-front',
     },
   },
-  defaultVariants: { surface: 'surface', elevation: 'none' },
+  /**
+   * **`overlay` は浮きが無いと成立しない**（自己レビュー I1）。
+   *
+   * 決定5-13 は `overlay` を `surface` と**同じ段**に置いた。そのうえでこう書いている。
+   *
+   * > `overlay` を `surface` と同じ段に置く以上、**暗色でこれが無いと下地と同化する。**
+   *
+   * 実測でも背景は `surface` と同じ値になる。**決定が「同化する」と名指しした
+   * 組み合わせを、黙って作れる形にしない。**
+   *
+   * 決定5-9 の作法と同じである——「浮きを**付けられる**」ではなく
+   * 「**浮き無しでは組み立てられない**」にする。
+   * `elevation` を明示すれば上書きできるが、**省略したときに沈むことは無い。**
+   */
+  compoundVariants: [{ surface: 'overlay', elevation: 'none', class: 'shadow-overlay' }],
+  defaultVariants: { surface: DEFAULT_SURFACE, elevation: 'none' },
 });
 
 export interface CardProps
@@ -62,7 +84,7 @@ export interface CardProps
 }
 
 export function Card({
-  surface = 'surface',
+  surface,
   elevation,
   interactive = false,
   className,
@@ -74,7 +96,7 @@ export function Card({
   const classes = card({ surface, elevation });
   return (
     <div
-      data-sg-surface={surface ?? 'surface'}
+      data-sg-surface={surface ?? DEFAULT_SURFACE}
       data-sg-interactive={interactive ? '' : undefined}
       className={className ? `${classes} ${className}` : classes}
       {...props}
