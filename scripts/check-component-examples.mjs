@@ -19,6 +19,7 @@
  *   3. どれも**既定エクスポートを持つ**こと（描画に使うため）
  *   4. **展示ページ（`content/docs/components/<component>.mdx`）があること**
  *   5. **そのページが `meta.json` の `pages` に載っていること**
+ *   6. **テスト（`<component>.test.tsx`）があること**（決定6-6）
  *
  * 4 と 5 は自己レビュー J1・J2 で足した。索引と型表はファイルシステムから導いているが、
  * **ページと `pages` の並びは手で書く。** 足し忘れると、
@@ -159,9 +160,14 @@ const listed = existsSync(metaPath)
 for (const name of components) {
   if (!existsSync(join(DOCS, `${name}.mdx`))) {
     pageProblems.push({ component: name, why: 'no-page' });
-    continue;
+  } else if (!listed.has(name)) {
+    pageProblems.push({ component: name, why: 'not-listed' });
   }
-  if (!listed.has(name)) pageProblems.push({ component: name, why: 'not-listed' });
+  // **テストがあること**（決定6-6）。バグが残らないことを保証しながら進めるため、
+  // コンポーネントとテストは一緒に足す。文書に書くだけでは守られない（教訓3）
+  if (!existsSync(join(UI, name, `${name}.test.tsx`))) {
+    pageProblems.push({ component: name, why: 'no-test' });
+  }
 }
 
 const MESSAGE = {
@@ -183,10 +189,12 @@ if (problems.length) {
 }
 
 if (pageProblems.length) {
-  console.error('コンポーネントの展示ページが揃っていません（決定6-4）。\n');
+  console.error('コンポーネントに足りないものがあります（決定6-4・6-6）。\n');
   for (const p of pageProblems) {
     if (p.why === 'no-page') {
       console.error(`  ✗ ${DOCS}/${p.component}.mdx がありません`);
+    } else if (p.why === 'no-test') {
+      console.error(`  ✗ ${UI}/${p.component}/${p.component}.test.tsx がありません（決定6-6）`);
     } else {
       console.error(`  ✗ ${p.component} が ${metaPath} の pages に載っていません`);
     }
@@ -209,4 +217,6 @@ console.log(
   `✓ コンポーネント ${components.length} 件（${components.join(' ')}）に ` +
     `${REQUIRED.join(' / ')} が揃っている`,
 );
-console.log(`✓ ${components.length} 件とも展示ページがあり、meta.json の pages に載っている`);
+console.log(
+  `✓ ${components.length} 件とも展示ページがあり、meta.json の pages に載っていて、テストがある`,
+);

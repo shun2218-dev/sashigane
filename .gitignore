@@ -12,6 +12,10 @@ apps/*/public/r/
 apps/*/generated/
 *.tsbuildinfo
 
+# 実ブラウザのテストが失敗時に残すもの（決定6-6）
+packages/*/src/**/__screenshots__/
+.vitest-attachments/
+
 # ビルド成果物
 .next/
 apps/*/out/

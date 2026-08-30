@@ -135,11 +135,16 @@ const compile = (sourceDir, { stock = false } = {}) => {
     join(dir, 'in.css'),
     stock
       ? // **素の Tailwind。** 我々の写像を1つも入れない。
-        // 「同じソースから素の Tailwind なら出るのに、我々では出ないもの」を取るため
-        `@import "tailwindcss" source(none);\n@source "${sourceDir}";\n`
+        // 「同じソースから素の Tailwind なら出るのに、我々では出ないもの」を取るため。
+        // **両方から同じ範囲を外す**——外し方が違うと差が範囲の違いになる
+        `@import "tailwindcss" source(none);\n@source "${sourceDir}";\n` +
+        `@source not "${sourceDir}/**/*.test.tsx";\n`
       : `@import "${join(dist, 'tokens.css')}";\n` +
         `@import "${join(dist, 'theme.css')}" source(none);\n` +
-        `@source "${sourceDir}";\n`,
+        `@source "${sourceDir}";\n` +
+        // **テストはコンポーネントではない。** その文面をクラスの候補として読ませない。
+        // 読ませると、性質名（`shadow`）や説明の語が「書いたのに消えた」として落ちる
+        `@source not "${sourceDir}/**/*.test.tsx";\n`,
   );
   try {
     execFileSync(
