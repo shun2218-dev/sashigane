@@ -682,6 +682,54 @@ describe('読み込み中', () => {
     expect(spinner?.getAttribute('aria-hidden')).toBe('true');
   });
 
+  it('無効と両方渡すと、読み込み中が勝つ', async () => {
+    const { container } = await render(
+      onSurface(
+        <Button disabled loading>
+          x
+        </Button>,
+      ),
+    );
+    const el = buttonIn(container);
+    // **沈んだ上で輪が回ると「できないのに待っている」になる**
+    expect(el.getAttribute('data-sg-surface')).toBeNull();
+    expect(el.querySelector('[data-sg-spinner]')).not.toBeNull();
+    expect(el.disabled).toBe(true);
+  });
+
+  it('文字のボタンは輪のぶんだけ横に伸びる', async () => {
+    const before = await render(onSurface(<Button>送信する</Button>));
+    const after = await render(onSurface(<Button loading>送信する</Button>));
+    const w = (r: Awaited<ReturnType<typeof render>>) =>
+      buttonIn(r.container).getBoundingClientRect().width;
+    /*
+     * **仕様として測っておく。** 押した瞬間に隣が動くので、
+     * 知らずに踏むのと承知で選ぶのを分けるためである。
+     * ずれてほしくない場所では器の幅を先に決める。
+     */
+    expect(w(after)).toBeGreaterThan(w(before));
+  });
+
+  it('アイコンだけのボタンは伸びない', async () => {
+    const before = await render(
+      onSurface(
+        <Button iconOnly aria-label="送る">
+          <Glyph />
+        </Button>,
+      ),
+    );
+    const after = await render(
+      onSurface(
+        <Button iconOnly loading aria-label="送信中">
+          <Glyph />
+        </Button>,
+      ),
+    );
+    const w = (r: Awaited<ReturnType<typeof render>>) =>
+      buttonIn(r.container).getBoundingClientRect().width;
+    expect(w(after)).toBe(w(before));
+  });
+
   it('asChild と同時に使うと落ちる', () => {
     const props = { asChild: true, loading: true } as unknown as Parameters<typeof Button>[0];
     expect(() => Button({ ...props, children: <a href="#x">x</a> })).toThrow(/loading/);

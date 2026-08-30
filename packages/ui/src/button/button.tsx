@@ -82,6 +82,16 @@ import { Spinner } from '../spinner/spinner.tsx';
  *
  * 押せなくはする。輪が回っているだけで押せてしまうと、二重に送れてしまう。
  *
+ * **両方渡したときは読み込み中が勝つ。** 沈んだ上で輪が回ると
+ * 「できないのに待っている」になり、意味が通らない。
+ *
+ * ## 器は輪のぶんだけ横に伸びる
+ *
+ * 文字は残すので、輪が増えたぶん幅が変わる。**押した瞬間に隣が動く。**
+ * ずれてほしくない場所では、器の幅を先に決めておく。
+ *
+ * アイコンだけのボタンでは輪が置き換えるので伸びない。
+ *
  * ## 押せるものが button 要素とは限らない
  *
  * 見た目はボタンで中身はリンク、という形は普通にある。
@@ -275,7 +285,19 @@ export function Button({
         '付けても何も起きないまま、押せない見た目のリンクが押せてしまいます。',
     );
   }
-  const classes = button({ variant, tone, disabled, iconOnly });
+  /*
+   * **両方来たときは読み込み中が勝つ。**
+   *
+   * 型はどちらも許している。`disabled={!valid || submitting}` と
+   * `loading={submitting}` を並べて書く形が普通にあるためで、
+   * 塞ぐと**その書き方ができなくなる。**
+   *
+   * 沈んだ上で輪が回ると「できないのに待っている」になり、意味が通らない。
+   * 沈めるだけにすると、**何かが起きていることが消える。**
+   * 読み込み中の方が短く、いま起きていることなので、そちらを見せる。
+   */
+  const sinks = disabled && !loading;
+  const classes = button({ variant, tone, disabled: sinks, iconOnly });
   /*
    * 面の hover を使うもの。**`solid` 以外はすべて使う。**
    *
@@ -291,11 +313,11 @@ export function Button({
    * 宣言が背景・境界・文字を同時に与える。
    * 塗るだけの道は用意しない——`bg-*` を書いても前景は付いてこない。
    */
-  const declaresFill = (variant === undefined || variant === 'solid') && !disabled;
+  const declaresFill = (variant === undefined || variant === 'solid') && !sinks;
   const shared = {
     // **無効のときだけ面を宣言する。** 面の仕掛けが背景と前景を同時に沈める。
     // **読み込み中は沈めない**——「できない」と「いま起きている」は別である
-    'data-sg-surface': disabled ? 'inset' : undefined,
+    'data-sg-surface': sinks ? 'inset' : undefined,
     'data-sg-fill': declaresFill ? (tone ?? 'accent') : undefined,
     'data-sg-interactive': !disabled && !loading && !shiftsOwnFill ? '' : undefined,
     className: className ? `${classes} ${className}` : classes,
