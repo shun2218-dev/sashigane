@@ -1,4 +1,4 @@
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { Button } from './button.tsx';
@@ -119,6 +119,65 @@ describe('設計の不変条件', () => {
     const { container } = await render(onSurface(<Button>x</Button>));
     const classes = [...buttonIn(container).classList];
     expect(classes.filter((c) => c.startsWith('active'))).toEqual([]);
+  });
+
+  /**
+   * **focus はトークンで描く**（決定6-7）。
+   * ブラウザ既定のアウトラインに任せると、利用側が自分で focus を書くことになる。
+   */
+  it('focus の輪郭が役割の色で描かれる', async () => {
+    const { container } = await render(onSurface(<Button>x</Button>));
+    const el = buttonIn(container);
+    /*
+     * **キーボードで移動する。** `el.focus()` では `:focus-visible` が立たない——
+     * ブラウザは「入力の様子」で判定するので、プログラムからの focus は対象外になる。
+     * 最初これで測って落ち、**輪郭が付いていないと読み違えかけた**（教訓2）。
+     */
+    await userEvent.tab();
+    await expect.poll(() => el.matches(':focus-visible')).toBe(true);
+
+    const role = getComputedStyle(document.documentElement)
+      .getPropertyValue('--sg-color-border-focus')
+      .trim();
+    expect(role, '--sg-color-border-focus が解決していない').not.toBe('');
+
+    /*
+     * **色は poll で待つ。** 色は遷移するので、focus 直後の計算値は遷移前の値である。
+     * 一度これで落ち、**輪郭が付いていないと読み違えかけた**（教訓2）。
+     * 原因は `duration-*` 単体が `transition-property: all` になっていたことで、
+     * そちらはコンポーネント側を直した。
+     */
+    await expect.poll(() => getComputedStyle(el).outlineColor).toBe(role);
+    expect(Number.parseFloat(getComputedStyle(el).outlineWidth)).toBeGreaterThan(0);
+  });
+
+  /**
+   * **押せることが見た目から分かること**（決定6-7）。
+   * 塗る variant は塗りを1段ずらし（決定5-15）、塗らない variant は面の hover を使う。
+   * **塗る variant にだけ hover がある形にしない**（教訓7）。
+   */
+  it('塗らない variant も hover で変わる', async () => {
+    for (const variant of ['outline', 'ghost'] as const) {
+      const { container } = await render(onSurface(<Button variant={variant}>x</Button>));
+      const el = buttonIn(container);
+      expect(el.hasAttribute('data-sg-interactive'), `${variant} が面の hover を持たない`).toBe(
+        true,
+      );
+      const before = styleOf(el).background;
+      await page.elementLocator(el).hover();
+      await expect.poll(() => styleOf(el).background, { timeout: 2000 }).not.toBe(before);
+    }
+  });
+
+  it('無効のときは面の hover を付けない', async () => {
+    const { container } = await render(
+      onSurface(
+        <Button variant="ghost" disabled>
+          x
+        </Button>,
+      ),
+    );
+    expect(buttonIn(container).hasAttribute('data-sg-interactive')).toBe(false);
   });
 
   /** **不透明度は使わない**（決定1-15）。無効でも `opacity` は 1 のまま */

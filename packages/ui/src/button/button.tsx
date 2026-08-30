@@ -19,6 +19,18 @@ import type { ButtonHTMLAttributes } from 'react';
  * 文字を `text-faint` にする。** 新しい役割を足していない。
  * 面の仕掛け（決定5-12）に乗るので、**どの variant でも同じ形で沈む。**
  *
+ * ## 塗らない variant の hover は面で作る
+ *
+ * `solid` と `subtle` は塗りを1段ずらす（決定5-15）。
+ * **`outline` と `ghost` には塗りが無い**ので、ずらす対象が無い。
+ *
+ * そこで**面の hover**（`data-sg-interactive`。決定5-13）を使う。
+ * 観測でも pylabo の枠ボタンは hover で色と境界を変えており、
+ * **押せることが見た目から分かる必要がある。**
+ *
+ * **塗る variant にだけ hover がある形にしない**——
+ * 同一のランプ間の非対称は、利用側から見ると「効くものと効かないもの」になる（教訓7）。
+ *
  * ## クラス名は書き下す。組み立てない
  *
  * `bg-${tone}` のように**組み立てると Tailwind が候補として読めず、CSS が生成されない。**
@@ -27,6 +39,28 @@ import type { ButtonHTMLAttributes } from 'react';
  *
  * **DRY より静的に読めることを優先する。** ここは冗長で正しい。
  *
+ * ## focus は役割で描く
+ *
+ * `--sg-color-border-focus` は Phase 1 から役割として存在していたが、
+ * **Tailwind アダプタに写像が無く、コンポーネント層から書く手段が無かった**
+ * （決定6-7 で写像を足した）。押せるものを作るまで消費者が現れなかったためである。
+ *
+ * ブラウザ既定のアウトラインに任せると、**トークンが唯一の正（原則1）から外れ、
+ * 利用側が自分で focus を書くことになる。**
+ *
+ * **`outline-none` を base に置いてはいけない。** `outline-style: none` が残り、
+ * 幅と色を足しても**輪郭が描かれない。** 計算値は width 2px / style none / color 継承色
+ * になり、**エラーは出ない**（教訓4）。実ブラウザのテストが捕まえた。
+ *
+ * ## 動かす対象を決める
+ *
+ * `duration-200` だけを書くと **`transition-property` が既定の `all` になり、
+ * outline-color まで遷移する。** focus の輪郭が一瞬遅れ、計算値も遷移前の値になる。
+ * **エラーは出ない**（教訓4）。実ブラウザのテストが捕まえた。
+ *
+ * `transition-colors` で対象を色に絞る。決定1-14 は
+ * 「**動きは骨組み表示だけを持つ**」と決めており、全部を動かすのは行き過ぎである。
+ *
  * ## className は連結するだけ
  *
  * `tailwind-merge` は入れていない（決定6-7）。**渡した class が消えないことは
@@ -34,13 +68,26 @@ import type { ButtonHTMLAttributes } from 'react';
  * 生成 CSS の順序で決まる。**実需要が出てから決める**（原則7）。
  */
 const button = cva(
-  'inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 duration-200',
+  'inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 ' +
+    // **何を動かすかを決める。** `duration-*` だけだと transition-property が既定の
+    // `all` になり、**outline-color まで遷移する。** focus の輪郭が一瞬遅れて付き、
+    // 計算値も遷移前の値になる（実ブラウザのテストが捕まえた）。
+    // 決定1-14 は「動きは骨組み表示だけを持つ」と決めており、全部を動かすのは行き過ぎである
+    'transition-colors duration-200 ' +
+    'focus-visible:outline-solid focus-visible:outline-2 ' +
+    'focus-visible:outline-offset-2 focus-visible:outline-border-focus',
   {
     variants: {
       /**
        * 塗り方。**段はすべて既存の決定から来る。**
        * 塗りと `on-*` は決定5-14、hover の1段ずらしは決定5-15、淡い塗りは決定5-16。
        * **ここで新しい色は1つも決めていない。**
+       */
+      /*
+       * `outline` の境界は**中立色である**（`border-border`）。
+       * ランプの色にしない。観測でも ichirizuka（`var(--rule)`）も
+       * pylabo（`var(--line)`）も中立で、**色はランプに、境界は面の骨格に属する。**
+       * `border-danger` は書けるが、**選ばなかった**（決定6-7）。
        */
       variant: { solid: '', subtle: '', outline: 'border-1 border-border', ghost: '' },
       /** どのランプで塗るか。**塗りを持つランプすべて**（決定5-15 改訂） */
@@ -97,11 +144,14 @@ export interface ButtonProps
 
 export function Button({ variant, tone, disabled = false, className, ...props }: ButtonProps) {
   const classes = button({ variant, tone, disabled });
+  // 塗らない variant は面の hover で押せることを示す（決定5-13）。無効のときは付けない
+  const paints = variant === undefined || variant === 'solid' || variant === 'subtle';
   return (
     <button
       type="button"
       // **無効のときだけ面を宣言する。** 面の仕掛けが背景と前景を同時に沈める（決定5-12）
       data-sg-surface={disabled ? 'inset' : undefined}
+      data-sg-interactive={!disabled && !paints ? '' : undefined}
       disabled={disabled}
       className={className ? `${classes} ${className}` : classes}
       {...props}
