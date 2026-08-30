@@ -1,6 +1,7 @@
 {
   "title": "コンポーネント",
   "pages": [
+    "accordion",
     "card",
     "button",
     "badge",
