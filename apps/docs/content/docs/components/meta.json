@@ -9,6 +9,9 @@
     "separator",
     "icon",
     "spinner",
-    "table"
+    "table",
+    "field",
+    "input",
+    "textarea"
   ]
 }
