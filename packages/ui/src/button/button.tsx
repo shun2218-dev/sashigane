@@ -27,6 +27,12 @@
  * **`duration-*` 単体は `transition-property: all` になる。** outline-color まで遷移し、
  * focus 直後の計算値が遷移前の値になる。`transition-colors` で対象を絞る。
  *
+ * **読み込み中は沈めない。** 無効は「できない」で、読み込み中は「いま起きている」である。
+ * 面を沈めると2つが同じ見た目になり、区別が付かなくなる。
+ * 押せなくはするが、見た目は自分の塗りのまま残す。
+ *
+ * **Spinner に依存している。** レジストリ配信では Button を入れると Spinner も要る。
+ *
  * **`type` と `disabled` は自分で button を描くときだけ渡す。**
  * `asChild` のときの子は a かもしれず、どちらも意味を持たない属性である。
  * 渡しても**エラーにはならない**ので、付いているつもりのまま何も起きない。
@@ -35,6 +41,7 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
 import { Slot } from '../internal/slot.tsx';
+import { Spinner } from '../spinner/spinner.tsx';
 
 /**
  * 押せるもの。
@@ -67,6 +74,23 @@ import { Slot } from '../internal/slot.tsx';
  * 目に見える文字が無いので、読み上げに渡すものが何も無い。
  * **`aria-label` か `aria-labelledby` を型で必須にしてある**——
  * 書き忘れても**エラーは出ず、見た目も正常**なので、測らないと気づけない。
+ *
+ * ## 読み込み中は沈めない
+ *
+ * 無効は「できない」で、読み込み中は「いま起きている」である。
+ * **同じ見た目にすると区別が付かない**ので、読み込み中は塗りをそのまま残す。
+ *
+ * 押せなくはする。輪が回っているだけで押せてしまうと、二重に送れてしまう。
+ *
+ * **両方渡したときは読み込み中が勝つ。** 沈んだ上で輪が回ると
+ * 「できないのに待っている」になり、意味が通らない。
+ *
+ * ## 器は輪のぶんだけ横に伸びる
+ *
+ * 文字は残すので、輪が増えたぶん幅が変わる。**押した瞬間に隣が動く。**
+ * ずれてほしくない場所では、器の幅を先に決めておく。
+ *
+ * アイコンだけのボタンでは輪が置き換えるので伸びない。
  *
  * ## 押せるものが button 要素とは限らない
  *
@@ -198,6 +222,16 @@ export type ButtonProps = IconOnly &
        * 面を `inset` に宣言して沈め、文字を `text-faint` にする。
        */
       disabled?: boolean;
+      /**
+       * 読み込み中。**輪を出し、押せなくする。**
+       *
+       * **沈めない。** 無効は「できない」で、読み込み中は「いま起きている」である。
+       * 同じ見た目にすると区別が付かない。
+       *
+       * 文字はそのまま残す。輪だけにすると、何を待っているのか分からなくなる——
+       * ただし**アイコンだけのボタンでは輪が置き換える。**
+       */
+      loading?: boolean;
     })
   | (ButtonBase & {
       /**
@@ -210,6 +244,8 @@ export type ButtonProps = IconOnly &
       children: ReactNode;
       /** `asChild` のときは使えない。上の説明を参照 */
       disabled?: never;
+      /** `asChild` のときは使えない。押せなくする手段が無いのと同じ理由である */
+      loading?: never;
       /**
        * **子の要素**を受け取る。器を作らないので、届くのは子である。
        * 子の側にも `ref` があれば**両方に配られる。**
@@ -224,7 +260,9 @@ export function Button({
   disabled = false,
   asChild = false,
   iconOnly = false,
+  loading = false,
   className,
+  children,
   ...props
 }: ButtonProps) {
   if (
@@ -239,15 +277,27 @@ export function Button({
         '書き忘れても見た目は正常なので、気づけません。',
     );
   }
-  if (asChild && disabled) {
+  if (asChild && (disabled || loading)) {
     // 型で塞いであるが、型を持たない側から来ることもある。**黙って通さない**
     throw new Error(
-      'Button に asChild と disabled を同時に渡せません。' +
-        'disabled は button 要素の機能で、リンクには効きません——' +
-        '付けても何も起きないまま、沈んだ見た目のリンクが押せてしまいます。',
+      'Button に asChild と disabled / loading を同時に渡せません。' +
+        'どちらも button 要素の機能で、リンクには効きません——' +
+        '付けても何も起きないまま、押せない見た目のリンクが押せてしまいます。',
     );
   }
-  const classes = button({ variant, tone, disabled, iconOnly });
+  /*
+   * **両方来たときは読み込み中が勝つ。**
+   *
+   * 型はどちらも許している。`disabled={!valid || submitting}` と
+   * `loading={submitting}` を並べて書く形が普通にあるためで、
+   * 塞ぐと**その書き方ができなくなる。**
+   *
+   * 沈んだ上で輪が回ると「できないのに待っている」になり、意味が通らない。
+   * 沈めるだけにすると、**何かが起きていることが消える。**
+   * 読み込み中の方が短く、いま起きていることなので、そちらを見せる。
+   */
+  const sinks = disabled && !loading;
+  const classes = button({ variant, tone, disabled: sinks, iconOnly });
   /*
    * 面の hover を使うもの。**`solid` 以外はすべて使う。**
    *
@@ -263,24 +313,53 @@ export function Button({
    * 宣言が背景・境界・文字を同時に与える。
    * 塗るだけの道は用意しない——`bg-*` を書いても前景は付いてこない。
    */
-  const declaresFill = (variant === undefined || variant === 'solid') && !disabled;
+  const declaresFill = (variant === undefined || variant === 'solid') && !sinks;
   const shared = {
-    // **無効のときだけ面を宣言する。** 面の仕掛けが背景と前景を同時に沈める
-    'data-sg-surface': disabled ? 'inset' : undefined,
+    // **無効のときだけ面を宣言する。** 面の仕掛けが背景と前景を同時に沈める。
+    // **読み込み中は沈めない**——「できない」と「いま起きている」は別である
+    'data-sg-surface': sinks ? 'inset' : undefined,
     'data-sg-fill': declaresFill ? (tone ?? 'accent') : undefined,
-    'data-sg-interactive': !disabled && !shiftsOwnFill ? '' : undefined,
+    'data-sg-interactive': !disabled && !loading && !shiftsOwnFill ? '' : undefined,
     className: className ? `${classes} ${className}` : classes,
     ...props,
   };
 
+  /*
+   * 読み込み中の中身。**輪は読み上げから隠す**——
+   * ボタンは文字か `aria-label` で既に名前を持っており、
+   * 隠さないと「読み込み中 読み込み中」と二重に読まれる。
+   *
+   * **アイコンだけのボタンでは輪が置き換える。** 並べると器が横に伸びて、
+   * 正方形でなくなる。文字のボタンでは残す——
+   * 輪だけにすると、何を待っているのか分からなくなる。
+   */
+  const inside = loading ? (
+    <>
+      <Spinner aria-hidden="true" />
+      {iconOnly ? null : children}
+    </>
+  ) : (
+    children
+  );
+
   // `type` と `disabled` は**自分で button を描くときだけ**渡す。
   // 子が a のとき、どちらも意味を持たないまま黙って付く
-  if (asChild) return <Slot {...shared} />;
+  if (asChild) return <Slot {...shared}>{children}</Slot>;
   /*
    * **ここだけ型を緩める。** props を分解した時点で ButtonProps の直和が潰れ、
    * `ref` が `Ref<HTMLElement>`（`asChild` 側の型）でも通ってしまう形になる。
    * この枝は `asChild` が false なので、実際に届くのは `button` である。
    */
   const own = shared as ButtonHTMLAttributes<HTMLButtonElement>;
-  return <button type="button" disabled={disabled} {...own} />;
+  return (
+    <button
+      type="button"
+      // **押せなくする。** 輪が回っているだけで押せると、二重に送れてしまう
+      disabled={disabled || loading}
+      aria-busy={loading ? true : undefined}
+      {...own}
+    >
+      {inside}
+    </button>
+  );
 }
