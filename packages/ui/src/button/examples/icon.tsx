@@ -16,21 +16,27 @@ import { Button } from '../button.tsx';
  *
  * 上下の余白は文字のときと同じなので、**中身の高さがそのまま器の高さの差になる。**
  * 行の高さ（`size-6` = 24px）に合わせると、正方形になり、文字のボタンとも高さが揃う。
+ * **この例でも `size-6` を当てている**——案内している書き方と、見せる書き方をそろえるため。
  *
  * 小さいアイコンを入れると器も小さくなる。下の列で見比べられる。
  */
 const path = 'M4 4l16 16M20 4l-16 16';
 
-/** 行の高さと同じ大きさ */
+/**
+ * 行の高さと同じ大きさ。**`size-6` を当てる。**
+ *
+ * 寸法を属性ではなくクラスで書いているのは、
+ * **利用側が段の外の値を書けないようにする**ためである。
+ */
 const Close = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+  <svg className="size-6" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
     <path d={path} stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
 
 /** 行の高さより小さい。**器も小さくなる** */
 const SmallClose = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+  <svg className="size-4" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
     <path d={path} stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );

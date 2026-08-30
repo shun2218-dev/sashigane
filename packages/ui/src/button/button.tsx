@@ -96,8 +96,20 @@ const button = cva(
       /*
        * `outline` の境界は**中立色である。** ランプの色にしない——
        * **色はランプに、境界は面の骨格に属する。** 揃え忘れではない。
+       *
+       * **4種すべてが境界を持つ。** 塗りと枠だけが持っていたとき、
+       * 境界の 2px ぶんだけ高さが 42 と 40 に割れ、
+       * **同じ列に並べたときに揃っていなかった。**
+       * 淡い塗りと文字だけは見えない境界を置いて幅だけ合わせている——
+       * 薄めているのではなく、**幅を占めるためだけ**の境界である。
        */
-      variant: { solid: 'border-1', subtle: '', outline: 'border-1 border-border', ghost: '' },
+      variant: {
+        solid: 'border-1',
+        // 見えない境界を持つ。**幅を占めるためだけ**に置いてある（下記）
+        subtle: 'border-1 border-transparent',
+        outline: 'border-1 border-border',
+        ghost: 'border-1 border-transparent',
+      },
       /** どのランプで塗るか。**塗りを持つランプすべて** */
       tone: { accent: '', danger: '', warning: '', success: '', info: '' },
       /**

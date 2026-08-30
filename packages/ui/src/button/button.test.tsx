@@ -478,6 +478,31 @@ describe('asChild', () => {
  *   **名前の無いものが通らないこと** — 書き忘れても見た目は正常なので、
  *   これは実行時に落とすしかない
  */
+describe('塗り方によらない寸法', () => {
+  it('4種の高さが揃う', async () => {
+    const { container } = await render(
+      onSurface(
+        <>
+          <Button variant="solid">x</Button>
+          <Button variant="subtle">x</Button>
+          <Button variant="outline">x</Button>
+          <Button variant="ghost">x</Button>
+        </>,
+      ),
+    );
+    const heights = new Set(
+      [...container.querySelectorAll('button')].map((b) =>
+        Math.round(b.getBoundingClientRect().height),
+      ),
+    );
+    /*
+     * **1つに揃うこと。** 塗りと枠だけが境界を持っていたとき、
+     * 境界の 2px ぶんだけ 42 と 40 に割れて**同じ列で揃っていなかった。**
+     */
+    expect(heights.size).toBe(1);
+  });
+});
+
 describe('アイコン', () => {
   const Glyph = () => (
     <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
