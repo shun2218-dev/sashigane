@@ -87,7 +87,8 @@ pnpm check:docs-refs          # 文書が挙げている名前と参照が実在
                               # version を持つ package.json が1つだけであること（決定4-6）
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
-pnpm check:component-examples # 3状態の例・展示ページ・テストが揃っていること（決定6-4・6-6）
+pnpm check:component-examples # 3状態の例・展示ページ・テストが揃っていること（決定6-4・6-6）と
+                              # 展示がトークンを受け取れること（決定6-12）
 pnpm check:public-language    # 利用者に届く文面に内部の参照が無いこと（決定6-8・6-11）。
                               # 生成物・サイトの画面に出る文・デモページの本文も見る
 pnpm docs:data                # 例・ソース・型表を生成する（決定6-4。typecheck より前に要る）
