@@ -14,6 +14,7 @@ export {
   CardFooter,
   type CardPartProps,
 } from './card/index.ts';
+export { List, type ListProps, ListItem, type ListItemProps } from './list/index.ts';
 export { Separator, type SeparatorProps } from './separator/index.ts';
 export { Spinner, type SpinnerProps } from './spinner/index.ts';
 export {
