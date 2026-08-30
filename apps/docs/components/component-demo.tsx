@@ -30,6 +30,7 @@ const STATE_LABEL: Record<string, string> = {
   empty: '空',
   edge: 'エッジケース',
   'as-child': '要素の差し替え',
+  parts: '中の区画',
 };
 
 export function ComponentDemo({ name }: { name: string }) {
