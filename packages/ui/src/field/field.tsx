@@ -11,9 +11,16 @@
  * **配線は Slot で子へ移す。** 子が1つだけという制約は `asChild` と同じ形で、
  * 仕組みも共有している——移し方が2つになると、壊れるまで誰も気づかない。
  *
+ * **移し方は子を勝たせる。** つまり入力の側で `id` を書くと、
+ * こちらが渡した `id` が消える。札は元の `id` を指したままなので、
+ * **結びつきだけが静かに切れる。** 見た目は正常で、読み上げだけが黙る。
+ * だから**重なるものが来たら投げる。**
+ * `register()` が返す `name` / `onChange` / `onBlur` / `ref` は重ならない。
+ *
  * **説明でクラス名に触れるときは `{}` で囲む。**
  * ─────────────────────────────────────────────
  */
+import { isValidElement } from 'react';
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import { IconCheck } from '../icon/icon.tsx';
 import { Slot } from '../internal/slot.tsx';
@@ -69,6 +76,9 @@ export interface FieldProps extends Omit<HTMLAttributes<HTMLDivElement>, 'childr
   ref?: Ref<HTMLDivElement>;
 }
 
+/** 配線に使う props。**入力の側で書かれると、こちらが渡したものが消える** */
+const WIRED = ['id', 'aria-describedby', 'aria-invalid'] as const;
+
 export function Field({
   id,
   label,
@@ -82,6 +92,24 @@ export function Field({
 }: FieldProps) {
   // **両方は成り立たない。** 誤りが勝つ
   const showValid = valid && !error;
+
+  /*
+   * **黙って通さない。** 移し方は子を勝たせるので、
+   * 入力の側で配線を書かれると**こちらの配線が消える。**
+   * 消えても見た目は正常で、読み上げだけが黙る。
+   */
+  if (isValidElement(children)) {
+    const own = children.props as Record<string, unknown>;
+    const taken = WIRED.filter((key) => own[key] !== undefined);
+    if (taken.length > 0) {
+      throw new Error(
+        `Field の中の入力に ${taken.join(' / ')} を書かないでください。` +
+          'これらは Field が札と誤りに結びつけるために渡します——' +
+          '入力の側で書くと、こちらが渡したものが消えて結びつきだけが切れます。' +
+          '見た目は正常なままなので気づけません。',
+      );
+    }
+  }
   const descriptionId = description ? `${id}-description` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   // **両方あるときは両方渡す。** 片方だけにすると、もう片方が読み上げに届かない
