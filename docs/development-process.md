@@ -91,7 +91,8 @@ pnpm check:component-examples # 3状態の例・展示ページ・テストが�
                               # 展示がトークンを受け取れること（決定6-12）と
                               # asChild が共有の Slot を通っていること（決定6-14）
 pnpm check:public-language    # 利用者に届く文面に内部の参照が無いこと（決定6-8・6-11）。
-                              # 生成物・サイトの画面に出る文・デモページの本文も見る
+                              # 生成物・サイトの画面に出る文・デモページの本文・README を見る。
+                              # 決定番号・教訓番号・原則番号と、開発の段取り（Phase N）を落とす
 pnpm check:docs-search        # 検索が実際に引けること（決定6-13）。
                               # apps/docs のビルドが先に要る
 pnpm docs:data                # 例・ソース・型表を生成する（決定6-4。typecheck より前に要る）

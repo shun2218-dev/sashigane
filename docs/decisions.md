@@ -4466,8 +4466,8 @@ ring-offset- text-shadow- inset-ring-   ＋ アルファ修飾子（bg-accent/50
 
 | | |
 |---|---|
-| 対象 | 生成物（`packages/tokens/dist/*`）・ドキュメントサイトの画面に出る文・デモページの本文 |
-| 対象外 | JSDoc でないコメント、`scripts/`、`docs/`、テスト |
+| 対象 | 生成物（`packages/tokens/dist/*`）・ドキュメントサイトの画面に出る文・デモページの本文・**README** |
+| 対象外 | JSDoc でないコメント、`scripts/`、`docs/`、`CLAUDE.md`、テスト |
 | 検査 | `pnpm check:public-language`（対象を広げた。**`build:tokens` の後に走る**） |
 | 呼び名 | 画面・URL は「デモ」（`/demo`）。`sample-page.html` と `check:sample-page` は据え置き |
 | 旧 URL | **リダイレクトを置かない。** 理由は下記 |
@@ -4483,6 +4483,15 @@ ring-offset- text-shadow- inset-ring-   ＋ アルファ修飾子（bg-accent/50
 
 とくにテーマビルダーは、生成した `tokens.css` を**コピペさせるために画面に出している。**
 利用者が自分のリポジトリへ貼るテキストに、こちらの内部番号が 31 箇所入っていた。
+
+#### 開発の段取り（`Phase 3`）も同じ
+
+**読む側には何段階あるのかも、いまどこなのかも分からない。**
+しかも**進むたびに嘘になる**——実際、README は「Phase 1（トークン層）」のまま、
+コンポーネントが2つある状態を指していた。
+
+`check:public-language` が `Phase N` と `フェーズ N` を落とす。
+**語そのものを禁じているのではない**——番号が付いた形だけを見ている。
 
 #### 何を失うか
 
