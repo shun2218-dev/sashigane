@@ -62,6 +62,12 @@ import { Slot } from '../internal/slot.tsx';
  * 渡したクラスは消えないが、同じ次元（余白など）を上書きした場合に
  * どちらが効くかは保証していない。
  *
+ * ## アイコンだけのボタンには名前が要る
+ *
+ * 目に見える文字が無いので、読み上げに渡すものが何も無い。
+ * **`aria-label` か `aria-labelledby` を型で必須にしてある**——
+ * 書き忘れても**エラーは出ず、見た目も正常**なので、測らないと気づけない。
+ *
  * ## 押せるものが button 要素とは限らない
  *
  * 見た目はボタンで中身はリンク、という形は普通にある。
@@ -72,7 +78,7 @@ import { Slot } from '../internal/slot.tsx';
  * **button の中に a が入る形にはならない。**
  */
 const button = cva(
-  'inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 ' +
+  'inline-flex items-center justify-center gap-2 rounded-sm py-2 ' +
     // **何を動かすかを決める。** `duration-*` だけだと transition-property が既定の
     // `all` になり、**outline-color まで遷移する。** focus の輪郭が一瞬遅れて付き、
     // 計算値も遷移前の値になる（実ブラウザのテストが捕まえた）。
@@ -99,6 +105,17 @@ const button = cva(
        * `inset` の面を宣言して沈め、文字を `text-faint` にする。
        */
       disabled: { true: 'text-faint', false: '' },
+      /**
+       * アイコンだけのボタン。**左右の余白を詰める。**
+       *
+       * 上下の余白は変えないので、**文字のボタンと高さが揃う。**
+       * 幅はアイコンに従う——行の高さと同じ大きさのアイコンなら正方形になる。
+       *
+       * 正方形に固定していないのは、**固定できる寸法がスケールに無い**ためである。
+       * 文字のボタンの高さは段の上に乗っていないので、
+       * 縦横を段で指定すると横に並べたとき揃わなくなる。
+       */
+      iconOnly: { true: 'px-2', false: 'px-4' },
     },
     compoundVariants: [
       /*
@@ -128,13 +145,24 @@ const button = cva(
       { variant: 'ghost', tone: 'success', disabled: false, class: 'text-success' },
       { variant: 'ghost', tone: 'info', disabled: false, class: 'text-info' },
     ],
-    defaultVariants: { variant: 'solid', tone: 'accent', disabled: false },
+    defaultVariants: { variant: 'solid', tone: 'accent', disabled: false, iconOnly: false },
   },
 );
 
 interface ButtonBase
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'disabled'>,
-    Omit<VariantProps<typeof button>, 'disabled'> {}
+    Omit<VariantProps<typeof button>, 'disabled' | 'iconOnly'> {}
+
+/**
+ * 目に見える文字を持たないものに、名前を与える形。**どちらか一方が要る。**
+ *
+ * 書き忘れても**エラーは出ず、見た目も正常**である。
+ * 読み上げだけが「ボタン」としか言わなくなるので、**型で塞ぐしかない。**
+ */
+type NamedByAria = { 'aria-label': string } | { 'aria-labelledby': string };
+
+/** アイコンだけかどうか。**アイコンだけなら名前が要る** */
+type IconOnly = { iconOnly?: false } | ({ iconOnly: true } & NamedByAria);
 
 /**
  * `asChild` と `disabled` は同時に使えない。**型で塞いである。**
@@ -147,8 +175,9 @@ interface ButtonBase
  * 押せない状態が要るなら button のままにする。
  * リンクを押せなくしたいなら、リンクを出さないのが正しい。
  */
-export type ButtonProps =
-  | (ButtonBase & {
+export type ButtonProps = IconOnly &
+  (
+    | (ButtonBase & {
       asChild?: false;
       /** 描いた `button` を受け取る */
       ref?: Ref<HTMLButtonElement>;
@@ -174,16 +203,30 @@ export type ButtonProps =
        * 子の側にも `ref` があれば**両方に配られる。**
        */
       ref?: Ref<HTMLElement>;
-    });
+      })
+  );
 
 export function Button({
   variant,
   tone,
   disabled = false,
   asChild = false,
+  iconOnly = false,
   className,
   ...props
 }: ButtonProps) {
+  if (
+    iconOnly &&
+    !('aria-label' in props && props['aria-label']) &&
+    !('aria-labelledby' in props && props['aria-labelledby'])
+  ) {
+    // 型で塞いであるが、型を持たない側から来ることもある。**黙って通さない**
+    throw new Error(
+      'アイコンだけの Button には aria-label か aria-labelledby が要ります。' +
+        '目に見える文字が無いので、読み上げに渡すものがありません——' +
+        '書き忘れても見た目は正常なので、気づけません。',
+    );
+  }
   if (asChild && disabled) {
     // 型で塞いであるが、型を持たない側から来ることもある。**黙って通さない**
     throw new Error(
@@ -192,7 +235,7 @@ export function Button({
         '付けても何も起きないまま、沈んだ見た目のリンクが押せてしまいます。',
     );
   }
-  const classes = button({ variant, tone, disabled });
+  const classes = button({ variant, tone, disabled, iconOnly });
   /*
    * 面の hover を使うもの。**`solid` 以外はすべて使う。**
    *
