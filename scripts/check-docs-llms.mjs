@@ -13,7 +13,8 @@
  * ## 何を見るか
  *
  *   1. 索引が全ページを挙げていること
- *   2. 1ページぶんの Markdown が返り、**展示の差し込みが例のソースに展開されている**こと
+ *   2. **全ページ**の Markdown が返り、**展示の差し込みが例のソースに展開されている**こと。
+ *      **例のソースが古くないこと**も見る——生成物を読むので、生成を忘れても落ちない
  *   3. 記号が実体参照へ逃げていないこと
  *   4. 絵が PNG として返ること
  *   5. **無いページは 404 になること**
@@ -94,30 +95,67 @@ for (const name of componentPages) {
   }
 }
 
-/* --- 2〜3. 1ページぶんの Markdown --- */
-const [first] = componentPages;
-if (!first) fail(`${DOCS}/components に展示ページがありません。検査対象が消えています。`);
+/* --- 2〜3. 全ページぶんの Markdown --- */
+if (componentPages.length === 0) {
+  fail(`${DOCS}/components に展示ページがありません。検査対象が消えています。`);
+}
 
-const page = await get(`/docs/components/${first}.md`);
-if (page.status !== 200) problems.push(`/docs/components/${first}.md が ${page.status} を返しました`);
-if (!page.type.includes('markdown')) problems.push(`.md の型が markdown ではありません: ${page.type}`);
-if (page.body.trim().length < 200) problems.push(`.md の中身がほとんどありません（${page.body.length} 字）`);
-if (page.body.includes('<ComponentDemo')) {
-  problems.push(
-    '.md に展示の差し込みがそのまま残っています。' +
-      '**Markdown としては正しく、読む側にだけ意味がありません。**',
-  );
+/*
+ * **1枚だけ見て済ませない**（自己レビュー U1）。
+ * ページごとに差し込みの数も種類も違うので、
+ * 1枚だけ見ると**別のページで展開が落ちても通る。**
+ * 索引の側は全ページを見ているのに本文は1枚、という非対称だった。
+ */
+const pages = [];
+for (const name of componentPages) {
+  const page = await get(`/docs/components/${name}.md`);
+  pages.push({ name, ...page });
+
+  if (page.status !== 200) problems.push(`/docs/components/${name}.md が ${page.status} を返しました`);
+  if (!page.type.includes('markdown')) {
+    problems.push(`${name}.md の型が markdown ではありません: ${page.type}`);
+  }
+  if (page.body.trim().length < 200) {
+    problems.push(`${name}.md の中身がほとんどありません（${page.body.length} 字）`);
+  }
+  if (page.body.includes('<ComponentDemo')) {
+    problems.push(
+      `${name}.md に展示の差し込みがそのまま残っています。` +
+        '**Markdown としては正しく、読む側にだけ意味がありません。**',
+    );
+  }
+  if (!page.body.includes('```tsx')) {
+    problems.push(`${name}.md に例のソースがありません。このサイトは書き方を例に預けています`);
+  }
+  if (page.body.includes('&#x2A;')) {
+    problems.push(`${name}.md の記号が実体参照へ逃げています（\`**\` が \`&#x2A;*\` になっています）`);
+  }
 }
-if (!page.body.includes('```tsx')) {
-  problems.push('.md に例のソースがありません。このサイトは書き方を例に預けています');
+
+/*
+ * **例のソースが古くないこと**（自己レビュー U2）。
+ * 差し込みの展開は生成物（`apps/docs/generated/sources.json`）を読む。
+ * 生成を忘れても**落ちない**——古いソースが静かに配られる。
+ * 元のファイルの中の一行が `.md` に出ていることで、鮮度を見る。
+ */
+for (const { name, body } of pages) {
+  const example = join('packages/ui/src', name, 'examples/default.tsx');
+  const line = readFileSync(example, 'utf8')
+    .split('\n')
+    .find((l) => l.startsWith('export default function'));
+  if (line && !body.includes(line)) {
+    problems.push(
+      `${name}.md の例のソースが古いか、出ていません（${example} の「${line}」が見つかりません）。` +
+        ' pnpm docs:data を実行してください',
+    );
+  }
 }
-if (page.body.includes('&#x2A;')) {
-  problems.push('.md の記号が実体参照へ逃げています（`**` が `&#x2A;*` になっています）');
-}
+
+const [page] = pages;
 
 /* --- 4. 絵 --- */
-const og = await fetch(`${BASE}/og/docs/components/${first}/image.png`);
-if (og.status !== 200) problems.push(`絵が ${og.status} を返しました`);
+const og = await fetch(`${BASE}/og/docs/components/${page.name}/image.png`);
+if (og.status !== 200) problems.push(`絵が ${og.status} を返しました（${page.name}）`);
 if (!(og.headers.get('content-type') ?? '').includes('image/png')) {
   problems.push(`絵の型が PNG ではありません: ${og.headers.get('content-type')}`);
 }
@@ -147,5 +185,8 @@ if (problems.length) {
 
 console.log(`✓ 対照 1 件が期待どおり（無いページの .md は ${absent.status}）`);
 console.log(`✓ 索引が ${componentPages.length} 件の展示ページを挙げている`);
-console.log(`✓ .md に例のソースが入り、差し込みも実体参照も残っていない（${page.body.length} 字）`);
+console.log(
+  `✓ ${pages.length} 枚の .md すべてに例のソースが入り、差し込みも実体参照も残っていない`,
+);
+console.log('✓ 例のソースが元のファイルと一致している（生成が古くない）');
 console.log(`✓ 絵が PNG として返る（${bytes} バイト）`);
