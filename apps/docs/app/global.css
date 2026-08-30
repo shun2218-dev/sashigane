@@ -1,0 +1,13 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/*
+  トークンの CSS 変数だけを読み込む。**Tailwind アダプタ（theme.css）は読み込まない。**
+  アダプタを入れると fumadocs-ui の `@apply` が解決できずビルドが落ちる（決定6-4）。
+  変数だけなら衝突しないことは実測してある
+  （experiments/fumadocs-adapter-coexistence.md の結果2）。
+
+  これで chrome からも var(--sg-*) を差せる。
+*/
+@import '../public/tokens.css';

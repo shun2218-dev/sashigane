@@ -12,4 +12,6 @@ apps/*/public/r/
 
 # ビルド成果物
 .next/
-storybook-static/
+apps/*/out/
+# Next.js が生成する型参照。中身が .next/ を指すので、ビルド前は解決できない
+apps/*/next-env.d.ts
