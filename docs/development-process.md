@@ -106,7 +106,8 @@ pnpm check:public-language    # 利用者に届く文面に内部の参照が無
                               # 決定番号・教訓番号・原則番号と、開発の段取り（Phase N）を落とす
 pnpm check:docs-search        # 検索が実際に引けること（決定6-13）。
                               # apps/docs のビルドが先に要る
-pnpm check:docs-llms          # AI が読む形とページの絵が出ていること（決定6-24）。
+pnpm check:docs-llms          # AI が読む形とページの絵が出ていること（決定6-24）と
+                              # 型表に生の記号が残っていないこと（決定6-4）。
                               # apps/docs のビルドが先に要る
 pnpm docs:data                # 例・ソース・型表を生成する（決定6-4。typecheck より前に要る）
 pnpm check:component-classes  # コンポーネントが書いたクラスを生成 CSS の側から見る（決定6-2）と

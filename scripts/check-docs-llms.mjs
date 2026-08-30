@@ -18,8 +18,15 @@
  *   3. 記号が実体参照へ逃げていないこと
  *   4. 絵が PNG として返ること
  *   5. **無いページは 404 になること**
+ *   6. **型表に生の記号が残っていないこと**（決定6-4）
  *
  * 5 が要る。1〜4 だけだと、**何を頼んでも同じものを返す壊れ方**を通してしまう。
+ *
+ * ## 6 は画面を見るまで気づけなかった
+ *
+ * 型表の説明は **JSDoc の素の文字列**である。解かずに出すと
+ * `**必須である。**` のように記号がそのまま並ぶ。
+ * **エラーは出ず、読みにくくなるだけ**なので、しばらく気づかなかった。
  *
  * ## 何を見ないか（教訓5）
  *
@@ -153,6 +160,19 @@ for (const { name, body } of pages) {
 
 const [page] = pages;
 
+/* --- 6. 型表に生の記号が残っていないこと --- */
+for (const { name } of pages) {
+  const html = await get(`/docs/components/${name}`);
+  // 型表の升だけを見る。**本文の Markdown は fumadocs が解くので対象外**
+  const table = html.body.slice(html.body.indexOf('<table'), html.body.indexOf('</table>'));
+  if (table && /\*\*[^*<]+\*\*/.test(table)) {
+    problems.push(
+      `${name} の型表に生の記号が残っています（\`**\` が解かれていません）。` +
+        ' JSDoc の印は apps/docs/components/component-demo.tsx が解きます',
+    );
+  }
+}
+
 /* --- 4. 絵 --- */
 const og = await fetch(`${BASE}/og/docs/components/${page.name}/image.png`);
 if (og.status !== 200) problems.push(`絵が ${og.status} を返しました（${page.name}）`);
@@ -190,3 +210,4 @@ console.log(
 );
 console.log('✓ 例のソースが元のファイルと一致している（生成が古くない）');
 console.log(`✓ 絵が PNG として返る（${bytes} バイト）`);
+console.log(`✓ ${pages.length} 枚の型表に生の記号が残っていない`);

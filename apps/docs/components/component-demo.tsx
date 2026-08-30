@@ -44,6 +44,32 @@ const STATE_LABEL: Record<string, string> = {
  */
 const REQUIRED = ['default', 'empty', 'edge'];
 
+/**
+ * 型表の説明は **JSDoc の素の文字列**である。**印を解いてから出す。**
+ *
+ * 解かないと `**必須である。**` のように記号がそのまま並ぶ。
+ * **エラーは出ず、読みにくくなるだけ**なので、画面を見るまで気づけない
+ * （実際、しばらく気づかなかった）。
+ *
+ * 解くのは強調（`**`）と組（`` ` ``）の2つだけである。
+ * JSDoc に書いているのはその2つで、**それ以上を解くと Markdown の実装を持つことになる。**
+ */
+const inline = (text: string) =>
+  text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
+    const key = `${i}-${part}`;
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={key}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={key} className="text-xs">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return <span key={key}>{part}</span>;
+  });
+
 export function ComponentDemo({ name }: { name: string }) {
   const list = examples[name];
   const doc = (props as Record<string, Doc>)[name];
@@ -123,7 +149,7 @@ export function ComponentDemo({ name }: { name: string }) {
                     {p.required ? '' : '?'}
                   </td>
                   <td className="py-2 pe-4 font-mono text-xs">{p.type}</td>
-                  <td className="py-2 whitespace-pre-line">{p.description}</td>
+                  <td className="py-2 whitespace-pre-line">{inline(p.description)}</td>
                 </tr>
               ))}
             </tbody>
