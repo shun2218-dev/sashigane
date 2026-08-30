@@ -38,6 +38,8 @@ writeFileSync(
     duration-100 duration-141.4 duration-1000 duration-400 delay-200 outline-2 ring-2
     p-5 p-7 p-9 p-20
     bg-red-500 bg-blue-500 bg-accent bg-danger bg-page bg-surface bg-inset
+    text-accent bg-accent-subtle bg-accent-strong stroke-chart-gridline border-chart-gridline
+    ring-accent divide-accent from-accent bg-accent-subtle/50 text-accent/50
     max-w-6xl max-w-md w-2xl min-w-md
     font-medium font-bold font-light
     blur-sm backdrop-blur-md drop-shadow-lg text-shadow-lg inset-shadow-sm
@@ -75,8 +77,25 @@ const EXPECTATIONS = [
   ['p-20', false, 'スケールに無い 80px'],
   ['bg-red-500', false, '素の Tailwind の色。名前空間のリセット漏れの検出（決定3-3）'],
   ['bg-blue-500', false, '素の Tailwind の色'],
-  ['bg-accent', true, 'セマンティックの写像'],
-  ['bg-danger', true, 'セマンティックの写像'],
+  /*
+   * **不透明な塗りは出さない**（決定6-10）。塗りは data-sg-fill で宣言する（決定6-9）。
+   * 面と同じで、塗るだけの道を残すと前景が置き去りになる。
+   */
+  ['bg-accent', false, '塗りは宣言する。bg- では出さない（決定6-9・6-10）'],
+  ['bg-danger', false, '同上'],
+  ['text-accent', true, '面の上の文字（4.5:1）'],
+  ['bg-accent-subtle', true, '淡い塗り。色のついた地（決定5-16）'],
+  ['bg-accent-strong', true, '塗りの状態変化（決定5-15）'],
+  /*
+   * **アルファ修飾子は生成されない**（決定6-10）。@theme に色を載せるのをやめたため。
+   * 決定3-2 が禁じたものが、検査ではなく構造で塞がった。
+   */
+  ['bg-accent-subtle/50', false, 'アルファ修飾子。構造で生成されない（決定6-10）'],
+  ['text-accent/50', false, '同上'],
+  /** 意図していない接頭辞は出さない。@theme に載せると 23 個ずつ増えていた */
+  ['ring-accent', false, '意図していない接頭辞（決定6-10）'],
+  ['divide-accent', false, '同上'],
+  ['from-accent', false, '同上'],
   ['text-on-accent', true, '塗りの上に載せる文字（決定5-14）'],
   ['text-on-danger', true, '状態色の塗りの上に載せる文字（決定5-14）'],
   ['bg-page', false, '面は写像しない。data-sg-surface で作る（決定5-12）'],
@@ -85,7 +104,10 @@ const EXPECTATIONS = [
   ['bg-overlay', false, '面は写像しない。overlay も data-sg-surface で作る（決定5-13）'],
   ['bg-hover', false, 'hover の面も写像しない。data-sg-interactive で作る（決定5-13）'],
   ['border-border-strong', true, '境界の第3段。hover 以外の強調で使う（決定5-13）'],
-  ['bg-chart-gridline', true, 'UI の境界より薄い第4の段（決定5-13）'],
+  /** グリッド線は**線**である。塗りには使わない（決定6-10） */
+  ['bg-chart-gridline', false, 'グリッド線は線。bg- では出さない（決定6-10）'],
+  ['stroke-chart-gridline', true, 'UI の境界より薄い第4の段（決定5-13）'],
+  ['border-chart-gridline', true, '同上'],
   ['text-body', true, 'セマンティック役割名（決定3-3）'],
   ['text-lg', false, '素の t シャツ語彙。値が一致しないので写像していない'],
   ['text-2xl', false, '素の t シャツ語彙'],
@@ -493,7 +515,7 @@ for (const [prop, token] of [
 }
 
 /* --sg-* を直接参照しているか（@theme inline が効いているか） */
-if (has('bg-accent') && !/\.bg-accent\s*\{[^}]*var\(--sg-color-accent\)/m.test(out)) {
+if (has('text-accent') && !/\.text-accent\s*\{[^}]*var\(--sg-color-accent\)/m.test(out)) {
   failures.push('bg-accent が --sg-* を直接参照していない。@theme inline が効いていない（決定3-2）');
 }
 
