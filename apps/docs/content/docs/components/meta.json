@@ -3,6 +3,7 @@
   "pages": [
     "card",
     "button",
+    "badge",
     "spinner"
   ]
 }

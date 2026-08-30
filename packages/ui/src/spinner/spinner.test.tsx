@@ -85,6 +85,17 @@ describe('色と大きさ', () => {
     expect(Math.round(r.height)).toBe(24);
   });
 
+  it('輪が幅を持っている', async () => {
+    const { container } = await render(onSurface(<Spinner aria-label="x" />));
+    const s = getComputedStyle(spinnerIn(container));
+    /*
+     * **色だけを見ると、輪が無くても通る。**
+     * preflight が `border: 0 solid` を当てるので、幅 0 の境界にも色は付く。
+     * 実際、幅を外しても1件も落ちなかった（Badge で同じ形を踏んで気づいた）。
+     */
+    expect(Number.parseFloat(s.borderRightWidth)).toBeGreaterThan(0);
+  });
+
   it('輪の一部が欠けている', async () => {
     const { container } = await render(onSurface(<Spinner aria-label="x" />));
     const s = getComputedStyle(spinnerIn(container));

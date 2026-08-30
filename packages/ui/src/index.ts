@@ -2,6 +2,7 @@
   コンポーネントの入口。Card → Button → Badge → Separator → Table の順に足していく。
   Spinner はその順序の外で足した。ボタンの読み込み中の表示に要る。
 */
+export { Badge, type BadgeProps } from './badge/index.ts';
 export { Button, type ButtonProps } from './button/index.ts';
 export {
   Card,
