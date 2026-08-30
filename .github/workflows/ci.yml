@@ -39,6 +39,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # 例・ソース・型表を生成する（決定6-4）。**typecheck より前**——
+      # ドキュメントサイトが生成物を import しているため、無いと型が通らない
+      - name: コンポーネント文書データの生成
+        run: pnpm docs:data
+
       # 型検査
       - name: typecheck
         run: pnpm typecheck
@@ -87,6 +92,10 @@ jobs:
       # 間接を1段挟むと見えない。Tailwind に走査させて出力に規則を当てる
       - name: コンポーネントのクラス
         run: pnpm check:component-classes
+
+      # 決定6-4: 3状態の例が揃っていること。文書に書くだけでは守られない（教訓3）
+      - name: コンポーネントの例
+        run: pnpm check:component-examples
 
       # サンプルページが生成した変数だけで組まれていること（Issue #61）
       # 生値を1つ混ぜても見た目は変わらないので、検査でしか気づけない

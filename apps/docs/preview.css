@@ -1,0 +1,12 @@
+/*
+  コンポーネントのプレビュー用 CSS。**chrome の Tailwind とは別ビルドである。**
+
+  アダプタ（theme.css）を chrome のビルドに入れるとビルドが落ちる（決定6-4）。
+  ここで別に組み、`<link>` で読み込む。
+
+  同名クラスの値が一致することは check:component-classes が見ている（決定6-5）ので、
+  同じページに載せて安全である。
+*/
+@import '../../packages/tokens/dist/tokens.css';
+@import '../../packages/tokens/dist/theme.css' source(none);
+@source '../../packages/ui/src';

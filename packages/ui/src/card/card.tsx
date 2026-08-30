@@ -83,6 +83,12 @@ export interface CardProps
   interactive?: boolean;
 }
 
+/**
+ * 面を1つ作る器。**色は1つも書かない。**
+ *
+ * 背景も文字色も境界色も `data-sg-surface` が与える（決定5-12）。
+ * hover も塗らずに宣言する（決定5-13）。
+ */
 export function Card({
   surface,
   elevation,

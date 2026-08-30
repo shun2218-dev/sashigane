@@ -4,12 +4,16 @@
   "type": "module",
   "scripts": {
     "prepare:tokens": "pnpm --filter @sashigane/tokens build && cp ../../packages/tokens/dist/tokens.css public/tokens.css",
-    "dev": "pnpm prepare:tokens && next dev",
-    "build": "pnpm prepare:tokens && next build",
+    "prepare:docs-data": "node ../../scripts/build-component-docs.mjs",
+    "prepare:preview-css": "tailwindcss -i preview.css -o public/preview.css",
+    "prepare:all": "pnpm prepare:tokens && pnpm prepare:docs-data && pnpm prepare:preview-css",
+    "dev": "pnpm prepare:all && next dev",
+    "build": "pnpm prepare:all && next build",
     "start": "next start"
   },
   "dependencies": {
     "@sashigane/tokens": "workspace:*",
+    "@sashigane/ui": "workspace:*",
     "fumadocs-core": "^16.15.4",
     "fumadocs-mdx": "^15.4.0",
     "fumadocs-ui": "^16.15.4",
@@ -18,6 +22,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/mdx": "^2.0.14",
     "@types/node": "^26.4.0",
