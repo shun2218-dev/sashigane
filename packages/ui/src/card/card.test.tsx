@@ -171,3 +171,58 @@ describe('トークンの保証（実ブラウザでしか測れない）', () =
     expect(styleOf(card).background).toBe(before);
   });
 });
+
+/**
+ * `asChild`（決定6-14）。**器を作らず、子だけを描く。**
+ *
+ * Card では「面の宣言が子へ移ること」が要点である——
+ * 移らないと、リンクにした瞬間に背景と前景の保証が消える。
+ */
+describe('asChild', () => {
+  it('div を1つも作らず、子だけを描く', async () => {
+    const { container } = await render(
+      onSurface(
+        <Card asChild>
+          <article>x</article>
+        </Card>,
+      ),
+    );
+    const article = container.querySelector('article');
+    expect(article).not.toBeNull();
+    // 面の器（onSurface）の div 以外に div が増えていないこと
+    expect(container.querySelectorAll('div').length).toBe(1);
+  });
+
+  it('面の宣言と見た目が子へ移る', async () => {
+    const plain = await render(onSurface(<Card>x</Card>));
+    const asChild = await render(
+      onSurface(
+        <Card asChild>
+          <article>x</article>
+        </Card>,
+      ),
+    );
+    const article = asChild.container.querySelector('article');
+    if (!article) throw new Error('article が描画されていません');
+
+    expect(article.getAttribute('data-sg-surface')).toBe('surface');
+    expect(styleOf(article).background).toBe(styleOf(cardIn(plain.container)).background);
+    expect(styleOf(article).color).toBe(styleOf(cardIn(plain.container)).color);
+  });
+
+  it('リンクにしても hover で1段深くなる', async () => {
+    const { container } = await render(
+      onSurface(
+        <Card asChild interactive>
+          <a href="#x">hover me</a>
+        </Card>,
+      ),
+    );
+    const a = container.querySelector('a');
+    if (!a) throw new Error('a が描画されていません');
+    const before = styleOf(a).background;
+    await page.elementLocator(a).hover();
+    // **背景だけでなく前景も動く**ことは面の仕掛けが保証している
+    await expect.poll(() => styleOf(a).background).not.toBe(before);
+  });
+});

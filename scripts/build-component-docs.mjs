@@ -65,6 +65,20 @@ const parser = docgen.withCustomConfig(join(ROOT, 'packages/ui/tsconfig.json'), 
   propFilter: (prop) => !prop.parent || !/node_modules/.test(prop.parent.fileName),
 });
 
+/**
+ * 必須3状態の並び順。**追加の例より先に出す。**
+ *
+ * 名前順に並べると、追加した例が `default` より前に来ることがある。
+ * 展示ページは**通常の姿から読ませたい**ので、必須の3つを先に固定し、
+ * 追加はその後ろに名前順で並べる。
+ */
+const REQUIRED_ORDER = ['default', 'empty', 'edge'];
+const rank = (file) => {
+  const i = REQUIRED_ORDER.indexOf(file.replace(/\.tsx$/, ''));
+  return i === -1 ? REQUIRED_ORDER.length : i;
+};
+const byState = (a, b) => rank(a) - rank(b) || a.localeCompare(b);
+
 const sources = {};
 const props = {};
 const imports = [];
@@ -73,7 +87,7 @@ const entries = [];
 for (const name of components) {
   const exampleDir = join(UI, name, 'examples');
   const files = existsSync(exampleDir)
-    ? readdirSync(exampleDir).filter((f) => f.endsWith('.tsx')).sort()
+    ? readdirSync(exampleDir).filter((f) => f.endsWith('.tsx')).sort(byState)
     : [];
 
   sources[name] = {};

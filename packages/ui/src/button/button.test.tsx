@@ -2,6 +2,7 @@ import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { Button } from './button.tsx';
+import { Slot } from '../internal/slot.tsx';
 import '../../test/tokens.css';
 
 /**
@@ -310,5 +311,160 @@ describe('トークンの保証（実ブラウザでしか測れない）', () =
     }
     // **1つに揃うこと。** 塗りが残ると「押せそうに見えて押せない」になる
     expect(seen.size).toBe(1);
+  });
+});
+
+/**
+ * `asChild`（決定6-14）。**器を作らず、子だけを描く。**
+ *
+ * ここで測るのは props の写像ではなく **DOM の形**である——
+ * 「button の中に a が入る」形になっていないことは、計算値では見えない。
+ */
+describe('asChild', () => {
+  it('button を1つも作らず、子だけを描く', async () => {
+    const { container } = await render(
+      onSurface(
+        <Button asChild>
+          <a href="#x">link</a>
+        </Button>,
+      ),
+    );
+    // **これが要件の中心。** 入れ子になっていたら、押せる要素が2つになる
+    expect(container.querySelector('button')).toBeNull();
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a?.getAttribute('href')).toBe('#x');
+  });
+
+  it('クラスと面・塗りの宣言が子へ移る', async () => {
+    const plain = await render(onSurface(<Button>x</Button>));
+    const asChild = await render(
+      onSurface(
+        <Button asChild>
+          <a href="#x">x</a>
+        </Button>,
+      ),
+    );
+    const a = asChild.container.querySelector('a');
+    if (!a) throw new Error('a が描画されていません');
+
+    expect(a.getAttribute('data-sg-fill')).toBe('accent');
+    // **見た目が同じであること。** クラスだけ移って属性が落ちても、
+    // 塗りが消えるので背景で捕まえられる
+    expect(styleOf(a).background).toBe(styleOf(buttonIn(plain.container)).background);
+    expect(styleOf(a).color).toBe(styleOf(buttonIn(plain.container)).color);
+  });
+
+  it('type は移さない。子が a のとき意味を持たないため', async () => {
+    const { container } = await render(
+      onSurface(
+        <Button asChild>
+          <a href="#x">x</a>
+        </Button>,
+      ),
+    );
+    expect(container.querySelector('a')?.hasAttribute('type')).toBe(false);
+  });
+
+  it('子の onClick と、こちらへ渡した onClick の両方が呼ばれる', async () => {
+    const calls: string[] = [];
+    const { container } = await render(
+      onSurface(
+        <Button asChild onClick={() => calls.push('button')}>
+          <a href="#x" onClick={(e) => { e.preventDefault(); calls.push('child'); }}>
+            x
+          </a>
+        </Button>,
+      ),
+    );
+    const a = container.querySelector('a');
+    if (!a) throw new Error('a が描画されていません');
+    await userEvent.click(a);
+    // **片方だけにすると、渡した onClick が黙って消える**
+    expect(calls).toEqual(['child', 'button']);
+  });
+
+  it('子のクラスは消えない', async () => {
+    const { container } = await render(
+      onSurface(
+        <Button asChild>
+          <a href="#x" className="mine">
+            x
+          </a>
+        </Button>,
+      ),
+    );
+    const a = container.querySelector('a');
+    expect(a?.classList.contains('mine')).toBe(true);
+    expect(a?.classList.contains('inline-flex')).toBe(true);
+  });
+
+  it('disabled と同時に使うと落ちる', () => {
+    // 型では塞いであるが、型を持たない側から来ることもある
+    const props = { asChild: true, disabled: true } as unknown as Parameters<typeof Button>[0];
+    expect(() => Button({ ...props, children: <a href="#x">x</a> })).toThrow(/disabled/);
+  });
+
+  it('ref は自分と子の両方に配られる', async () => {
+    let own: Element | null = null;
+    let child: Element | null = null;
+    const { container } = await render(
+      onSurface(
+        <Button
+          asChild
+          ref={(node) => {
+            own = node;
+          }}
+        >
+          <a
+            href="#x"
+            ref={(node) => {
+              child = node;
+            }}
+          >
+            x
+          </a>
+        </Button>,
+      ),
+    );
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    // **片方を捨てない。** 捨てても画面は正常に見えるので、測らないと気づけない
+    expect(own).toBe(a);
+    expect(child).toBe(a);
+  });
+
+  it('片方だけに ref があっても届く', async () => {
+    let own: Element | null = null;
+    const { container } = await render(
+      onSurface(
+        <Button
+          asChild
+          ref={(node) => {
+            own = node;
+          }}
+        >
+          <a href="#x">x</a>
+        </Button>,
+      ),
+    );
+    expect(own).toBe(container.querySelector('a'));
+  });
+
+  it('子が要素でないと落ちる', () => {
+    /*
+     * **Button ではなく Slot を直接呼ぶ。** Button を関数として呼んでも
+     * 返るのは `<Slot>` の要素で、投げるのは描画のときだからである。
+     * Button がこの経路を通ることは、上の「button を1つも作らず」が見ている。
+     *
+     * **黙って通さない。** クラスも属性もどこにも付かないまま描画されるため
+     */
+    expect(() => Slot({ children: 'ただの文字' })).toThrow(/1つだけ/);
+    expect(() => Slot({ children: undefined })).toThrow(/1つだけ/);
+    expect(() =>
+      Slot({
+        children: [<a key="a" href="#a" />, <a key="b" href="#b" />],
+      }),
+    ).toThrow(/1つだけ/);
   });
 });

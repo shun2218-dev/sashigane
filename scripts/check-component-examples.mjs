@@ -21,6 +21,7 @@
  *   5. **そのページが `meta.json` の `pages` に載っていること**
  *   6. **テスト（`<component>.test.tsx`）があること**（決定6-6）
  *   7. **展示がトークンを受け取れる形になっていること**（決定6-12）
+ *   8. **`asChild` を持つなら、共有の Slot を通していること**（決定6-14）
  *
  * 4 と 5 は自己レビュー J1・J2 で足した。索引と型表はファイルシステムから導いているが、
  * **ページと `pages` の並びは手で書く。** 足し忘れると、
@@ -43,6 +44,16 @@
  * コンポーネントのテストは実ブラウザだが**展示ページを見ていない。**
  *
  * 依存を暗黙にしたので、**壊れたときに落ちる場所をここに1つ置く。**
+ *
+ * ## 8 は「全部が持つこと」を見ていない
+ *
+ * `asChild` を**どのコンポーネントが持つべきか**は機械では決められない。
+ * `Separator` に要るかは自明でなく、`Table` にはおそらく要らない。
+ *
+ * 見ているのは**持つなら形が1つであること**だけである。
+ * `asChild` を受け取りながら `cloneElement` を自前で呼ぶと、
+ * 移し方（class の連結・行事の合成・ref の配り方）が2つになる。
+ * **2つになったことは、壊れるまで誰も気づかない。**
  *
  * ## この検査が見ていないもの（教訓5）
  *
@@ -265,7 +276,63 @@ if (!previewHasTokens && !globalHasTokens) {
   process.exit(1);
 }
 
-console.log(`✓ 対照 5 件が期待どおり（欠落・既定エクスポート無し・揃っている形・トークン読み込み2件）`);
+/* ============================================================
+   8. asChild は共有の Slot を通ること（決定6-14）
+   ============================================================ */
+
+/** 移し方を1つにするための共有部品 */
+const SLOT = 'internal/slot.tsx';
+
+/** `asChild` を受け取っているか。props の型でも分解でも拾う */
+const takesAsChild = (source) => /\basChild\b/.test(source);
+/** 移し方を自前で書いていないか。**共有の Slot 以外で要素を複製していないこと** */
+const clonesItself = (source) => /\bcloneElement\b/.test(source);
+const usesSlot = (source) => source.includes(SLOT);
+
+const contractOf = (name, source) => {
+  if (!takesAsChild(source)) return [];
+  const out = [];
+  if (!usesSlot(source)) out.push({ name, why: `asChild を受け取るのに ${SLOT} を使っていない` });
+  if (clonesItself(source)) out.push({ name, why: '要素の複製を自前で書いている' });
+  return out;
+};
+
+// 対照。**発火することを確かめてから 0 件と言う**（教訓2）
+const controls = [
+  ['自前で複製している', 'export function X({ asChild }) { return cloneElement(c, {}) }', true],
+  ['Slot を通していない', 'export function X({ asChild }) { return asChild ? <S/> : <b/> }', true],
+  ['Slot を通している', "import { Slot } from '../internal/slot.tsx';\nexport function X({ asChild }) {}", false],
+  ['asChild を持たない', 'export function X() { return <b/> }', false],
+];
+for (const [label, source, shouldFire] of controls) {
+  if (contractOf('x', source).length > 0 !== shouldFire) {
+    console.error(`対照が期待どおりでない: ${label}`);
+    process.exit(1);
+  }
+}
+
+const contractProblems = components.flatMap((name) =>
+  contractOf(name, readFileSync(join(UI, name, `${name}.tsx`), 'utf8')),
+);
+
+if (contractProblems.length) {
+  console.error('asChild の移し方が1つになっていません（決定6-14）。\n');
+  for (const p of contractProblems) console.error(`  ✗ ${p.name}: ${p.why}`);
+  console.error(
+    `\n移し方（class の連結・行事の合成・ref の配り方）が2つになると、` +
+      '\n**2つになったことは壊れるまで誰も気づきません。**' +
+      `\n${SLOT} を使ってください。`,
+  );
+  process.exit(1);
+}
+
+const withAsChild = components.filter((name) =>
+  takesAsChild(readFileSync(join(UI, name, `${name}.tsx`), 'utf8')),
+);
+
+console.log(
+  `✓ 対照 9 件が期待どおり（欠落・既定エクスポート無し・揃っている形・トークン読み込み2件・asChild 4件）`,
+);
 console.log(
   `✓ コンポーネント ${components.length} 件（${components.join(' ')}）に ` +
     `${REQUIRED.join(' / ')} が揃っている`,
@@ -275,4 +342,9 @@ console.log(
 );
 console.log(
   `✓ 展示がトークンを受け取れる（${globalHasTokens ? GLOBAL_CSS : PREVIEW_CSS} が tokens.css を読む）`,
+);
+console.log(
+  withAsChild.length
+    ? `✓ asChild を持つ ${withAsChild.length} 件（${withAsChild.join(' ')}）は共有の Slot を通している`
+    : '✓ asChild を持つコンポーネントは無い（持つこと自体は検査していない）',
 );

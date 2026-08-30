@@ -24,7 +24,8 @@
  * ─────────────────────────────────────────────
  */
 import { cva, type VariantProps } from 'class-variance-authority';
-import type { HTMLAttributes } from 'react';
+import type { HTMLAttributes, ReactNode, Ref } from 'react';
+import { Slot } from '../internal/slot.tsx';
 
 /** 面の既定。**1箇所だけに書く。** 散らすと、片方だけ直したときにずれる */
 const DEFAULT_SURFACE = 'surface';
@@ -44,6 +45,12 @@ const DEFAULT_SURFACE = 'surface';
  *
  * `interactive` は面の文脈を1段深くするだけで、背景を直接塗らない。
  * 背景だけを深くすると前景が置き去りになるので、塗る道は用意していない。
+ *
+ * ## 器が div とは限らない
+ *
+ * 記事なら `article`、区画なら `section`、カード全体がリンクなら `a` になる。
+ * `asChild` を付けると**この器は要素を1つも作らず**、
+ * クラスと属性を子へ移して**子だけを描く。**
  */
 const card = cva('p-surface rounded-sm border-1 border-border', {
   variants: {
@@ -89,6 +96,18 @@ export interface CardProps
    * 背景だけを塗る方法は用意していない。前景も一緒に切り替わる。
    */
   interactive?: boolean;
+  /**
+   * 器を作らず、クラスと属性を子へ移す。**子は要素1つだけ。**
+   *
+   * `article` や `section` にしたいとき、カード全体をリンクにしたいときに使う。
+   */
+  asChild?: boolean;
+  children?: ReactNode;
+  /**
+   * 描いた要素を受け取る。`asChild` のときは**子の要素**が届く——
+   * 器を作らないためである。子の側にも `ref` があれば**両方に配られる。**
+   */
+  ref?: Ref<HTMLElement>;
 }
 
 /**
@@ -100,18 +119,24 @@ export function Card({
   surface,
   elevation,
   interactive = false,
+  asChild = false,
   className,
   ...props
 }: CardProps) {
   // 式の中で組み立てない。cva の呼び出しを補間の中へ直接置くと、
   // 静的解析の検査が読み切れずに落ちる
   const classes = card({ surface, elevation });
-  return (
-    <div
-      data-sg-surface={surface ?? DEFAULT_SURFACE}
-      data-sg-interactive={interactive ? '' : undefined}
-      className={className ? `${classes} ${className}` : classes}
-      {...props}
-    />
-  );
+  const shared = {
+    'data-sg-surface': surface ?? DEFAULT_SURFACE,
+    'data-sg-interactive': interactive ? '' : undefined,
+    className: className ? `${classes} ${className}` : classes,
+    ...props,
+  };
+  if (asChild) return <Slot {...shared} />;
+  /*
+   * **ここだけ型を緩める。** props を分解した時点で `ref` の型が
+   * `Ref<HTMLElement>`（`asChild` 側で受ける型）に広がる。
+   * この枝は `asChild` が false なので、実際に届くのは `div` である。
+   */
+  return <div {...(shared as HTMLAttributes<HTMLDivElement>)} />;
 }

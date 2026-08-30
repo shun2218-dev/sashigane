@@ -26,10 +26,15 @@
  *
  * **`duration-*` 単体は `transition-property: all` になる。** outline-color まで遷移し、
  * focus 直後の計算値が遷移前の値になる。`transition-colors` で対象を絞る。
+ *
+ * **`type` と `disabled` は自分で button を描くときだけ渡す。**
+ * `asChild` のときの子は a かもしれず、どちらも意味を持たない属性である。
+ * 渡しても**エラーにはならない**ので、付いているつもりのまま何も起きない。
  * ─────────────────────────────────────────────
  */
 import { cva, type VariantProps } from 'class-variance-authority';
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
+import { Slot } from '../internal/slot.tsx';
 
 /**
  * 押せるもの。
@@ -56,6 +61,15 @@ import type { ButtonHTMLAttributes } from 'react';
  *
  * 渡したクラスは消えないが、同じ次元（余白など）を上書きした場合に
  * どちらが効くかは保証していない。
+ *
+ * ## 押せるものが button 要素とは限らない
+ *
+ * 見た目はボタンで中身はリンク、という形は普通にある。
+ * `asChild` を付けると**この器は要素を1つも作らず**、
+ * クラスと属性を子へ移して**子だけを描く。**
+ *
+ * `<Button asChild><a href="/x">…</a></Button>` の結果は `<a>` 1つである。
+ * **button の中に a が入る形にはならない。**
  */
 const button = cva(
   'inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 ' +
@@ -118,17 +132,66 @@ const button = cva(
   },
 );
 
-export interface ButtonProps
+interface ButtonBase
   extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'disabled'>,
-    Omit<VariantProps<typeof button>, 'disabled'> {
-  /**
-   * 押せない状態。**不透明度では表さない**。
-   * 面を `inset` に宣言して沈め、文字を `text-faint` にする。
-   */
-  disabled?: boolean;
-}
+    Omit<VariantProps<typeof button>, 'disabled'> {}
 
-export function Button({ variant, tone, disabled = false, className, ...props }: ButtonProps) {
+/**
+ * `asChild` と `disabled` は同時に使えない。**型で塞いである。**
+ *
+ * 押せない状態は button 要素の機能である。リンクには無い——
+ * `disabled` を a に付けても**エラーは出ず、何も起きない。**
+ * 沈んだ見た目のまま押せてしまうので、
+ * **「押せそうに見えて押せない」の逆**という、より悪い状態になる。
+ *
+ * 押せない状態が要るなら button のままにする。
+ * リンクを押せなくしたいなら、リンクを出さないのが正しい。
+ */
+export type ButtonProps =
+  | (ButtonBase & {
+      asChild?: false;
+      /** 描いた `button` を受け取る */
+      ref?: Ref<HTMLButtonElement>;
+      /**
+       * 押せない状態。**不透明度では表さない**。
+       * 面を `inset` に宣言して沈め、文字を `text-faint` にする。
+       */
+      disabled?: boolean;
+    })
+  | (ButtonBase & {
+      /**
+       * 器を作らず、クラスと属性を子へ移す。**子は押せる要素1つだけ。**
+       *
+       * 複数の中身をまとめるときは、その要素の**内側**に入れる。
+       * 外側を `div` で包むと、押せない `div` がボタンの見た目になる。
+       */
+      asChild: true;
+      children: ReactNode;
+      /** `asChild` のときは使えない。上の説明を参照 */
+      disabled?: never;
+      /**
+       * **子の要素**を受け取る。器を作らないので、届くのは子である。
+       * 子の側にも `ref` があれば**両方に配られる。**
+       */
+      ref?: Ref<HTMLElement>;
+    });
+
+export function Button({
+  variant,
+  tone,
+  disabled = false,
+  asChild = false,
+  className,
+  ...props
+}: ButtonProps) {
+  if (asChild && disabled) {
+    // 型で塞いであるが、型を持たない側から来ることもある。**黙って通さない**
+    throw new Error(
+      'Button に asChild と disabled を同時に渡せません。' +
+        'disabled は button 要素の機能で、リンクには効きません——' +
+        '付けても何も起きないまま、沈んだ見た目のリンクが押せてしまいます。',
+    );
+  }
   const classes = button({ variant, tone, disabled });
   /*
    * 面の hover を使うもの。**`solid` 以外はすべて使う。**
@@ -146,16 +209,23 @@ export function Button({ variant, tone, disabled = false, className, ...props }:
    * 塗るだけの道は用意しない——`bg-*` を書いても前景は付いてこない。
    */
   const declaresFill = (variant === undefined || variant === 'solid') && !disabled;
-  return (
-    <button
-      type="button"
-      // **無効のときだけ面を宣言する。** 面の仕掛けが背景と前景を同時に沈める
-      data-sg-surface={disabled ? 'inset' : undefined}
-      data-sg-fill={declaresFill ? (tone ?? 'accent') : undefined}
-      data-sg-interactive={!disabled && !shiftsOwnFill ? '' : undefined}
-      disabled={disabled}
-      className={className ? `${classes} ${className}` : classes}
-      {...props}
-    />
-  );
+  const shared = {
+    // **無効のときだけ面を宣言する。** 面の仕掛けが背景と前景を同時に沈める
+    'data-sg-surface': disabled ? 'inset' : undefined,
+    'data-sg-fill': declaresFill ? (tone ?? 'accent') : undefined,
+    'data-sg-interactive': !disabled && !shiftsOwnFill ? '' : undefined,
+    className: className ? `${classes} ${className}` : classes,
+    ...props,
+  };
+
+  // `type` と `disabled` は**自分で button を描くときだけ**渡す。
+  // 子が a のとき、どちらも意味を持たないまま黙って付く
+  if (asChild) return <Slot {...shared} />;
+  /*
+   * **ここだけ型を緩める。** props を分解した時点で ButtonProps の直和が潰れ、
+   * `ref` が `Ref<HTMLElement>`（`asChild` 側の型）でも通ってしまう形になる。
+   * この枝は `asChild` が false なので、実際に届くのは `button` である。
+   */
+  const own = shared as ButtonHTMLAttributes<HTMLButtonElement>;
+  return <button type="button" disabled={disabled} {...own} />;
 }

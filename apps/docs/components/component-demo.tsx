@@ -21,10 +21,15 @@ import sources from '../generated/sources.json';
 type PropRow = { name: string; type: string; required: boolean; description: string };
 type Doc = { displayName: string; description: string; props: PropRow[] };
 
+/**
+ * 状態の見出し。**載っていないものはファイル名がそのまま出る。**
+ * 追加の例は自由に置けるので、ここに無いことを異常としない。
+ */
 const STATE_LABEL: Record<string, string> = {
   default: '通常',
   empty: '空',
   edge: 'エッジケース',
+  'as-child': '要素の差し替え',
 };
 
 export function ComponentDemo({ name }: { name: string }) {
