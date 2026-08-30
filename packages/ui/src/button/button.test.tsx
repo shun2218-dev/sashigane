@@ -657,9 +657,12 @@ describe('読み込み中', () => {
      * （`oklch(...)` ではなく `oklab(...)` になる）ので、
      * 文字列の比較が落ちる。CI で実際に落ちた。
      */
+    const plainEl = buttonIn(plain.container);
+    // **両側を待つ。** 片側だけを1回読むと、そちらが補間の途中だったときに
+    // 比べる相手そのものが間違った値になる（実際に落ちた）
     await expect
-      .poll(() => styleOf(l).background)
-      .toBe(styleOf(buttonIn(plain.container)).background);
+      .poll(() => styleOf(l).background === styleOf(plainEl).background)
+      .toBe(true);
     expect(styleOf(l).background).not.toBe(styleOf(buttonIn(off.container)).background);
   });
 
