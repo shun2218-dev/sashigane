@@ -107,10 +107,25 @@ export const rulesFrom = (themeCssPath) => {
   const themeCss = readFileSync(themeCssPath, 'utf8');
 
   /**
-   * 写像した色の役割の名前。`--color-accent` → `accent`、`--color-chart-1` → `chart-1`。
-   * これに `/` 修飾子が付いた形（`text-accent/50`）を落とす（決定3-2 改訂、Issue #85）。
+   * 色の役割の名前。**`@utility` の宣言から取る**（決定6-10）。
+   *
+   * 以前は `@theme` の `--color-*` から取っていたが、色を `@theme` に載せるのをやめた。
+   * 載せると1つの役割から 23 個のユーティリティが生成され、**決定3-2 が禁じた
+   * アルファ修飾子まで作られる**ためである。
+   *
+   * `@utility text-accent {` → `accent`。同じ名前が複数の接頭辞で出るので重複を落とす。
+   * これに `/` 修飾子が付いた形（`text-accent/50`）を落とす。
+   *
+   * **生成されなくなっても、書けてしまうことに変わりはない。**
+   * 書いても何も起きず、エラーも出ない（教訓4）ので、ソースの側で落とす価値はむしろ増えた。
    */
-  const colorNames = [...themeCss.matchAll(/^\s*--color-([a-z0-9-]+)\s*:/gm)].map((m) => m[1]);
+  const colorNames = [
+    ...new Set(
+      [...themeCss.matchAll(/^@utility\s+(?:bg|text|border|outline|fill|stroke)-([a-z0-9-]+)\s*\{/gm)].map(
+        (m) => m[1],
+      ),
+    ),
+  ];
 
   const scaledAllowed = SCALED_BARE.map((r) => ({
     ...r,

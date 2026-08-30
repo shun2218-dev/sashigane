@@ -32,6 +32,10 @@
  *     握っていて外から呼べない**（CLI は候補を出さない）。自前で抽出すると、
  *     決定6-2 が退けた「全文字列リテラルを既定拒否」（誤発火 33/96）に戻る
  *   - **`style` 属性の生値と CSS-in-JS。** トークンを経由しないのでクラスが現れない
+ *   - **アルファ修飾子（`bg-accent/50`）。** 色を `@theme` に載せるのをやめたので
+ *     **そもそも生成されない**（決定6-10）。生成 CSS を読むこの検査からは見えなくなった。
+ *     **構造で塞がったということである。** 書けてしまうこと自体は変わらないので、
+ *     ソースの側は `check:token-usage` が引き続き落とす
  *   - **`packages/ui` の外に置かれたコンポーネント。** 走査対象は下の `TARGET` だけで、
  *     **そこにしか置かないことは強制していない。** 決定4-1 がそう決めているだけである。
  *     外に置くと `check:token-usage` は見るが間接の向こうは見えず、この検査は見ない——
@@ -430,11 +434,11 @@ const PARITY_ALLOW = new Map([
 const NEGATIVE = `import { cva } from "class-variance-authority";
 const buttonVariants = cva("inline-flex duration-200 p-4", {
   variants: {
-    variant: { ghost: "p-[7px] text-accent/50" },
+    variant: { ghost: "p-[7px] gap-[13px]" },
     size: { lg: "duration-137 opacity-88 border-4" },
   },
 });
-const V = { danger: "bg-danger/15" };
+const V = { danger: "bg-danger-subtle p-[3px]" };
 const bare = "gap-[9px]";
 export { buttonVariants, V, bare };
 `;
@@ -443,8 +447,8 @@ export { buttonVariants, V, bare };
 const NEGATIVE_EXPECT = [
   { kind: 'arbitrary', what: 'p-[7px]', where: 'cva の variants の中' },
   { kind: 'arbitrary', what: 'gap-[9px]', where: '定数1本' },
-  { kind: 'alpha', what: 'text-accent/50', where: 'cva の variants の中' },
-  { kind: 'alpha', what: 'bg-danger/15', where: 'オブジェクト引き' },
+  { kind: 'arbitrary', what: 'gap-[13px]', where: 'cva の variants の中' },
+  { kind: 'arbitrary', what: 'p-[3px]', where: 'オブジェクト引き' },
   { kind: 'bare-number', what: 'duration-137', where: 'cva の variants の中' },
   { kind: 'no-scale', what: 'opacity-88', where: 'cva の variants の中' },
   { kind: 'bare-number', what: 'border-4', where: 'cva の variants の中' },
@@ -456,9 +460,9 @@ const NEGATIVE_EXPECT = [
  * 「通すはずの書き方が落ちるようになった」ことに気づけない（Issue #63 の教訓）。
  */
 const POSITIVE = `import { cva } from "class-variance-authority";
-export const cardVariants = cva("text-default border-1 border-default p-4 duration-200", {
+export const cardVariants = cva("text-default border-1 border-border p-4 duration-200", {
   variants: {
-    tone: { accent: "bg-accent text-on-accent", subtle: "bg-accent-subtle text-on-accent-subtle" },
+    tone: { accent: "bg-accent-strong text-on-accent", subtle: "bg-accent-subtle text-on-accent-subtle" },
     size: { sm: "p-3 gap-2", lg: "p-6 gap-4" },
   },
   defaultVariants: { tone: "accent", size: "sm" },
@@ -492,7 +496,7 @@ const DROPPED_EXPECT = [
 ];
 
 /** 陽性対照で最低限これだけは生成されていること。0 件を「違反なし」と読まないため */
-const POSITIVE_MUST_GENERATE = ['bg-accent', 'p-6', 'w-1/2', 'hover:bg-accent-strong'];
+const POSITIVE_MUST_GENERATE = ['bg-accent-subtle', 'p-6', 'w-1/2', 'hover:bg-accent-strong'];
 
 const fixtureDir = (name, source) => {
   const dir = mkdtempSync(join(tmpdir(), `sashigane-fx-${name}-`));

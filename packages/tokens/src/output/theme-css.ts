@@ -89,6 +89,100 @@ const FONT_UTILITIES = [
 const msKey = (ms: number): string =>
   String(Number.parseFloat(ms.toFixed(1))).replace('.', '\\.');
 
+/**
+ * 色のユーティリティ（決定6-10）。**役割ごとに、出すものを列挙する。**
+ *
+ * `@theme` に色を載せると 23 個ずつ勝手に増える。役割は 53 個あるので 1219 個になり、
+ * **実際に書かれているのは 21 個**だった。しかも決定3-2 が禁じたアルファ修飾子
+ * （`bg-accent/50`）まで生成されるので、検査で塞ぐしかなかった。
+ * **出さなければ塞ぐ必要がない。**
+ *
+ * ## 出すものは役割の性質から決まる
+ *
+ * | 役割 | 出すもの | なぜ |
+ * |---|---|---|
+ * | 文字（`default` `muted` `faint`、色つき文字） | `text-` | 文字である |
+ * | マーク（`*-mark`） | `fill-` `stroke-` `border-` | 文字ではない（3:1）。アイコン・線・枠 |
+ * | 境界（`border` `border-subtle` `border-strong`） | `border-` | 枠線 |
+ * | focus の輪郭（`border-focus`） | `border-` `outline-` | 輪郭として描く |
+ * | 淡い塗り（`*-subtle`） | `bg-` | 色のついた地 |
+ * | 塗りの上の文字（`on-*`） | `text-` | 塗り／淡い塗りの上に載る |
+ * | 強い塗り（`*-strong`） | `bg-` | 塗りの状態変化 |
+ * | チャート系列（`chart-1..5`） | `fill-` `stroke-` `bg-` | 塗り・線・凡例 |
+ * | グリッド線（`chart-gridline`） | `stroke-` `border-` | 線である |
+ * | 連続（`sequential-*`） | `fill-` `bg-` | 色帯 |
+ *
+ * **不透明な塗り（`accent` そのもの）は出さない。** 塗りは `data-sg-fill` で宣言する
+ * （決定6-9）。面と同じで、塗るだけの道は用意しない。
+ *
+ * ## 消しすぎは検査が捕まえる
+ *
+ * 出さなかったユーティリティを書いても**何も起きず、エラーも出ない**（教訓4）。
+ * `check:tailwind-adapter` が**意図したものが全部生成されること**を見る。
+ */
+const colorUtilities = (palette: Palette): string[] => {
+  const rules: string[] = [];
+  const emit = (name: string, prefixes: readonly string[], varName: string): void => {
+    for (const prefix of prefixes) {
+      const property =
+        prefix === 'text'
+          ? 'color'
+          : prefix === 'bg'
+            ? 'background-color'
+            : prefix === 'border'
+              ? 'border-color'
+              : prefix === 'outline'
+                ? 'outline-color'
+                : prefix === 'fill'
+                  ? 'fill'
+                  : 'stroke';
+      rules.push(`@utility ${prefix}-${name} {`, `  ${property}: var(${varName});`, '}', '');
+    }
+  };
+
+  const status = ['danger', 'warning', 'success', 'info'] as const;
+
+  // 文字
+  for (const n of ['default', 'muted', 'faint'] as const)
+    emit(n, ['text'], `--sg-color-text-${n}`);
+  for (const n of ['accent', ...status] as const) emit(n, ['text'], `--sg-color-${n}`);
+
+  // マーク。文字ではないので 3:1 で足りる（決定5-7）
+  for (const n of ['accent', ...status] as const)
+    emit(`${n}-mark`, ['fill', 'stroke', 'border'], `--sg-color-${n}-mark`);
+
+  // 境界
+  emit('border', ['border'], '--sg-color-border-default');
+  emit('border-subtle', ['border'], '--sg-color-border-subtle');
+  emit('border-strong', ['border'], '--sg-color-border-strong');
+  emit('border-focus', ['border', 'outline'], '--sg-color-border-focus');
+
+  // 淡い塗りと、その上の文字
+  for (const n of ['accent', ...status] as const) {
+    emit(`${n}-subtle`, ['bg'], `--sg-color-${n}-subtle`);
+    emit(`on-${n}-subtle`, ['text'], `--sg-color-on-${n}-subtle`);
+  }
+
+  // 塗りの上の文字。塗り自体は data-sg-fill が与えるが、文字だけ差したい場面がある
+  for (const n of ['accent', ...status] as const)
+    emit(`on-${n}`, ['text'], `--sg-color-on-${n}`);
+
+  // 強い塗り
+  for (const n of ['accent', ...status] as const)
+    emit(`${n}-strong`, ['bg'], `--sg-color-${n}-strong`);
+
+  // チャート
+  emit('chart-gridline', ['stroke', 'border'], '--sg-color-chart-gridline');
+  for (let i = 1; i <= 5; i += 1)
+    emit(`chart-${i}`, ['fill', 'stroke', 'bg'], `--sg-color-chart-${i}`);
+  // 連続値の色帯。段数は面の1段を除いた分（決定5-11）
+  palette.lightnesses.slice(1).forEach((_, i) => {
+    emit(`sequential-${i + 1}`, ['fill', 'bg'], `--sg-color-sequential-${i + 1}`);
+  });
+
+  return rules;
+};
+
 export const toThemeCss = (palette: Palette): string =>
   [
     ...outputHeader('block', 'Tailwind v4 用アダプタ。', palette, [
@@ -228,68 +322,22 @@ export const toThemeCss = (palette: Palette): string =>
       (n) => `  --breakpoint-${n}: ${breakpoint(n)}${breakpointUnit};`,
     ),
     '',
-    '  /* color — セマンティックのみ写像する。プリミティブは Tailwind に出さない */',
+    '  /* 色は @theme に載せない。**@utility で1つずつ出す**（決定6-10）。',
     '',
-    '  /* 面は写像しない。bg-page / bg-surface / bg-inset / bg-overlay は**存在しない**。',
-    '     面は data-sg-surface="page|surface|inset|overlay" で作る（決定5-12・5-13）。',
-    '     塗るだけの道を残すと、塗った箇所の前景が page 用のまま残って',
-    '     コントラスト保証が崩れ、しかもエラーにならない（教訓4）。',
+    '     @theme に色を1つ載せると、Tailwind は 23 個のユーティリティを作る',
+    '     （bg- text- border- ring- outline- divide- from- via- to- fill- stroke-',
+    '      accent- caret- decoration- placeholder- shadow- inset-shadow- ring-offset-',
+    '      text-shadow- inset-ring- …）。**アルファ修飾子（bg-accent/50）も作る。**',
     '',
-    '     hover も同じ理由で写像しない。bg-hover は**存在しない**。',
-    '     hover の面は data-sg-interactive で作る（決定5-13）。 */',
-    '  --color-default: var(--sg-color-text-default);',
-    '  --color-muted: var(--sg-color-text-muted);',
-    '  --color-faint: var(--sg-color-text-faint);',
-    '  --color-border: var(--sg-color-border-default);',
-    '  --color-border-subtle: var(--sg-color-border-subtle);',
-    '  --color-border-strong: var(--sg-color-border-strong);',
+    '     役割は 53 個あるので 1219 個になる。**実際に書かれているのは 21 個だった。**',
+    '     意図していないものが桁で多く、しかも決定3-2 が禁じたアルファ修飾子まで',
+    '     生成されるので、検査で塞ぐしかなかった。**出さなければ塞ぐ必要がない。**',
     '',
-    '  /* focus の輪郭（決定6-7）。**役割はあるのに写像が無く、コンポーネント層から',
-    '     書く手段が無かった。** 押せるものを作るまで消費者が現れなかったため。',
-    '     outline-border-focus / border-border-focus として使う */',
-    '  --color-border-focus: var(--sg-color-border-focus);',
-    '  --color-chart-gridline: var(--sg-color-chart-gridline);',
-    '  --color-accent: var(--sg-color-accent);',
-    '  --color-accent-mark: var(--sg-color-accent-mark);',
+    '     面と塗りはここにも出てこない。data-sg-surface と data-sg-fill で宣言する',
+    '     （決定5-12・5-13・6-9）。塗るだけの道を残すと前景が置き去りになり、',
+    '     コントラスト保証が崩れてもエラーにならない（教訓4）。 */',
     '',
-    '  /* 塗りの上に載せる文字（決定5-14）。text-on-accent のように使う。',
-    '     bg-page を前景に借りるのをやめるための役割で、値は塗りの側から解いてある */',
-    '  --color-on-accent: var(--sg-color-on-accent);',
-    '',
-    '  /* 塗りの1段強い段（決定5-15）。hover / 押下 / 選択で塗りを差し替える。',
-    '     bg-accent-strong のように使う。**塗りを持つランプすべてに出す。**',
-    '     規則が同一のランプ間で非対称を作ると、利用側から見ると逃げ道の有無になる。',
-    '',
-    '     **不透明度で薄める道は無い**（決定1-15）。opacity-* は素の数値',
-    '     ユーティリティなので @theme では止まらず、lint が塞いでいる（決定3-5）。',
-    '     アルファ修飾子（bg-danger/80）も塞いである（決定3-2 改訂） */',
-    ...fillRampNames.map((r) => `  --color-${r}-strong: var(--sg-color-${r}-strong);`),
-    '',
-    '  /* 淡い塗りと、その上の文字（決定5-16）。bg-danger-subtle / text-on-danger-subtle。',
-    '     **その色自身は載らない。** 明色で danger の段500 を段100 の上に置くと',
-    '     4.02:1 で 4.5 に届かないので、塗りに対して段を解き直してある。',
-    '',
-    '     **中間色は text-default しか載らない**（muted は明色の深い面で 4.27）。',
-    '     アルファ修飾子で淡い塗りを作る道は塞いである（決定3-2 改訂） */',
-    ...fillRampNames.flatMap((r) => [
-      `  --color-${r}-subtle: var(--sg-color-${r}-subtle);`,
-      `  --color-on-${r}-subtle: var(--sg-color-on-${r}-subtle);`,
-    ]),
-    ...statusNames.map((n) => `  --color-on-${n}: var(--sg-color-on-${n});`),
-    '',
-    ...statusNames.flatMap((n) => [
-      `  --color-${n}: var(--sg-color-${n});`,
-      `  --color-${n}-mark: var(--sg-color-${n}-mark);`,
-    ]),
-    ...palette.categorical.map(
-      (_, i) => `  --color-chart-${i + 1}: var(--sg-color-chart-${i + 1});`,
-    ),
-    '',
-    '  /* 連続値の色帯。離散系列とは別の役割なので別の名前で出す（決定5-11） */',
-    // 段数は面の1段を除いた分（決定5-11）。セマンティックの側と数を合わせる
-    ...palette.lightnesses.slice(1).map(
-      (_, i) => `  --color-sequential-${i + 1}: var(--sg-color-sequential-${i + 1});`,
-    ),
     '}',
     '',
+    ...colorUtilities(palette),
   ].join('\n');
