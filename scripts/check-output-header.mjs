@@ -19,7 +19,9 @@
  * 検査できない範囲（教訓5）:
  *   - リンク先が実在するか（ネットワークを見に行かない）
  *   - ヘッダの説明が正しいか。文面の意味は機械では読めない
- *   - 「原則3」のような番号参照そのもの。ヘッダが在り処を説明していることで足りるとみなす
+ *   - **「原則3」のような番号参照。** `check:public-language` が dist を見ている（決定6-11）。
+ *     以前はここが「ヘッダが在り処を説明していれば足りる」とみなしていたが、
+ *     **足りていなかった**——辿った先は和文の設計記録である
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { docsUrl, producedBy } from '../packages/tokens/src/output/header.ts';
@@ -77,7 +79,6 @@ const REQUIRED = [
     what: 'バージョン',
     re: new RegExp(producedBy().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
   },
-  { what: '見出し番号が何を指すかの説明', re: /decisions\.md|principles\.md/ },
 ];
 
 /** 1ファイル分の検査。フィクスチャにも同じものを当てる */
@@ -106,7 +107,6 @@ const OK_HEADER = [
   '// sashigane — 何か。',
   `// 生成物。手で編集しない。${producedBy()}`,
   `// 規則と根拠: ${docsUrl()}`,
-  '// 「決定1-2」は decisions.md の見出し。principles.md も同じ場所にある。',
 ].join('\n');
 
 const FIXTURES = [
@@ -117,10 +117,10 @@ const FIXTURES = [
   {
     // バージョンが落ちても、他の行があるので**見た目には気づけない**（決定4-6）
     name: 'バージョン欠落',
-    text: `${OK_HEADER.replace(producedBy(), '@sashigane/tokens が生成する。')}\n// 決定1-2 に従う`,
+    text: `${OK_HEADER.replace(producedBy(), '@sashigane/tokens が生成する。')}\n// spacing`,
     expect: /バージョン/,
   },
-  { name: '正しいもの', text: `${OK_HEADER}\n// 決定1-2 に従う`, expect: null },
+  { name: '正しいもの', text: `${OK_HEADER}\n// spacing`, expect: null },
 ];
 
 const selfTest = [];

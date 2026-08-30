@@ -15,7 +15,8 @@ import sources from '../generated/sources.json';
  * `check:component-examples` が両方を検査する（自己レビュー J1・J2）。
  *
  * プレビューの CSS は `<link href="/preview.css">` で読む（`app/docs/layout.tsx`）。
- * chrome の Tailwind にアダプタは入れられない（決定6-4）。
+ * 外枠の Tailwind にアダプタは入れられない（決定6-4）ので別ビルドになっており、
+ * その出力は `data-sg-preview` の中だけに効く。
  */
 type PropRow = { name: string; type: string; required: boolean; description: string };
 type Doc = { displayName: string; description: string; props: PropRow[] };
@@ -43,8 +44,16 @@ export function ComponentDemo({ name }: { name: string }) {
             {STATE_LABEL[state] ?? state}
             <code className="ms-2 text-xs">{state}.tsx</code>
           </h3>
-          {/* 例の描画。**面の文脈を page に置く**ので、中の Card が1段深くなる（決定5-12） */}
+          {/*
+            例の描画。**面の文脈を page に置く**ので、中の Card が1段深くなる（決定5-12）。
+
+            `data-sg-preview` はプレビュー用 CSS の効く範囲である。
+            この目印の中だけに限定していないと、preflight と汎用ユーティリティが
+            サイト外枠に当たり、外枠側の変種を後勝ちで潰す
+            （`scripts/scope-preview-css.mjs`）。
+          */}
           <div
+            data-sg-preview
             data-sg-surface="page"
             className="flex flex-col gap-4 rounded-lg border border-fd-border p-6"
           >

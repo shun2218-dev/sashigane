@@ -77,8 +77,10 @@ export type CommentStyle = 'block' | 'line';
  * 共通ヘッダ。`what` はこのファイルが何かの1行、`notes` はファイル固有の注意。
  *
  * 配布先で意味を成すことが要件なので、**リポジトリ相対のパスを書かない。**
- * 見出し番号（決定1-2 など）は本文のコメントにも散っているので、
- * ここで「何を指す番号か」を一度だけ説明する。
+ *
+ * **生成物のコメントに決定番号を書かない**（決定6-11）。
+ * 受け取った側は番号の定義を持っておらず、URL を辿っても和文の設計記録に着く。
+ * 理由が要るなら平文で書く。**書けないなら、それは利用者向けの理由ではない。**
  */
 export const outputHeader = (
   style: CommentStyle,
@@ -101,11 +103,10 @@ export const outputHeader = (
     `生成物。手で編集しない。${producedBy(version)}`,
     '',
     `規則と根拠: ${docsUrl(version)}`,
-    'コメント中の「決定1-2」「原則3」は、そこにある decisions.md / principles.md の見出し。',
     '',
     `primary の色相 ${palette.primary.hue.toFixed(1)}° から生成した` +
       `${anchor ? `（段 500 は ${toHex(anchor)}）` : ''}。`,
-    '受け継ぐのは色相だけで、明度も彩度も規則から解かれる（決定5-1・5-2）。',
+    '受け継ぐのは色相だけで、明度も彩度も規則から解かれる。',
     ...(notes.length > 0 ? ['', ...notes] : []),
   ];
 

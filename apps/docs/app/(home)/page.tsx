@@ -17,8 +17,8 @@ export default function Page() {
           <Link className="text-fd-primary underline" href="/theme">
             テーマビルダー
           </Link>
-          <Link className="text-fd-primary underline" href="/sample">
-            サンプルページ
+          <Link className="text-fd-primary underline" href="/demo">
+            デモページ
           </Link>
         </div>
       </main>

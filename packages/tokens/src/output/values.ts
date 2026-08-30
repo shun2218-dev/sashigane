@@ -258,7 +258,7 @@ export const toValuesJs = (palette: Palette): string => {
       'のための別経路である。',
       '',
       '書体は「差し込み口が未定義のときの既定スタック」を出している。',
-      '利用側が --sg-font-brand-* へ書体名を差しても、この値は追随しない（決定1-11）。',
+      '利用側が --sg-font-brand-* へ書体名を差しても、この値は追随しない。',
     ]),
     '',
     'export const tokens = {',

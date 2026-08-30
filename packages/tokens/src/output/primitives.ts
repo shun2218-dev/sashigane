@@ -53,13 +53,13 @@ const em = (v: number): string => {
 };
 
 export const primitiveVars = (): string[] => [
-  '  /* spacing — 決定1-2 */',
+  '  /* spacing */',
   ...spacing.map((v, i) => `  --sg-space-${i}: ${rem(v)};`),
   '',
-  '  /* font-size — 決定1-3 */',
+  '  /* font-size */',
   ...fontSize.map((v, i) => `  --sg-font-size-${i}: ${rem(v)};`),
   '',
-  '  /* line-height — サイズから導出される従属値（決定1-4）。単体では使わない */',
+  '  /* line-height — サイズから導出される従属値。単体では使わない */',
   ...(Object.keys(leadingFamilies) as LeadingFamily[]).flatMap((family) =>
     fontSize.map(
       (v, i) =>
@@ -67,27 +67,27 @@ export const primitiveVars = (): string[] => [
     ),
   ),
   '',
-  '  /* letter-spacing — 行高と同じくサイズから導出される従属値（決定1-9）。単体では使わない。',
+  '  /* letter-spacing — 行高と同じくサイズから導出される従属値。単体では使わない。',
   '     本文サイズで 0。小さい段は正、大きい段は負。漸近線が最大の詰めになる */',
   ...fontSize.map(
     (v, i) => `  --sg-letter-spacing-${i}: ${em(letterSpacing(v))};`,
   ),
   `  --sg-letter-spacing-caps: ${em(letterSpacingCaps)};`,
   '',
-  '  /* radius — spacing の部分集合（決定1-5）。full は段ではない */',
+  '  /* radius — spacing の部分集合。full は段ではない */',
   ...radius.map((v, i) => `  --sg-radius-${i}: ${rem(v)};`),
   `  --sg-radius-full: ${radiusFull}px;`,
   '',
-  '  /* duration — 遷移とループは知覚上の制約が違う別スケール（決定1-6） */',
+  '  /* duration — 遷移とループは知覚上の制約が違う別スケール */',
   ...durationTransition.map((v, i) => `  --sg-duration-${i}: ${ms(v)};`),
   ...durationLoop.map((v, i) => `  --sg-duration-loop-${i}: ${ms(v)};`),
   '',
-  '  /* breakpoint — root から導出できない3つ目の次元（決定1-10）。',
+  '  /* breakpoint — root から導出できない3つ目の次元。',
   '     **CSS 変数はメディアクエリの中では使えない。** ここは Tailwind アダプタと',
   '     人が値を読むためのもので、素の CSS の利用者は値を直接書くことになる */',
   ...breakpointNames.map((n) => `  --sg-breakpoint-${n}: ${breakpoint(n)}${breakpointUnit};`),
   '',
-  '  /* border-width — px 固定。決定1-1 の例外（決定1-7） */',
+  '  /* border-width — px 固定。他の寸法は rem だが、枠線だけは拡大させない */',
   ...borderWidth.map((v, i) => `  --sg-border-width-${i}: ${v}px;`),
 
   /* elevation は**プリミティブとして出せない**（決定1-8 改訂）。
@@ -112,7 +112,7 @@ export const primitiveVars = (): string[] => [
  * 口の一覧は生成物ではなく検査用の名前表（tokens.layers.json）が持つ。
  */
 export const fontStackVars = (): string[] => [
-  '  /* font-family — 構造だけを規定し、書体名は利用側が差す（決定1-11）。',
+  '  /* font-family — 構造だけを規定し、書体名は利用側が差す。',
   '     差し込み口は宣言しない（宣言するとフォールバックが効かない）:',
   ...fontStackNames.flatMap((stack) =>
     fontSlots.map((slot) => `       ${fontInputName(stack, slot)}`),
@@ -120,14 +120,14 @@ export const fontStackVars = (): string[] => [
   '     未定義のままなら generic へ落ちる。差せば欧文 → 和文 → generic の順序は保証される。 */',
   ...fontStackNames.map((stack) => `  --sg-font-stack-${stack}: ${fontStack(stack)};`),
   '',
-  '  /* font-weight — 太さも root から導けない（決定1-13）。**使える段は書体次第**で、',
-  '     無い段を指定すると合成太字になる。エラーにはならない（教訓4）。',
+  '  /* font-weight — 太さも root から導けない。**使える段は書体次第**で、',
+  '     無い段を指定すると合成太字になる。エラーにはならない。',
   '     そこで書体名と同じく差し込み口を持つ。ここも宣言しない:',
   ...fontWeightRoles.map((role) => `       ${fontWeightInputName(role)}`),
   '     差さなければ既定が効く。既定は観測に基づく4段である。 */',
   ...fontWeightRoles.map((role) => `  --sg-font-weight-${role}: ${fontWeight(role)};`),
   '',
-  '  /* 数字を等幅にする指定。CSS と Tailwind で符号化が違う（決定1-11） */',
+  '  /* 数字を等幅にする指定。CSS と Tailwind で符号化が違う */',
   `  --sg-font-variant-tabular: ${numericVariant};`,
   `  --sg-font-feature-tabular: ${numericFeature};`,
 ];
@@ -181,7 +181,7 @@ const FONT_ROLES = [
 ] as const satisfies readonly { name: string; stack: FontStack; tabular: boolean }[];
 
 export const typographySemanticVars = (): string[] => [
-  '  /* タイポグラフィ — サイズと行高は必ず対（決定1-4）。書体は役割ごとの既定（決定1-11） */',
+  '  /* タイポグラフィ — サイズと行高は必ず対。書体は役割ごとの既定 */',
   ...TEXT_ROLES.flatMap((r) => [
     `  --sg-text-${r.name}: var(--sg-font-size-${r.index});`,
     `  --sg-text-${r.name}-leading: var(--sg-line-height-${r.leading}-${r.index});`,
@@ -189,16 +189,16 @@ export const typographySemanticVars = (): string[] => [
     `  --sg-text-${r.name}-family: var(--sg-font-stack-${r.stack});`,
   ]),
   '',
-  '  /* 大文字化の加算項（決定1-9）。サイズと直交するので段を持たない。',
+  '  /* 大文字化の加算項。サイズと直交するので段を持たない。',
   '     サイズ側の項と**足して**使う:',
   '       letter-spacing: calc(var(--sg-text-label-tracking) + var(--sg-tracking-caps)); */',
   '  --sg-tracking-caps: var(--sg-letter-spacing-caps);',
   '',
   '',
-  '  /* 太さの役割（決定1-13）。書体スタックと同じく、プリミティブが差し込み口を包む */',
+  '  /* 太さの役割。書体スタックと同じく、プリミティブが差し込み口を包む */',
   ...fontWeightRoles.map((r) => `  --sg-weight-${r}: var(--sg-font-weight-${r});`),
   '',
-  '  /* 書体だけの役割。サイズと直交するので段を持たない（決定1-11） */',
+  '  /* 書体だけの役割。サイズと直交するので段を持たない */',
   ...FONT_ROLES.flatMap((r) => [
     `  --sg-text-${r.name}-family: var(--sg-font-stack-${r.stack});`,
     ...(r.tabular ? [`  --sg-text-${r.name}-variant: var(--sg-font-variant-tabular);`] : []),

@@ -104,8 +104,9 @@ jobs:
       - name: コンポーネントの例
         run: pnpm check:component-examples
 
-      # 決定6-8: 利用者に届く文面に内部の参照が入っていないこと
+      # 決定6-8・6-11: 利用者に届く文面に内部の参照が入っていないこと
       # JSDoc は型表として、例のソースはそのままサイトに出る
+      # 生成物（dist/）も見るので build:tokens の後
       - name: 利用者に届く文面
         run: pnpm check:public-language
 

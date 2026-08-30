@@ -88,7 +88,8 @@ pnpm check:docs-refs          # 文書が挙げている名前と参照が実在
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
 pnpm check:component-examples # 3状態の例・展示ページ・テストが揃っていること（決定6-4・6-6）
-pnpm check:public-language    # 利用者に届く文面に内部の参照が無いこと（決定6-8）
+pnpm check:public-language    # 利用者に届く文面に内部の参照が無いこと（決定6-8・6-11）。
+                              # 生成物・サイトの画面に出る文・デモページの本文も見る
 pnpm docs:data                # 例・ソース・型表を生成する（決定6-4。typecheck より前に要る）
 pnpm check:component-classes  # コンポーネントが書いたクラスを生成 CSS の側から見る（決定6-2）と
                               # 書いたのに生成されないクラスが無いこと（決定6-3）と
@@ -97,7 +98,8 @@ pnpm check:component-classes  # コンポーネントが書いたクラスを生
 
 `check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` `check:token-values`
 `check:token-types` `check:output-header` `check:sample-page` `check:docs-refs`
-`check:component-classes` は `dist/` を読むので、先に `pnpm build:tokens` が要る。
+`check:component-classes` `check:public-language` は `dist/` を読むので、
+先に `pnpm build:tokens` が要る。
 CI はその順で走らせている。
 
 **`check:token-usage` と `check:component-classes` は同じ原則3 を別の側から見る。**

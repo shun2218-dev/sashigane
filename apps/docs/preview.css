@@ -1,12 +1,15 @@
 /*
-  コンポーネントのプレビュー用 CSS。**chrome の Tailwind とは別ビルドである。**
+  コンポーネントのプレビュー用 CSS。**サイト外枠の Tailwind とは別ビルドである。**
 
-  アダプタ（theme.css）を chrome のビルドに入れるとビルドが落ちる（決定6-4）。
-  ここで別に組み、`<link>` で読み込む。
+  アダプタ（theme.css）を外枠のビルドに入れると fumadocs の `@apply` が解決できず
+  ビルドが落ちる（決定6-4）。ここで別に組み、`<link>` で読み込む。
 
-  同名クラスの値が一致することは check:component-classes が見ている（決定6-5）ので、
-  同じページに載せて安全である。
+  **トークンの変数はここでは読み込まない。** 外枠が `app/global.css` から
+  `public/tokens.css` を読んでおり、二重に持つ意味がない。
+
+  ビルドしたあと `scripts/scope-preview-css.mjs` が出力を `[data-sg-preview]` の中へ
+  限定する。**限定しないと preflight と汎用ユーティリティが外枠に当たり、
+  外枠側の変種（`md:hidden` など）を後勝ちで潰す。**
 */
-@import '../../packages/tokens/dist/tokens.css';
 @import '../../packages/tokens/dist/theme.css' source(none);
 @source '../../packages/ui/src';

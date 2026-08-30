@@ -22,7 +22,7 @@ export const toScss = (palette: Palette): string =>
     ...outputHeader('line', 'SCSS 変数。', palette, [
       'tokens.css を先に読み込むこと。値は CSS 変数を参照するので、',
       '暗色モードの切り替えが実行時に効く。コンパイル時に焼き込まない。',
-      '出すのはセマンティックだけ（原則3）。',
+      '出すのはセマンティックだけ。',
     ]),
     '',
     ...[...typographySemanticVars(), ...colorSemanticVars('light', palette)]
