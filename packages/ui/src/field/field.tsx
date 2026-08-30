@@ -115,7 +115,12 @@ export function Field({
   // **両方あるときは両方渡す。** 片方だけにすると、もう片方が読み上げに届かない
   const describedBy = [descriptionId, errorId].filter(Boolean).join(' ') || undefined;
 
-  const classes = 'flex flex-col gap-1';
+  /*
+   * 間隔は入力の輪郭を見込んである。**輪郭は箱の外へ出る**ので、
+   * 隙間をそのぶん食う。フォーカス中の誤りは 3px まで太るため、
+   * 4px だと線が説明文にほとんど触れる。
+   */
+  const classes = 'flex flex-col gap-2';
   return (
     <div
       data-sg-component="field"

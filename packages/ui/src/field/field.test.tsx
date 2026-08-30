@@ -140,8 +140,8 @@ describe('誤りの見た目', () => {
         </Field>,
       ),
     );
-    const border = (el: Element) => getComputedStyle(el).borderTopColor;
-    expect(border(inputIn(bad.container))).not.toBe(border(inputIn(plain.container)));
+    const lineColor = (el: Element) => getComputedStyle(el).outlineColor;
+    expect(lineColor(inputIn(bad.container))).not.toBe(lineColor(inputIn(plain.container)));
   });
 });
 
@@ -151,11 +151,11 @@ describe('誤りの見た目', () => {
  * 測るのは3つである。
  *
  *   **誤りと同じ見た目にならないこと** — 同じなら状態を分けた意味が無い
- *   **境界が太いこと** — 1px では色の面積が足りず、違いが読み取りにくい
+ *   **線が太いこと** — 1px では色の面積が足りず、違いが読み取りにくい
  *   **印が読み上げに出ないこと** — 出ても「チェック」としか言わない
  */
 describe('満たしていること', () => {
-  it('境界が誤りとも通常とも違う', async () => {
+  it('線が誤りとも通常とも違う', async () => {
     const plain = await render(
       onSurface(
         <Field id="v1" label="札">
@@ -177,13 +177,17 @@ describe('満たしていること', () => {
         </Field>,
       ),
     );
-    const border = (c: HTMLElement) => getComputedStyle(inputIn(c)).borderTopColor;
-    const seen = new Set([border(plain.container), border(ok.container), border(bad.container)]);
+    const lineColor = (c: HTMLElement) => getComputedStyle(inputIn(c)).outlineColor;
+    const seen = new Set([
+      lineColor(plain.container),
+      lineColor(ok.container),
+      lineColor(bad.container),
+    ]);
     // **3つとも違うこと。** 潰れていたら状態を分けた意味が無い
     expect(seen.size).toBe(3);
   });
 
-  it('状態の境界は通常より太い', async () => {
+  it('状態の線は通常より太い', async () => {
     const plain = await render(
       onSurface(
         <Field id="w1" label="札">
@@ -205,7 +209,7 @@ describe('満たしていること', () => {
         </Field>,
       ),
     );
-    const w = (c: HTMLElement) => Number.parseFloat(getComputedStyle(inputIn(c)).borderTopWidth);
+    const w = (c: HTMLElement) => Number.parseFloat(getComputedStyle(inputIn(c)).outlineWidth);
     // **1px では色の面積が足りず、違いが読み取りにくい**
     expect(w(ok.container)).toBeGreaterThan(w(plain.container));
     expect(w(bad.container)).toBeGreaterThan(w(plain.container));

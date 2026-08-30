@@ -162,10 +162,19 @@ const colorUtilities = (palette: Palette): string[] => {
   for (const n of ['accent', ...status] as const)
     emit(`${n}-mark`, ['fill', 'stroke', 'border'], `--sg-color-${n}-mark`);
 
-  // 境界
-  emit('border', ['border'], '--sg-color-border-default');
-  emit('border-subtle', ['border'], '--sg-color-border-subtle');
-  emit('border-strong', ['border'], '--sg-color-border-strong');
+  /*
+   * 境界。**輪郭にも出す。**
+   *
+   * `border-focus` だけが `outline-` を持ち、他の3つが持っていない状態だった。
+   * 同じ族の中の非対称は、利用側から見ると**書ける場所と書けない場所の差**になる（教訓7）。
+   *
+   * 実際に詰まった。**線の太さを変えても何も動かない**ようにするには輪郭が要る——
+   * `border` の幅を変えると箱の高さが変わり、下にあるものがずれる。
+   * 中立色の輪郭が無かったため、入力欄は輪郭を使えなかった。
+   */
+  emit('border', ['border', 'outline'], '--sg-color-border-default');
+  emit('border-subtle', ['border', 'outline'], '--sg-color-border-subtle');
+  emit('border-strong', ['border', 'outline'], '--sg-color-border-strong');
   emit('border-focus', ['border', 'outline'], '--sg-color-border-focus');
 
   // 淡い塗りと、その上の文字

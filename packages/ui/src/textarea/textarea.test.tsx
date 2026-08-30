@@ -18,7 +18,9 @@ const look = (el: Element) => {
   return {
     background: s.backgroundColor,
     color: s.color,
-    border: `${s.borderTopWidth} ${s.borderTopColor}`,
+    // 線は輪郭で描いている。**境界も一緒に見る**——片方に残ると線が2本出る
+    line: `${s.outlineWidth} ${s.outlineColor} ${s.outlineStyle}`,
+    border: s.borderTopWidth,
     padding: s.padding,
     radius: s.borderTopLeftRadius,
     fontSize: s.fontSize,
