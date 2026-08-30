@@ -46,13 +46,20 @@ const DEFAULT_SURFACE = 'surface';
  * `interactive` は面の文脈を1段深くするだけで、背景を直接塗らない。
  * 背景だけを深くすると前景が置き去りになるので、塗る道は用意していない。
  *
+ * ## 中の区画は別に持つ
+ *
+ * 見出し・補足・本文・操作は `CardHeader` などの区画で分ける。
+ * **区画は面も色も持たない**——面を宣言するのはこの器だけである。
+ *
+ * 区画を使わずに中身を直接置いてもよい。器は縦に並べて間を空けるだけである。
+ *
  * ## 器が div とは限らない
  *
  * 記事なら `article`、区画なら `section`、カード全体がリンクなら `a` になる。
  * `asChild` を付けると**この器は要素を1つも作らず**、
  * クラスと属性を子へ移して**子だけを描く。**
  */
-const card = cva('p-surface rounded-sm border-1 border-border', {
+const card = cva('flex flex-col gap-surface p-surface rounded-sm border-1 border-border', {
   variants: {
     /**
      * 面の種類。

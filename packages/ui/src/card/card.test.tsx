@@ -2,6 +2,7 @@ import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { Card } from './card.tsx';
+import { CardDescription, CardFooter, CardHeader, CardTitle } from './card-parts.tsx';
 import '../../test/tokens.css';
 
 /**
@@ -91,7 +92,9 @@ describe('設計の不変条件', () => {
   it('Card が出すクラスは決めたものだけで、塗りのクラスを含まない', async () => {
     const { container } = await render(onSurface(<Card>x</Card>));
     expect([...cardIn(container).classList].sort()).toEqual(
-      ['border-1', 'border-border', 'p-surface', 'rounded-sm'].sort(),
+      // 並べ方（flex / flex-col / gap-surface）は色ではない。
+      // **区画を縦に並べて間を空けるのは器の責務**である（決定6-15）
+      ['flex', 'flex-col', 'gap-surface', 'border-1', 'border-border', 'p-surface', 'rounded-sm'].sort(),
     );
   });
 
@@ -224,5 +227,107 @@ describe('asChild', () => {
     await page.elementLocator(a).hover();
     // **背景だけでなく前景も動く**ことは面の仕掛けが保証している
     await expect.poll(() => styleOf(a).background).not.toBe(before);
+  });
+});
+
+/**
+ * 中の区画（決定6-15）。**区画は面も色も持たない。**
+ *
+ * 測るのは2つである。
+ *
+ *   **面が器だけのものであること** — 区画が面を宣言すると、
+ *   宣言が入れ子になって段が意図せず深くなる
+ *   **文字の役割が届いていること** — 見出しと補足が同じ見た目なら、
+ *   区画を分けた意味が無い
+ */
+describe('中の区画', () => {
+  it('区画は面を宣言しない', async () => {
+    const { container } = await render(
+      onSurface(
+        <Card>
+          <CardHeader>
+            <CardTitle>見出し</CardTitle>
+            <CardDescription>補足</CardDescription>
+          </CardHeader>
+          本文
+          <CardFooter>操作</CardFooter>
+        </Card>,
+      ),
+    );
+    const declared = container.querySelectorAll('[data-sg-surface]');
+    // 面の器（onSurface）と Card の2つだけ。**区画は1つも宣言しない**
+    expect(declared.length).toBe(2);
+  });
+
+  it('見出しは既定で h3 になり、asChild で深さを変えられる', async () => {
+    const a = await render(onSurface(<CardTitle>x</CardTitle>));
+    expect(a.container.querySelector('h3')).not.toBeNull();
+
+    const b = await render(
+      onSurface(
+        <CardTitle asChild>
+          <h2>x</h2>
+        </CardTitle>,
+      ),
+    );
+    expect(b.container.querySelector('h2')).not.toBeNull();
+    // **h3 が残っていないこと。** 器を作っていたら両方出る
+    expect(b.container.querySelector('h3')).toBeNull();
+  });
+
+  it('見出しと補足は、大きさも色も違う', async () => {
+    const { container } = await render(
+      onSurface(
+        <Card>
+          <CardHeader>
+            <CardTitle>見出し</CardTitle>
+            <CardDescription>補足</CardDescription>
+          </CardHeader>
+        </Card>,
+      ),
+    );
+    const title = container.querySelector('h3');
+    const desc = container.querySelector('p');
+    if (!title || !desc) throw new Error('区画が描画されていません');
+    const t = getComputedStyle(title);
+    const d = getComputedStyle(desc);
+    // **潰れていないこと。** 同じなら区画を分けた意味が無い
+    expect(Number.parseFloat(t.fontSize)).toBeGreaterThan(Number.parseFloat(d.fontSize));
+    expect(t.color).not.toBe(d.color);
+    expect(Number.parseFloat(t.fontWeight)).toBeGreaterThan(Number.parseFloat(d.fontWeight));
+  });
+
+  it('区画の間に余白が入る', async () => {
+    const { container } = await render(
+      onSurface(
+        <Card>
+          <CardHeader>
+            <CardTitle>見出し</CardTitle>
+          </CardHeader>
+          本文
+        </Card>,
+      ),
+    );
+    const card = cardIn(container);
+    expect(getComputedStyle(card).display).toBe('flex');
+    expect(Number.parseFloat(getComputedStyle(card).rowGap)).toBeGreaterThan(0);
+  });
+
+  it('操作の区画は下端に寄る', async () => {
+    const { container } = await render(
+      onSurface(
+        <Card style={{ height: 300 }}>
+          短い本文
+          <CardFooter>操作</CardFooter>
+        </Card>,
+      ),
+    );
+    const card = cardIn(container);
+    const footer = container.querySelector('[data-testid], .mt-auto') ?? card.lastElementChild;
+    if (!footer) throw new Error('操作の区画が描画されていません');
+    const cardBottom = card.getBoundingClientRect().bottom;
+    const footerBottom = footer.getBoundingClientRect().bottom;
+    // 余白ぶんだけ内側にいるが、**上に取り残されていないこと**
+    expect(cardBottom - footerBottom).toBeLessThan(60);
   });
 });

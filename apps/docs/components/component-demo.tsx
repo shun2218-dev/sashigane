@@ -30,7 +30,17 @@ const STATE_LABEL: Record<string, string> = {
   empty: '空',
   edge: 'エッジケース',
   'as-child': '要素の差し替え',
+  parts: '中の区画',
 };
+
+/**
+ * 必須の3状態。**追加の例と混ぜて並べない。**
+ *
+ * この3つは「このコンポーネントの3状態」という契約で、
+ * 追加は**説明のために置いたもの**である。同じ見出しで並べると、
+ * 追加が3状態のうちの1つに見える。**増えるほど混ざる。**
+ */
+const REQUIRED = ['default', 'empty', 'edge'];
 
 export function ComponentDemo({ name }: { name: string }) {
   const list = examples[name];
@@ -41,37 +51,56 @@ export function ComponentDemo({ name }: { name: string }) {
     throw new Error(`${name} の例か型が生成されていません。pnpm prepare:docs-data を実行してください。`);
   }
 
+  const required = list.filter(({ state }) => REQUIRED.includes(state));
+  const extra = list.filter(({ state }) => !REQUIRED.includes(state));
+
+  const show = ({ state, Example }: (typeof list)[number]) => (
+    <section key={state} className="flex flex-col gap-3">
+      <h3 className="text-sm font-medium text-fd-muted-foreground">
+        {STATE_LABEL[state] ?? state}
+        <code className="ms-2 text-xs">{state}.tsx</code>
+      </h3>
+      {/*
+        例の描画。**面の文脈を page に置く**ので、中の Card が1段深くなる（決定5-12）。
+
+        `data-sg-preview` はプレビュー用 CSS の効く範囲である。
+        この目印の中だけに限定していないと、preflight と汎用ユーティリティが
+        サイト外枠に当たり、外枠側の変種を後勝ちで潰す
+        （`scripts/scope-preview-css.mjs`）。
+      */}
+      <div
+        data-sg-preview
+        data-sg-surface="page"
+        className="flex flex-col gap-4 rounded-lg border border-fd-border p-6"
+      >
+        <Example />
+      </div>
+      <details>
+        <summary className="cursor-pointer text-sm text-fd-muted-foreground">ソース</summary>
+        <pre className="mt-2 overflow-x-auto rounded-lg bg-fd-muted p-4 text-xs">
+          <code>{source[state]}</code>
+        </pre>
+      </details>
+    </section>
+  );
+
   return (
     <div className="not-prose flex flex-col gap-10">
-      {list.map(({ state, Example }) => (
-        <section key={state} className="flex flex-col gap-3">
-          <h3 className="text-sm font-medium text-fd-muted-foreground">
-            {STATE_LABEL[state] ?? state}
-            <code className="ms-2 text-xs">{state}.tsx</code>
-          </h3>
-          {/*
-            例の描画。**面の文脈を page に置く**ので、中の Card が1段深くなる（決定5-12）。
+      <h2 className="text-base font-semibold">3つの状態</h2>
+      <p className="-mt-8 text-sm text-fd-muted-foreground">
+        通常・空・エッジケースの3つは、どのコンポーネントにも必ずあります。
+      </p>
+      {required.map(show)}
 
-            `data-sg-preview` はプレビュー用 CSS の効く範囲である。
-            この目印の中だけに限定していないと、preflight と汎用ユーティリティが
-            サイト外枠に当たり、外枠側の変種を後勝ちで潰す
-            （`scripts/scope-preview-css.mjs`）。
-          */}
-          <div
-            data-sg-preview
-            data-sg-surface="page"
-            className="flex flex-col gap-4 rounded-lg border border-fd-border p-6"
-          >
-            <Example />
-          </div>
-          <details>
-            <summary className="cursor-pointer text-sm text-fd-muted-foreground">ソース</summary>
-            <pre className="mt-2 overflow-x-auto rounded-lg bg-fd-muted p-4 text-xs">
-              <code>{source[state]}</code>
-            </pre>
-          </details>
-        </section>
-      ))}
+      {extra.length > 0 ? (
+        <>
+          <h2 className="text-base font-semibold">使い方</h2>
+          <p className="-mt-8 text-sm text-fd-muted-foreground">
+            3つの状態とは別に、説明のために置いている例です。
+          </p>
+          {extra.map(show)}
+        </>
+      ) : null}
 
       <section className="flex flex-col gap-3">
         <h3 className="text-sm font-medium text-fd-muted-foreground">props</h3>
