@@ -134,6 +134,11 @@ jobs:
       - name: apps/docs のビルド
         run: pnpm --filter @sashigane/docs build
 
+      # 検索が実際に引けること（決定6-13）。ビルドした .next を読むのでこの順
+      # 索引が空でも経路は 200 を返し、画面には「見つかりません」と出るだけである
+      - name: ドキュメントサイトの検索
+        run: pnpm check:docs-search
+
       # 生成物がコミットされていないこと（原則1）
       - name: 生成物が混入していないこと
         run: pnpm check:no-build-output
