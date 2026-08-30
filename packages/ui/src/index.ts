@@ -4,6 +4,7 @@
 */
 export { Badge, type BadgeProps } from './badge/index.ts';
 export { Button, type ButtonProps } from './button/index.ts';
+export { defineIcon, IconX, IconPlus, type IconProps } from './icon/index.ts';
 export {
   Card,
   type CardProps,
