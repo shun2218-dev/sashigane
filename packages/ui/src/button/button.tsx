@@ -315,6 +315,8 @@ export function Button({
    */
   const declaresFill = (variant === undefined || variant === 'solid') && !sinks;
   const shared = {
+    // **自分が何であるかを名乗る。** 見た目は持たない
+    'data-sg-component': 'button',
     // **無効のときだけ面を宣言する。** 面の仕掛けが背景と前景を同時に沈める。
     // **読み込み中は沈めない**——「できない」と「いま起きている」は別である
     'data-sg-surface': sinks ? 'inset' : undefined,

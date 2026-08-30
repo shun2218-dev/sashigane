@@ -22,6 +22,7 @@
  *   6. **テスト（`<component>.test.tsx`）があること**（決定6-6）
  *   7. **展示がトークンを受け取れる形になっていること**（決定6-12）
  *   8. **`asChild` を持つなら、共有の Slot を通していること**（決定6-14）
+ *   9. **export した部品が、自分の名前を名乗っていること**（決定6-23）
  *
  * 4 と 5 は自己レビュー J1・J2 で足した。索引と型表はファイルシステムから導いているが、
  * **ページと `pages` の並びは手で書く。** 足し忘れると、
@@ -350,8 +351,84 @@ const withAsChild = components.filter((name) =>
   takesAsChild(readFileSync(join(UI, name, `${name}.tsx`), 'utf8')),
 );
 
+/* ============================================================
+   9. export した部品が自分の名前を名乗ること（決定6-23）
+   ============================================================ */
+
+/**
+ * `CardHeader` → `card-header`。**名前の変換規則はここ1箇所だけ。**
+ *
+ * 印はクラスではなく data 属性にした。クラスにすると
+ * `check:component-classes` の見逃す範囲へ入り、**打ち間違えても永久に捕まらない。**
+ */
+const markerOf = (name) =>
+  name
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .toLowerCase();
+
+/** export している部品の名前。`export function X` と `export const X = ` の両方 */
+const exportedComponents = (source) => {
+  const text = withoutComments(source);
+  return [
+    ...[...text.matchAll(/export\s+function\s+([A-Z]\w*)/g)].map((m) => m[1]),
+    ...[...text.matchAll(/export\s+const\s+([A-Z]\w*)\s*=/g)].map((m) => m[1]),
+  ];
+};
+
+const missingMarkers = (source) => {
+  const text = withoutComments(source);
+  return exportedComponents(source).filter(
+    (name) => !text.includes(`'${markerOf(name)}'`) && !text.includes(`"${markerOf(name)}"`),
+  );
+};
+
+// 対照。**発火することを確かめてから 0 件と言う**（教訓2）
+const markerControls = [
+  ['名乗っていない', 'export function Button() { return <button/> }', true],
+  ['名前がずれている', "export function Button() { return <button data-sg-component='btn'/> }", true],
+  [
+    '名乗っている',
+    "export function Button() { return <button data-sg-component='button'/> }",
+    false,
+  ],
+  [
+    '2語の名前',
+    "export const CardHeader = part('div', 'card-header', '');",
+    false,
+  ],
+  ['コメントの中だけ', '// data-sg-component="button"\nexport function Button() {}', true],
+];
+for (const [label, source, shouldFire] of markerControls) {
+  if (missingMarkers(source).length > 0 !== shouldFire) {
+    console.error(`対照が期待どおりでない: ${label}`);
+    process.exit(1);
+  }
+}
+
+const markerProblems = [];
+for (const name of components) {
+  for (const file of tracked.filter(
+    (f) => f.startsWith(`${UI}/${name}/`) && f.endsWith('.tsx') && !f.includes('/examples/') && !f.endsWith('.test.tsx'),
+  )) {
+    for (const missing of missingMarkers(readFileSync(file, 'utf8'))) {
+      markerProblems.push(`${file}: ${missing} が ${markerOf(missing)} を名乗っていない`);
+    }
+  }
+}
+
+if (markerProblems.length) {
+  console.error('export した部品が自分の名前を名乗っていません（決定6-23）。\n');
+  for (const p of markerProblems) console.error(`  ✗ ${p}`);
+  console.error(
+    '\n`data-sg-component` に部品名を小文字ハイフンで書いてください。' +
+      '\n**見た目は持ちません。** 利用側が CSS でもテストでも同じように狙えるようにするためです。',
+  );
+  process.exit(1);
+}
+
 console.log(
-  '✓ 対照 11 件が期待どおり（欠落・既定エクスポート無し・揃っている形・トークン読み込み2件・asChild 6件）',
+  '✓ 対照 16 件が期待どおり（欠落・既定エクスポート無し・揃っている形・' +
+    'トークン読み込み2件・asChild 6件・名乗り5件）',
 );
 console.log(
   `✓ コンポーネント ${components.length} 件（${components.join(' ')}）に ` +
@@ -363,6 +440,12 @@ console.log(
 console.log(
   `✓ 展示がトークンを受け取れる（${globalHasTokens ? GLOBAL_CSS : PREVIEW_CSS} が tokens.css を読む）`,
 );
+const marked = components.flatMap((name) =>
+  tracked
+    .filter((f) => f.startsWith(`${UI}/${name}/`) && f.endsWith('.tsx') && !f.includes('/examples/') && !f.endsWith('.test.tsx'))
+    .flatMap((f) => exportedComponents(readFileSync(f, 'utf8'))),
+);
+console.log(`✓ export した ${marked.length} 個の部品が、すべて自分の名前を名乗っている`);
 console.log(
   withAsChild.length
     ? `✓ asChild を持つ ${withAsChild.length} 件（${withAsChild.join(' ')}）は共有の Slot を通している`

@@ -38,11 +38,20 @@ interface PartProps extends HTMLAttributes<HTMLElement> {
   ref?: Ref<HTMLElement>;
 }
 
-/** 区画を1つ作る。**同じ形が5つあるので、ここ1箇所で組み立てる** */
+/**
+ * 区画を1つ作る。**同じ形が4つあるので、ここ1箇所で組み立てる。**
+ *
+ * `name` は**自分が何であるかを名乗る**ためのもので、見た目は持たない。
+ * `asChild` のときは子へ移るので、**差し替えても名乗りは残る。**
+ */
 const part =
-  (Tag: 'div' | 'h3' | 'p', base: string) =>
+  (Tag: 'div' | 'h3' | 'p', name: string, base: string) =>
   ({ asChild = false, className, ...props }: PartProps) => {
-    const shared = { className: className ? `${base} ${className}` : base, ...props };
+    const shared = {
+      'data-sg-component': name,
+      className: className ? `${base} ${className}` : base,
+      ...props,
+    };
     if (asChild) return <Slot {...shared} />;
     return <Tag {...(shared as HTMLAttributes<HTMLElement>)} />;
   };
@@ -52,7 +61,7 @@ const part =
  *
  * 見出しの行に操作を並べたい場合は、この中に置く。
  */
-export const CardHeader = part('div', 'flex flex-col gap-1');
+export const CardHeader = part('div', 'card-header', 'flex flex-col gap-1');
 
 /**
  * 見出し。**既定は `h3`。**
@@ -66,10 +75,10 @@ export const CardHeader = part('div', 'flex flex-col gap-1');
  * </CardTitle>
  * ```
  */
-export const CardTitle = part('h3', 'text-heading-3 font-heading');
+export const CardTitle = part('h3', 'card-title', 'text-heading-3 font-heading');
 
 /** 見出しの補足。**淡い文字で1行から数行** */
-export const CardDescription = part('p', 'text-body text-muted');
+export const CardDescription = part('p', 'card-description', 'text-body text-muted');
 
 /**
  * 操作を並べる区画。
@@ -77,6 +86,6 @@ export const CardDescription = part('p', 'text-body text-muted');
  * **下端に寄る。** 高さの揃った並びに置いたとき、カードごとに
  * 本文の長さが違っても操作の位置が揃う。
  */
-export const CardFooter = part('div', 'mt-auto flex items-center gap-2');
+export const CardFooter = part('div', 'card-footer', 'mt-auto flex items-center gap-2');
 
 export type { PartProps as CardPartProps };

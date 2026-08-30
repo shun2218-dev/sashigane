@@ -37,7 +37,12 @@ export function Table({ className, children, ...props }: TableProps) {
   return (
     // **ここが横に動く。** 表そのものではなく枠が動くので、ページは動かない
     <div className="w-full overflow-x-auto">
-      <table className={className ? `${classes} ${className}` : classes} {...props}>
+      <table
+        // **自分が何であるかを名乗る。** 見た目は持たない
+        data-sg-component="table"
+        className={className ? `${classes} ${className}` : classes}
+        {...props}
+      >
         {children}
       </table>
     </div>
@@ -51,7 +56,13 @@ export interface TableRowProps extends HTMLAttributes<HTMLTableRowElement> {
 
 export function TableRow({ className, ...props }: TableRowProps) {
   const classes = 'border-b-1 border-border';
-  return <tr className={className ? `${classes} ${className}` : classes} {...props} />;
+  return (
+    <tr
+      data-sg-component="table-row"
+      className={className ? `${classes} ${className}` : classes}
+      {...props}
+    />
+  );
 }
 
 /** 数字の列かどうか。**桁を揃えるので、右に寄せて等幅にする** */
@@ -70,7 +81,13 @@ export interface TableCellProps extends TdHTMLAttributes<HTMLTableCellElement> {
 
 export function TableCell({ numeric = false, className, ...props }: TableCellProps) {
   const classes = cellClasses(numeric);
-  return <td className={className ? `${classes} ${className}` : classes} {...props} />;
+  return (
+    <td
+      data-sg-component="table-cell"
+      className={className ? `${classes} ${className}` : classes}
+      {...props}
+    />
+  );
 }
 
 export interface TableHeaderCellProps extends ThHTMLAttributes<HTMLTableCellElement> {
@@ -92,5 +109,12 @@ export function TableHeaderCell({
   ...props
 }: TableHeaderCellProps) {
   const classes = `${cellClasses(numeric)} text-label font-heading`;
-  return <th scope={scope} className={className ? `${classes} ${className}` : classes} {...props} />;
+  return (
+    <th
+      data-sg-component="table-header-cell"
+      scope={scope}
+      className={className ? `${classes} ${className}` : classes}
+      {...props}
+    />
+  );
 }

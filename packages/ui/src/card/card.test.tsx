@@ -240,6 +240,37 @@ describe('asChild', () => {
  *   **文字の役割が届いていること** — 見出しと補足が同じ見た目なら、
  *   区画を分けた意味が無い
  */
+describe('自分の名前を名乗る', () => {
+  it('器と区画が、それぞれ別の名前を名乗る', async () => {
+    const { container } = await render(
+      onSurface(
+        <Card>
+          <CardHeader>
+            <CardTitle>見出し</CardTitle>
+            <CardDescription>補足</CardDescription>
+          </CardHeader>
+          <CardFooter>操作</CardFooter>
+        </Card>,
+      ),
+    );
+    const names = [...container.querySelectorAll('[data-sg-component]')].map((e) =>
+      e.getAttribute('data-sg-component'),
+    );
+    expect(names).toEqual(['card', 'card-header', 'card-title', 'card-description', 'card-footer']);
+  });
+
+  it('区画も asChild で名乗りが子へ移る', async () => {
+    const { container } = await render(
+      onSurface(
+        <CardTitle asChild>
+          <h2>x</h2>
+        </CardTitle>,
+      ),
+    );
+    expect(container.querySelector('h2')?.getAttribute('data-sg-component')).toBe('card-title');
+  });
+});
+
 describe('中の区画', () => {
   it('区画は面を宣言しない', async () => {
     const { container } = await render(
