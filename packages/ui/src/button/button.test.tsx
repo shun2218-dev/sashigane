@@ -648,8 +648,18 @@ describe('読み込み中', () => {
     // **面を宣言しない。** 宣言すると背景と前景が同時に沈む
     expect(l.getAttribute('data-sg-surface')).toBeNull();
     expect(buttonIn(off.container).getAttribute('data-sg-surface')).toBe('inset');
-    // 塗りは通常のまま残る
-    expect(styleOf(l).background).toBe(styleOf(buttonIn(plain.container)).background);
+
+    /*
+     * 塗りは通常のまま残る。
+     *
+     * **遷移が終わるまで待つ。** この器は transition-colors を持っているので、
+     * 直後に読むと**補間の途中の値**が返る。同じ色でも書き方が変わる
+     * （`oklch(...)` ではなく `oklab(...)` になる）ので、
+     * 文字列の比較が落ちる。CI で実際に落ちた。
+     */
+    await expect
+      .poll(() => styleOf(l).background)
+      .toBe(styleOf(buttonIn(plain.container)).background);
     expect(styleOf(l).background).not.toBe(styleOf(buttonIn(off.container)).background);
   });
 
