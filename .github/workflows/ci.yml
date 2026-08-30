@@ -139,6 +139,11 @@ jobs:
       - name: ドキュメントサイトの検索
         run: pnpm check:docs-search
 
+      # AI が読む形とページの絵（決定6-24）。ビルドした .next を読むのでこの順
+      # 差し込みが展開されなくても Markdown としては正しく、読む側にだけ意味が無い
+      - name: AI が読む形とページの絵
+        run: pnpm check:docs-llms
+
       # 生成物がコミットされていないこと（原則1）
       - name: 生成物が混入していないこと
         run: pnpm check:no-build-output
