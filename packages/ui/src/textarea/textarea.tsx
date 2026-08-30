@@ -9,7 +9,8 @@
  * ─────────────────────────────────────────────
  */
 import type { Ref, TextareaHTMLAttributes } from 'react';
-import { control, frame, stateOf } from '../input/input.tsx';
+import { control, frameClass } from '../input/input.tsx';
+import { stateOf } from '../internal/ring.ts';
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   /**
@@ -32,7 +33,7 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
  */
 export function Textarea({ valid, className, ...props }: TextareaProps) {
   const state = stateOf(valid, props['aria-invalid']);
-  const outer = frame({ state });
+  const outer = frameClass(state);
   // 式の中で組み立てない。cva の呼び出しを補間の中へ直接置くと、
   // 静的解析の検査が読み切れずに落ちる
   const inner = `${control({ state })} min-h-24`;

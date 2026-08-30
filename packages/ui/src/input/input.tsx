@@ -30,57 +30,7 @@
  */
 import { cva } from 'class-variance-authority';
 import type { InputHTMLAttributes, Ref } from 'react';
-
-/** 線が表すもの。**誤りと満たしているは同時に成り立たない** */
-type State = 'none' | 'error' | 'valid';
-
-/**
- * 属性と props から線の状態を決める。**Input と Textarea で同じものを使う。**
- *
- * `aria-invalid` は文字列で来ることがある（`aria-invalid="true"`）。
- * **真偽値だけを見ると、文字列で渡した利用側が黙って通常の見た目になる。**
- */
-export const stateOf = (valid: boolean | undefined, invalid: unknown): State => {
-  if (invalid === true || invalid === 'true') return 'error';
-  return valid ? 'valid' : 'none';
-};
-
-/**
- * 入力欄を囲む器。**線はここだけが描く。**
- *
- * ## 線は1本だけである
- *
- * 状態を境界で、フォーカスを輪郭で表していたため、**誤りの欄に入ると線が2本出た。**
- * 状態もフォーカスも**同じ1本の線**で表す。分けるのは**太さ**である。
- *
- * | | 通常 | フォーカス |
- * |---|---|---|
- * | なし | 1px `faint` | 2px `border-focus` |
- * | 誤り | 2px `danger` | **3px `danger`** |
- * | 満たす | 2px `success` | **3px `success`** |
- *
- * 状態がある側は**色を保ったまま太くなる。** 直している最中に赤が消えない。
- *
- * ## 境界ではなく輪郭で描く
- *
- * **`border` の幅を変えると箱の高さが変わり、下にあるものがずれる。**
- * フォーカスのたびに説明文が動く。輪郭は描画だけで、**寸法に関わらない。**
- *
- * ## 枝が排他なので、順序を気にしなくてよい
- *
- * 状態は cva の枝で分けてある。**1つの状態の分しかクラスが出ない**ので、
- * 同じ特定度のクラスが並んで出力順に勝敗を委ねることが起きない。
- */
-export const frame = cva('flex w-full rounded-sm outline-solid outline-offset-0', {
-  variants: {
-    state: {
-      none: 'outline-1 outline-faint has-focus-visible:outline-2 has-focus-visible:outline-border-focus',
-      error: 'outline-2 outline-danger has-focus-visible:outline-3',
-      valid: 'outline-2 outline-success has-focus-visible:outline-3',
-    },
-  },
-  defaultVariants: { state: 'none' },
-});
+import { type ControlState, ring, stateOf } from '../internal/ring.ts';
 
 /**
  * 入力そのもの。**線は持たない**——器が描く。
@@ -123,6 +73,18 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 /**
+ * 入力を囲む器。**線はここが描く**——入力そのものではない。
+ *
+ * 入力は凹んだ面を宣言しており、面を宣言した要素の中では
+ * **役割がその面の段で解決される。** 線を入力に置くと、
+ * 誤りの文言と同じ役割なのに別の色になる。
+ *
+ * 線は共有のものを使い、**箱の形だけをここで足す。**
+ * 写しを作ると、片方だけ直したときにずれる。
+ */
+export const frameClass = (state: ControlState) => `${ring({ state })} flex w-full rounded-sm`;
+
+/**
  * 1行の入力欄。
  *
  * ## 面を宣言する
@@ -145,7 +107,7 @@ export function Input({ valid, className, ...props }: InputProps) {
   // 式の中で組み立てない。cva の呼び出しを補間の中へ直接置くと、
   // 静的解析の検査が読み切れずに落ちる
   const state = stateOf(valid, props['aria-invalid']);
-  const outer = frame({ state });
+  const outer = frameClass(state);
   return (
     <div
       data-sg-component="input-frame"

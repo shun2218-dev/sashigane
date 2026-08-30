@@ -12,6 +12,8 @@
     "table",
     "field",
     "input",
-    "textarea"
+    "textarea",
+    "checkbox",
+    "radio"
   ]
 }

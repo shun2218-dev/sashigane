@@ -60,6 +60,16 @@ export interface FieldProps extends Omit<HTMLAttributes<HTMLDivElement>, 'childr
    * 規則は持たない——**走らせるのは利用側**である。
    */
   error?: ReactNode;
+  /**
+   * 札と入力の並べ方。
+   *
+   * **`inline` は札が入力の右に来る。** チェックボックスとラジオがそれである——
+   * 上に置くと、札がどの選択肢のものか目で辿れない。
+   *
+   * 置き方を部品ごとに持たせていない。持たせると**結びつけの経路が2つ**になり、
+   * 片方だけ直したときにずれる。
+   */
+  layout?: 'stacked' | 'inline';
   /** 入力が要るかどうか。**札にも入力にも届く** */
   required?: boolean;
   /**
@@ -84,6 +94,7 @@ export function Field({
   label,
   description,
   error,
+  layout = 'stacked',
   required = false,
   valid = false,
   className,
@@ -121,62 +132,88 @@ export function Field({
    * 4px だと線が説明文にほとんど触れる。
    */
   const classes = 'flex flex-col gap-2';
+  const inline = layout === 'inline';
+
+  const labelNode = (
+    <label data-sg-component="field-label" className="text-label" htmlFor={id}>
+      {label}
+      {required ? (
+        // 記号だけでは読み上げに届かない。**文字も一緒に置く**
+        <span className="text-danger" aria-hidden="true">
+          {' *'}
+        </span>
+      ) : null}
+      {required ? <span className="sr-only">（必須）</span> : null}
+    </label>
+  );
+
+  /*
+    配線を子へ移す。**利用側が書き忘れる余地を作らない。**
+
+    ## 器は状態によらず常に置く
+
+    印を重ねるために入力を包む必要があるが、**包むのを満たしているときだけに
+    していた。** 状態が変わるとその位置の要素の型が変わるので、
+    **React が入力を作り直す。**
+
+    入力中に誤りと満たしているが入れ替わると、**打っている最中に
+    フォーカスが外れる。** 見た目には何も出ない——文字が入らなくなるだけである。
+    `xxx@gmail.c` まで打ったところで切り替わり、その先が打てなくなっていた。
+
+    **中身の無い器が増えるのを嫌って条件つきにしていた。** 代償が合っていない。
+  */
+  const controlNode = (
+    <div className="relative flex flex-col">
+      <Slot
+        id={id}
+        required={required}
+        aria-describedby={describedBy}
+        aria-invalid={error ? true : undefined}
+        // **満たしていないときは渡さない。** `false` を渡すと、
+        // 素の `input` を子に置いた利用側で不明な属性になる
+        valid={showValid || undefined}
+      >
+        {children}
+      </Slot>
+      {/*
+        印は読み上げから隠れている。**満たしていることは線が伝える**——
+        印を読ませても「チェック」としか言わない。
+
+        ここで `aria-hidden` を書いていないのは、**Icon の既定がそうだから**である。
+        書くと同じことが2箇所に並び、片方だけ直したときにずれる。
+        **重複を外したとき、壊し方が1件も落ちなくなって気づいた。**
+
+        **横並びのときは出さない。** 印は文字の入る欄の内側の端に重ねるもので、
+        チェックボックスの大きさの箱には重ねる場所が無い。
+        満たしていることは線が伝える。
+      */}
+      {showValid && !inline ? (
+        <IconCheck size="sm" className="pointer-events-none absolute end-3 top-3 text-success" />
+      ) : null}
+    </div>
+  );
+
   return (
     <div
       data-sg-component="field"
       className={className ? `${classes} ${className}` : classes}
       {...props}
     >
-      <label data-sg-component="field-label" className="text-label" htmlFor={id}>
-        {label}
-        {required ? (
-          // 記号だけでは読み上げに届かない。**文字も一緒に置く**
-          <span className="text-danger" aria-hidden="true">
-            {' *'}
-          </span>
-        ) : null}
-        {required ? <span className="sr-only">（必須）</span> : null}
-      </label>
-
       {/*
-        配線を子へ移す。**利用側が書き忘れる余地を作らない。**
-
-        ## 器は状態によらず常に置く
-
-        印を重ねるために入力を包む必要があるが、**包むのを満たしているときだけに
-        していた。** 状態が変わるとその位置の要素の型が変わるので、
-        **React が入力を作り直す。**
-
-        入力中に誤りと満たしているが入れ替わると、**打っている最中に
-        フォーカスが外れる。** 見た目には何も出ない——文字が入らなくなるだけである。
-        `xxx@gmail.c` まで打ったところで切り替わり、その先が打てなくなっていた。
-
-        **中身の無い器が増えるのを嫌って条件つきにしていた。** 代償が合っていない。
+        **横並びでは入力が先に来る。** 札より前に置かないと、
+        目で辿る順序と読む順序がずれる。
       */}
-      <div className="relative flex flex-col">
-        <Slot
-          id={id}
-          required={required}
-          aria-describedby={describedBy}
-          aria-invalid={error ? true : undefined}
-          // **満たしていないときは渡さない。** `false` を渡すと、
-          // 素の `input` を子に置いた利用側で不明な属性になる
-          valid={showValid || undefined}
-        >
-          {children}
-        </Slot>
-        {/*
-          印は読み上げから隠れている。**満たしていることは線が伝える**——
-          印を読ませても「チェック」としか言わない。
-
-          ここで `aria-hidden` を書いていないのは、**Icon の既定がそうだから**である。
-          書くと同じことが2箇所に並び、片方だけ直したときにずれる。
-          **重複を外したとき、壊し方が1件も落ちなくなって気づいた。**
-        */}
-        {showValid ? (
-          <IconCheck size="sm" className="pointer-events-none absolute end-3 top-3 text-success" />
-        ) : null}
-      </div>
+      {inline ? (
+        <div className="flex items-center gap-2">
+          {controlNode}
+          {labelNode}
+        </div>
+      ) : (
+        <>
+          {labelNode}
+          {controlNode}
+        </>
+      )}
 
       {description ? (
         <p data-sg-component="field-description" id={descriptionId} className="text-caption text-muted">
