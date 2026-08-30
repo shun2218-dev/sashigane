@@ -104,6 +104,11 @@ jobs:
       - name: コンポーネントの例
         run: pnpm check:component-examples
 
+      # 決定6-8: 利用者に届く文面に内部の参照が入っていないこと
+      # JSDoc は型表として、例のソースはそのままサイトに出る
+      - name: 利用者に届く文面
+        run: pnpm check:public-language
+
       # サンプルページが生成した変数だけで組まれていること（Issue #61）
       # 生値を1つ混ぜても見た目は変わらないので、検査でしか気づけない
       - name: サンプルページ
