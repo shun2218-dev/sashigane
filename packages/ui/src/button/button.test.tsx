@@ -228,6 +228,29 @@ describe('設計の不変条件', () => {
 });
 
 describe('トークンの保証（実ブラウザでしか測れない）', () => {
+  it('塗りは宣言で作る。両モードで文字が明るい端になる', async () => {
+    /*
+     * **指摘から出た保証。** 以前は暗色で「明るい塗り＋黒文字」になっていた——
+     * 観測4本に1件も無い組み合わせだった。
+     * 塗りを宣言に分けたので、段が面にもモードにも依存しなくなり、文字は両モードとも白になる。
+     */
+    const seen: string[] = [];
+    for (const theme of ['light', 'dark'] as const) {
+      document.documentElement.setAttribute('data-theme', theme);
+      const { container } = await render(onSurface(<Button>x</Button>));
+      const el = buttonIn(container);
+      expect(el.getAttribute('data-sg-fill'), '塗りが宣言されていない').toBe('accent');
+      const s = styleOf(el);
+      // 明るい端は明度が高い。暗い端が選ばれていたら落ちる
+      const lightness = Number(s.color.match(/okl(?:ch|ab)\(\s*([\d.]+)/)?.[1] ?? '0');
+      expect(lightness, `${theme} で文字が明るい端ではない`).toBeGreaterThan(0.8);
+      seen.push(s.background);
+    }
+    document.documentElement.removeAttribute('data-theme');
+    // **塗りはテーマで変わらない。** ブランドの色である
+    expect(new Set(seen).size, '塗りがテーマで変わっている').toBe(1);
+  });
+
   it('塗りの上の文字は on-* から来る。地とも面とも違う色になる', async () => {
     const { container } = await render(onSurface(<Button>x</Button>));
     const s = styleOf(buttonIn(container));

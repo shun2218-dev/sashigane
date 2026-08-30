@@ -17,6 +17,10 @@
  * CSS が1つも生成されない。**エラーは出ない**ので、色の付いていないボタンが
  * それらしく表示される。実際に一度そう書いて全滅した。`compoundVariants` は冗長で正しい。
  *
+ * **`solid` は塗りを宣言する**ので、色クラスを1つも書かない。
+ * 塗りの段は面にもテーマにも依存せず、文字は白、境界が識別を担う。
+ * 暗色で「明るい塗り＋黒文字」になっていたのを直した経緯は設計記録にある。
+ *
  * **`outline-none` を base に置かない。** `outline-style: none` が残り、
  * 幅と色を足しても輪郭が描かれない。`focus-visible:outline-solid` で立てる。
  *
@@ -73,7 +77,7 @@ const button = cva(
        * `outline` の境界は**中立色である。** ランプの色にしない——
        * **色はランプに、境界は面の骨格に属する。** 揃え忘れではない。
        */
-      variant: { solid: '', subtle: '', outline: 'border-1 border-border', ghost: '' },
+      variant: { solid: 'border-1', subtle: '', outline: 'border-1 border-border', ghost: '' },
       /** どのランプで塗るか。**塗りを持つランプすべて** */
       tone: { accent: '', danger: '', warning: '', success: '', info: '' },
       /**
@@ -84,15 +88,13 @@ const button = cva(
     },
     compoundVariants: [
       /*
+       * `solid` はここに現れない。**塗りは宣言する**（`data-sg-fill`）ので、
+       * 背景も境界も文字も属性が与える。**色クラスを1つも書かない。**
+       *
        * variant × tone を**書き下す。** 組み立てると Tailwind が読めない（上記）。
        * 無効のときは塗りを載せない——**沈んだうえに塗りが残ると
        * 「押せそうに見えて押せない」になる。**
        */
-      { variant: 'solid', tone: 'accent', disabled: false, class: 'bg-accent text-on-accent hover:bg-accent-strong' },
-      { variant: 'solid', tone: 'danger', disabled: false, class: 'bg-danger text-on-danger hover:bg-danger-strong' },
-      { variant: 'solid', tone: 'warning', disabled: false, class: 'bg-warning text-on-warning hover:bg-warning-strong' },
-      { variant: 'solid', tone: 'success', disabled: false, class: 'bg-success text-on-success hover:bg-success-strong' },
-      { variant: 'solid', tone: 'info', disabled: false, class: 'bg-info text-on-info hover:bg-info-strong' },
 
       { variant: 'subtle', tone: 'accent', disabled: false, class: 'bg-accent-subtle text-on-accent-subtle hover:bg-accent-subtle!' },
       { variant: 'subtle', tone: 'danger', disabled: false, class: 'bg-danger-subtle text-on-danger-subtle hover:bg-danger-subtle!' },
@@ -138,11 +140,18 @@ export function Button({ variant, tone, disabled = false, className, ...props }:
    * 面の hover は色の変数も1段ずらすので、**再主張すると色付きのまま1段深くなる。**
    */
   const shiftsOwnFill = variant === undefined || variant === 'solid';
+  /**
+   * **塗りは宣言する。** 面（`data-sg-surface`）と同じ形で、
+   * 宣言が背景・境界・文字を同時に与える。
+   * 塗るだけの道は用意しない——`bg-*` を書いても前景は付いてこない。
+   */
+  const declaresFill = (variant === undefined || variant === 'solid') && !disabled;
   return (
     <button
       type="button"
       // **無効のときだけ面を宣言する。** 面の仕掛けが背景と前景を同時に沈める
       data-sg-surface={disabled ? 'inset' : undefined}
+      data-sg-fill={declaresFill ? (tone ?? 'accent') : undefined}
       data-sg-interactive={!disabled && !shiftsOwnFill ? '' : undefined}
       disabled={disabled}
       className={className ? `${classes} ${className}` : classes}
