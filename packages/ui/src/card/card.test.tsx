@@ -2,7 +2,7 @@ import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { Card } from './card.tsx';
-import { CardBody, CardDescription, CardFooter, CardHeader, CardTitle } from './card-parts.tsx';
+import { CardDescription, CardFooter, CardHeader, CardTitle } from './card-parts.tsx';
 import '../../test/tokens.css';
 
 /**
@@ -249,7 +249,7 @@ describe('中の区画', () => {
             <CardTitle>見出し</CardTitle>
             <CardDescription>補足</CardDescription>
           </CardHeader>
-          <CardBody>本文</CardBody>
+          本文
           <CardFooter>操作</CardFooter>
         </Card>,
       ),
@@ -304,7 +304,7 @@ describe('中の区画', () => {
           <CardHeader>
             <CardTitle>見出し</CardTitle>
           </CardHeader>
-          <CardBody>本文</CardBody>
+          本文
         </Card>,
       ),
     );
@@ -317,7 +317,7 @@ describe('中の区画', () => {
     const { container } = await render(
       onSurface(
         <Card style={{ height: 300 }}>
-          <CardBody>短い本文</CardBody>
+          短い本文
           <CardFooter>操作</CardFooter>
         </Card>,
       ),

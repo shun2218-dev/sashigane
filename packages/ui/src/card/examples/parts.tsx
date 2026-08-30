@@ -1,5 +1,5 @@
 import { Card } from '../card.tsx';
-import { CardBody, CardDescription, CardFooter, CardHeader, CardTitle } from '../card-parts.tsx';
+import { CardDescription, CardFooter, CardHeader, CardTitle } from '../card-parts.tsx';
 
 /**
  * **区画の使い分け。**
@@ -20,9 +20,7 @@ export default function Parts() {
           </CardTitle>
           <CardDescription>ページ直下に置くなら h2 が正しいこともあります。</CardDescription>
         </CardHeader>
-        <CardBody>
-          <p>本文がここに入ります。</p>
-        </CardBody>
+        <p>本文がここに入ります。</p>
         <CardFooter>
           <span>操作は下端に寄ります</span>
         </CardFooter>

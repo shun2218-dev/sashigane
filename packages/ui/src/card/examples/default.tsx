@@ -1,6 +1,6 @@
 import { Button } from '../../button/button.tsx';
 import { Card } from '../card.tsx';
-import { CardBody, CardDescription, CardFooter, CardHeader, CardTitle } from '../card-parts.tsx';
+import { CardDescription, CardFooter, CardHeader, CardTitle } from '../card-parts.tsx';
 
 /**
  * 通常。**面を宣言しているだけで、色は1つも書いていない。**
@@ -19,9 +19,7 @@ export default function Default() {
           <CardTitle>面は宣言する</CardTitle>
           <CardDescription>背景も文字色も境界色も、面の宣言から来ます。</CardDescription>
         </CardHeader>
-        <CardBody>
-          <p>この器は背景色を1つも書いていません。</p>
-        </CardBody>
+        <p>この器は背景色を1つも書いていません。</p>
         <CardFooter>
           <Button variant="ghost">あとで</Button>
           <Button>進む</Button>
@@ -31,10 +29,8 @@ export default function Default() {
         <CardHeader>
           <CardTitle>浮かせた面</CardTitle>
         </CardHeader>
-        <CardBody>
-          <p>明色では影が、暗色では1段深い輪郭が出ます。</p>
-        </CardBody>
-      </Card>
+        <p>明色では影が、暗色では1段深い輪郭が出ます。</p>
+        </Card>
     </>
   );
 }

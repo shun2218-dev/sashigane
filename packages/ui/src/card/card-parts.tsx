@@ -14,6 +14,14 @@
  *
  * カードがページのどこに置かれるかで正しい見出しの深さは変わる。
  * 既定を1つ持ちつつ `asChild` で差し替えられる形にしてある。
+ *
+ * ## 本文の区画は持たない
+ *
+ * 一度 `CardBody` を置いたが、**クラスを1つも持たない `div` だった。**
+ * 置いた理由は「区画を明示するため」だったが、それは検査できない——
+ * 書かなくても崩れず、書いても何も起きない。
+ *
+ * 本文は器の直下に置く。器が縦に並べて間を空けるので、それで足りる。
  * ─────────────────────────────────────────────
  */
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
@@ -62,9 +70,6 @@ export const CardTitle = part('h3', 'text-heading-3 font-heading');
 
 /** 見出しの補足。**淡い文字で1行から数行** */
 export const CardDescription = part('p', 'text-body text-muted');
-
-/** 本文。**並べ方も文字も持たない**——中身がそのまま入る */
-export const CardBody = part('div', '');
 
 /**
  * 操作を並べる区画。
