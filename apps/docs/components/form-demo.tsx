@@ -17,9 +17,18 @@ export function FormDemo() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitSuccessful },
+    formState: { errors, dirtyFields },
     reset,
-  } = useForm<{ mail: string; note: string }>({ mode: 'onBlur' });
+  } = useForm<{ mail: string; note: string }>({
+    /*
+     * **打っている最中に検証する。** ここは満たしていることの表示を見せる場所で、
+     * それは**入力中に切り替わるためにある。**
+     *
+     * 以前は送信が一度成功するまで緑にならなかった。
+     * **ページを開き直すと出ない**ので、見せたいものが見えていなかった。
+     */
+    mode: 'onChange',
+  });
 
   return (
     <form
@@ -33,7 +42,8 @@ export function FormDemo() {
         label="メールアドレス"
         description="仕事用のものを入れてください"
         error={errors.mail?.message}
-        valid={isSubmitSuccessful && !errors.mail}
+        // 打ち始めてから緑にする。**空の欄が最初から満たしていることにならない**
+        valid={!errors.mail && !!dirtyFields.mail}
         required
       >
         <Input

@@ -298,6 +298,46 @@ describe('入力中に状態が変わるとき', () => {
     expect(document.activeElement).toBe(inputIn(container));
   });
 
+  it('状態が変わると、線と印がその場で追従する', async () => {
+    const { container } = await render(onSurface(<Toggling />));
+    const field = () => container.querySelector('[data-sg-component="field"]') as HTMLElement;
+    const mark = () => field().querySelector('svg');
+    const lineColor = () => getComputedStyle(inputIn(container)).outlineColor;
+
+    await userEvent.click(inputIn(container));
+    await userEvent.keyboard('ab');
+    // **遷移の途中を読まない。** 計算値が遷移前のまま返る
+    await expect.poll(() => mark()).toBe(null);
+    const bad = lineColor();
+
+    await userEvent.keyboard('c');
+    /*
+     * **フォーカスが残ることだけを測っていた。** 器を常に置くように変えたとき、
+     * 見た目が追従することは1件も測っていなかった——
+     * 印が出なくなっても、線が変わらなくなっても、落ちない状態だった。
+     *
+     * **「別の色」では足りない。** 満たしている表示を渡さなくなっても、
+     * 誤りが消えたぶん通常の色へ動くので、違う色にはなる。
+     * 止まった先が**満たしている色そのもの**であることまで測る。
+     */
+    const reference = await render(
+      onSurface(
+        <Field id="ref" label="札" valid>
+          <Input />
+        </Field>,
+      ),
+    );
+    const success = getComputedStyle(inputIn(reference.container)).outlineColor;
+    await expect.poll(() => mark()).not.toBe(null);
+    await expect.poll(() => lineColor()).toBe(success);
+    const ok = lineColor();
+
+    await userEvent.keyboard('{Backspace}');
+    await expect.poll(() => mark()).toBe(null);
+    await expect.poll(() => lineColor()).toBe(bad);
+    expect(ok).not.toBe(bad);
+  });
+
   it('満たしているから誤りへ戻っても、打ち続けられる', async () => {
     const { container } = await render(onSurface(<Toggling />));
     await userEvent.click(inputIn(container));
