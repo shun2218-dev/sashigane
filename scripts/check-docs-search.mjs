@@ -13,12 +13,21 @@
  * ## 何を見るか
  *
  *   1. 和文で引けること（語の切り出しが和文に効いていること）
- *   2. 英字で引けること
+ *   2. **入れ子のページ**が引けること
  *   3. **無い語では 0 件になること**
  *
  * 3 が要る。1 と 2 だけだと、**全件を返す壊れ方**を通してしまう。
  * 1・2 と 3 は互いの対照になっている——
  * どちらか片方だけが成立する状態は作れない（教訓2）。
+ *
+ * ## 引く語を固定しない
+ *
+ * 2 は**内容から取る。** 最初は `Button` と書いていたが、
+ * **Button を消したら、検索が壊れていなくても落ちる。**
+ * コンポーネントは増減する段階なので、検査対象がその都合で動く形にしない。
+ *
+ * `content/docs/components/` の最初のページを読み、その `title` で引いて
+ * そのページの URL が返ることを見る。**ページが増減しても追随する。**
  *
  * ## 何を見ないか（教訓5）
  *
@@ -31,14 +40,39 @@
  * `next start` は `.next` を読む。CI では apps/docs のビルドの後に置いてある。
  */
 import { spawn } from 'node:child_process';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 const PORT = 3210;
 const BASE = `http://localhost:${PORT}`;
 
+/** 入れ子のページ。**名前を固定しない**——増減に追随させる */
+const NESTED_DIR = 'apps/docs/content/docs/components';
+
+/** 内容から引く語を取る。最初のページの `title` を使う */
+const nestedQuery = () => {
+  const files = readdirSync(NESTED_DIR)
+    .filter((f) => f.endsWith('.mdx'))
+    .sort();
+  if (files.length === 0) {
+    console.error(`${NESTED_DIR} にページがありません。入れ子のページを引けるか見られません。`);
+    process.exit(1);
+  }
+  const file = files[0];
+  const text = readFileSync(join(NESTED_DIR, file), 'utf8');
+  const title = /^---\r?\n[\s\S]*?^title:\s*(.+?)\s*$/m.exec(text)?.[1];
+  if (!title) {
+    console.error(`${join(NESTED_DIR, file)} に title がありません。前書きの形が変わっています。`);
+    process.exit(1);
+  }
+  return { q: title, want: `/docs/components/${file.replace(/\.mdx$/, '')}`, why: '入れ子のページ' };
+};
+
 /** 引く語と、結果に必ず含まれていてほしい URL */
 const QUERIES = [
+  // 索引ページは消えないので、和文はここに固定してよい
   { q: 'トークン', want: '/docs', why: '和文' },
-  { q: 'Button', want: '/docs/components/button', why: '英字' },
+  nestedQuery(),
 ];
 
 /** **無い語。** 全件を返す壊れ方を捕まえるための対照 */
@@ -125,4 +159,6 @@ if (problems.length) {
 }
 
 console.log(`✓ 対照 1 件が期待どおり（無い語「${ABSENT}」は 0 件）`);
-console.log(`✓ ${QUERIES.map((x) => `「${x.q}」`).join('と')}が引け、期待する URL を含む`);
+console.log(
+  `✓ ${QUERIES.map((x) => `「${x.q}」（${x.why}）`).join('と')}が引け、期待する URL を含む`,
+);
