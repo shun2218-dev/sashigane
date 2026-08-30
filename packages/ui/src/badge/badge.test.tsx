@@ -118,6 +118,20 @@ describe('面の上での見え方', () => {
   });
 });
 
+describe('中身が無いとき', () => {
+  it('器が潰れない', async () => {
+    const { container } = await render(onSurface(<Badge />));
+    const r = badgeIn(container).getBoundingClientRect();
+    /*
+     * 左右の余白が残るので点として見える。
+     * **例に書いた主張は、テストで裏を取る。**
+     * 幅が 0 になっても、展示は「空の札」に見えてしまう。
+     */
+    expect(r.width).toBeGreaterThan(0);
+    expect(r.height).toBeGreaterThan(0);
+  });
+});
+
 describe('押せる見た目を持たない', () => {
   it('大きさ2段が、それぞれ違う', async () => {
     const sm = await render(onSurface(<Badge size="sm">x</Badge>));
