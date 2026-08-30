@@ -352,6 +352,39 @@ const withAsChild = components.filter((name) =>
 );
 
 /* ============================================================
+   10. 型表の印を解いていること（決定6-4）
+   ============================================================ */
+
+/**
+ * 型表の説明は **JSDoc の素の文字列**である。解かずに出すと
+ * `**必須である。**` のように記号がそのまま並ぶ。
+ * **エラーは出ず、読みにくくなるだけ**なので、画面を見るまで気づけない（実際に踏んだ）。
+ *
+ * **画面からは見られない。** 型表はクライアント側で描かれるので、
+ * サーバの HTML に出てこない——`check:docs-llms` で見ようとして、
+ * **切り出す先が無いまま緑になっていた。**
+ *
+ * ここではソースの側から見る。**弱い検査である**——
+ * 解く関数の中身が間違っていても通る。捕まえるのは「解くのをやめた」形だけである。
+ */
+const DEMO = 'apps/docs/components/component-demo.tsx';
+const demoSource = existsSync(DEMO) ? readFileSync(DEMO, 'utf8') : '';
+
+if (!demoSource) {
+  console.error(`${DEMO} がありません。展示の組み立てが動いています。`);
+  process.exit(1);
+}
+if (!/description:\s*inline\(/.test(withoutComments(demoSource))) {
+  console.error('型表の説明が、印を解かずに渡されています（決定6-4）。\n');
+  console.error('  ✗ `description: inline(...)` の形になっていません');
+  console.error(
+    '\n解かないと `**必須である。**` のように記号がそのまま並びます。' +
+      '\n**エラーは出ず、読みにくくなるだけ**なので、画面を見るまで気づけません。',
+  );
+  process.exit(1);
+}
+
+/* ============================================================
    9. export した部品が自分の名前を名乗ること（決定6-23）
    ============================================================ */
 
@@ -465,6 +498,7 @@ const marked = components.flatMap((name) =>
     .flatMap((f) => exportedComponents(readFileSync(f, 'utf8'))),
 );
 console.log(`✓ export した ${marked.length} 個の部品が、すべて自分の名前を名乗っている`);
+console.log('✓ 型表の説明が印を解いてから渡されている');
 console.log(
   withAsChild.length
     ? `✓ asChild を持つ ${withAsChild.length} 件（${withAsChild.join(' ')}）は共有の Slot を通している`

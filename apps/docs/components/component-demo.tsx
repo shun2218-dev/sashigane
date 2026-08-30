@@ -1,3 +1,6 @@
+import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { examples } from '../generated/examples';
 import props from '../generated/props.json';
 import sources from '../generated/sources.json';
@@ -89,26 +92,31 @@ export function ComponentDemo({ name }: { name: string }) {
         <code className="ms-2 text-xs">{state}.tsx</code>
       </h3>
       {/*
-        例の描画。**面の文脈を page に置く**ので、中の Card が1段深くなる（決定5-12）。
+        **表示とソースを並べず、切り替える。** 並べるとページが縦に伸び、
+        例が増えるほど見比べにくくなる。
 
-        `data-sg-preview` はプレビュー用 CSS の効く範囲である。
-        この目印の中だけに限定していないと、preflight と汎用ユーティリティが
-        サイト外枠に当たり、外枠側の変種を後勝ちで潰す
-        （`scripts/scope-preview-css.mjs`）。
+        器は fumadocs のものを使う。**この器を自分で組む理由が無い**——
+        組むと、サイトの他の場所と見た目が揃わなくなる。
       */}
-      <div
-        data-sg-preview
-        data-sg-surface="page"
-        className="flex flex-col gap-4 rounded-lg border border-fd-border p-6"
-      >
-        <Example />
-      </div>
-      <details>
-        <summary className="cursor-pointer text-sm text-fd-muted-foreground">ソース</summary>
-        <pre className="mt-2 overflow-x-auto rounded-lg bg-fd-muted p-4 text-xs">
-          <code>{source[state]}</code>
-        </pre>
-      </details>
+      <Tabs items={['表示', 'ソース']}>
+        <Tab value="表示">
+          {/*
+            例の描画。**面の文脈を page に置く**ので、中の Card が1段深くなる（決定5-12）。
+
+            `data-sg-preview` はプレビュー用 CSS の効く範囲である。
+            この目印の中だけに限定していないと、preflight と汎用ユーティリティが
+            サイト外枠に当たり、外枠側の変種を後勝ちで潰す
+            （`scripts/scope-preview-css.mjs`）。
+          */}
+          <div data-sg-preview data-sg-surface="page" className="flex flex-col gap-4">
+            <Example />
+          </div>
+        </Tab>
+        <Tab value="ソース">
+          {/* 色分けは fumadocs が持っている。**素の pre で出すと読みにくい** */}
+          <DynamicCodeBlock lang="tsx" code={source[state] ?? ''} />
+        </Tab>
+      </Tabs>
     </section>
   );
 
@@ -132,29 +140,18 @@ export function ComponentDemo({ name }: { name: string }) {
 
       <section className="flex flex-col gap-3">
         <h3 className="text-sm font-medium text-fd-muted-foreground">props</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-fd-border text-left">
-                <th className="py-2 pe-4 font-medium">名前</th>
-                <th className="py-2 pe-4 font-medium">型</th>
-                <th className="py-2 font-medium">説明</th>
-              </tr>
-            </thead>
-            <tbody>
-              {doc.props.map((p) => (
-                <tr key={p.name} className="border-b border-fd-border align-top">
-                  <td className="py-2 pe-4 font-mono text-xs">
-                    {p.name}
-                    {p.required ? '' : '?'}
-                  </td>
-                  <td className="py-2 pe-4 font-mono text-xs">{p.type}</td>
-                  <td className="py-2 whitespace-pre-line">{inline(p.description)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/*
+          型表も fumadocs のものを使う。**必須かどうかの出し方も向こうが持っている**——
+          自分で組むと、名前の後ろに `?` を付ける流儀を自分で決めることになる。
+        */}
+        <TypeTable
+          type={Object.fromEntries(
+            doc.props.map((p) => [
+              p.name,
+              { type: p.type, required: p.required, description: inline(p.description) },
+            ]),
+          )}
+        />
         <p className="text-xs text-fd-muted-foreground">
           型と説明はコンポーネントのソースから抽出しています。
           <strong>既定値は出していません</strong>——cva の <code>defaultVariants</code> は
