@@ -21,6 +21,30 @@ description: トークンが唯一の正であるデザインシステム
 いまあるのは **Card と Button の2つ**で、続きは Badge → Separator → Table と決めてある。
 **「あった方が良さそう」では追加しない。**
 
+## どのコンポーネントも自分の名前を名乗ります
+
+すべての部品が `data-sg-component` で自分の名前を出します。**見た目は持ちません。**
+
+```html
+<button data-sg-component="button" class="…">
+<div data-sg-component="card" data-sg-surface="surface" class="…">
+  <div data-sg-component="card-header" class="…">
+```
+
+CSS でもテストでも、**組み立てたクラスに頼らずに部品を狙えます。**
+
+```css
+[data-sg-component="card"] { /* … */ }
+```
+
+`asChild` で要素を差し替えても**名乗りは子へ移ります**——器が変わっても、
+何であるかは変わりません。
+
+**クラス名にしていません。** クラスにすると、このリポジトリの検査が
+「素の Tailwind にも我々にも無い名前」として**見逃す範囲**に入り、
+打ち間違えても永久に気づけません。data 属性なら、
+**名乗っていることと、名前がずれていないことを機械で見られます。**
+
 ## 設計の記録
 
 このリポジトリは AI 駆動開発の実践例を兼ねている。

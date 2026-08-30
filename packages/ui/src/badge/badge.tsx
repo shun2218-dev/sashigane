@@ -97,6 +97,8 @@ export function Badge({ tone, size, asChild = false, className, ...props }: Badg
   const classes = badge({ tone, size });
   const neutral = tone === undefined || tone === 'neutral';
   const shared = {
+    // **自分が何であるかを名乗る。** 見た目は持たない
+    'data-sg-component': 'badge',
     // **中立のときだけ面を宣言する。** 色付きは淡い塗りが背景と文字を対で持つ
     'data-sg-surface': neutral ? NEUTRAL_SURFACE : undefined,
     className: className ? `${classes} ${className}` : classes,

@@ -478,6 +478,35 @@ describe('asChild', () => {
  *   **名前の無いものが通らないこと** — 書き忘れても見た目は正常なので、
  *   これは実行時に落とすしかない
  */
+describe('自分の名前を名乗る', () => {
+  it('印が DOM に出る', async () => {
+    const { container } = await render(onSurface(<Button>x</Button>));
+    expect(buttonIn(container).getAttribute('data-sg-component')).toBe('button');
+  });
+
+  it('印は見た目を持たない', async () => {
+    /*
+     * **印はクラスではない。** クラスにすると `check:component-classes` の
+     * 見逃す範囲へ入り、打ち間違えても永久に捕まらない。
+     * data 属性なら、名乗っていることを検査できる。
+     */
+    const { container } = await render(onSurface(<Button>x</Button>));
+    expect([...buttonIn(container).classList]).not.toContain('sg-button');
+  });
+
+  it('asChild でも名乗りは子へ移る', async () => {
+    const { container } = await render(
+      onSurface(
+        <Button asChild>
+          <a href="#x">x</a>
+        </Button>,
+      ),
+    );
+    // **器を差し替えても、何であるかは変わらない**
+    expect(container.querySelector('a')?.getAttribute('data-sg-component')).toBe('button');
+  });
+});
+
 describe('塗り方によらない寸法', () => {
   it('4種の高さが揃う', async () => {
     const { container } = await render(

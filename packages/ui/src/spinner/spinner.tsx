@@ -60,6 +60,8 @@ export function Spinner({ className, ...props }: SpinnerProps) {
     'inline-block size-6 shrink-0 rounded-full border-2 border-current border-t-transparent';
   return (
     <span
+      // **自分が何であるかを名乗る。** 見た目は持たない
+      data-sg-component="spinner"
       data-sg-spinner
       className={className ? `${classes} ${className}` : classes}
       {...props}
