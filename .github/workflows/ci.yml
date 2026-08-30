@@ -106,8 +106,9 @@ jobs:
         run: pnpm check:output-header
 
       # ドキュメントサイトがビルドできること
-      # 型が通ってもビルドが壊れる要因（アセット解決、import 経路、Vite 設定）は
-      # typecheck では検出できない
+      # 型が通ってもビルドが壊れる要因（アセット解決、import 経路、Next.js の設定）は
+      # typecheck では検出できない。**Tailwind アダプタを chrome に入れると
+      # fumadocs-ui の @apply が解決できず落ちる**ので、ここが混入の検出も兼ねる（決定6-4）
       - name: apps/docs のビルド
         run: pnpm --filter @sashigane/docs build
 

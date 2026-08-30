@@ -1,3 +1,5 @@
+'use client';
+
 import {
   contrastBetween,
   describePrimaryInput,
@@ -14,7 +16,6 @@ import {
   type Ramp,
 } from '@sashigane/tokens';
 import { useMemo, useState } from 'react';
-import { SamplePage } from './SamplePage.tsx';
 import tokens from '@sashigane/tokens/tokens.json' with { type: 'json' };
 
 const g = tokens.color.guarantees;
@@ -290,6 +291,8 @@ export const ThemeBuilder = () => {
   const [hex, setHex] = useState('#3b82f6');
   const palette = useMemo(() => generatePalette(hexToOklch(hex)), [hex]);
   const css = useMemo(() => toTokensCss(palette), [palette]);
+  /** 独立したサンプルページへ、選んだ色をそのまま渡す */
+  const sampleHref = `/sample?primary=${encodeURIComponent(hex)}`;
   const [copied, setCopied] = useState(false);
 
   return (
@@ -329,7 +332,17 @@ export const ThemeBuilder = () => {
         </div>
       </section>
 
-      <SamplePage css={css} />
+      {/*
+        **サンプルページは埋め込まない。** 独立した URL を開く（決定6-4 の改訂）。
+        生成物は `:root` と `@media (prefers-color-scheme)` と `[data-theme]` を書くので、
+        同じドキュメントに入れるとこのページの見た目まで巻き込む。
+        以前は iframe で隔離していたが、**別のページにすれば隔離そのものが要らない。**
+      */}
+      <p>
+        <a className="sample-link" href={sampleHref} target="_blank" rel="noreferrer">
+          このテーマでサンプルページを開く →
+        </a>
+      </p>
 
       <section>
         <h2>パレット</h2>

@@ -64,6 +64,18 @@
  *     塞ぐには「`--sg-…-` の直後が `${` なら報告する」のように**書き方を先回りして
  *     列挙する**ことになるので採らない（教訓5）
  *
+ * ## 過剰に検出するもの — **`@apply` は説明の中でも拾われる**
+ *
+ * `@apply` の直後に空白があると、そこから `;` `{` `}` までを class の並びとして読む。
+ * **コメントで「`@apply` が解決できない」と説明を書くと、その説明が落ちる。**
+ *
+ *   落ちる    アダプタを入れると @apply が解決できない
+ *   落ちない  アダプタを入れると `@apply` が解決できない   ← 直後が空白でなければよい
+ *
+ * `--sg-space-N` と同じ作法である。**逃げ道が効くことは陽性対照で確かめている**
+ * （Issue #63 で「案内した逃げ道が一度も機能していなかった」をやっているため）。
+ * リポジトリ内の他の説明（`next.config.mjs`、`lib/class-rules.mjs`）は既にこの形である。
+ *
  * 逆に**過剰に検出する**ものが1つある。コメントに書いた `--sg-space-3` も違反として落ちる。
  * コメントだけを除くには言語ごとのパーサが要り、割に合わない。
  * 説明でプリミティブ名に触れたい場合は `--sg-space-N` のように書く。
@@ -342,6 +354,12 @@ const FIXTURES = [
   { text: '<div class="outline-8">', expect: 'bare-number' },
   { text: '<div class="md:hover:border-4">', expect: 'bare-number' },
   { text: '.a { @apply border-4; }', expect: 'bare-number' },
+  /*
+   * **説明の中の `@apply` は落ちない。** 直後が空白でなければ class の並びとして読まれない。
+   * この逃げ道は冒頭で案内している。**案内した以上、効くことの対照を持つ**（Issue #63）
+   */
+  { text: '/* アダプタを入れると `@apply` が解決できない */', expect: null },
+  { text: '// fumadocs-ui の `@apply` が落ちる', expect: null },
   { text: 'const c = <b className={"text-[13px]"} />', expect: 'arbitrary' },
   // 自己レビュー B1: ヘルパー呼び出しの中のリテラル
   { text: 'const c = <b className={clsx("p-4", on && "p-[7px]")} />', expect: 'arbitrary' },
