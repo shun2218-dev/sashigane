@@ -1,4 +1,8 @@
 {
   "title": "ドキュメント",
-  "pages": ["index", "components"]
+  "pages": [
+    "index",
+    "theme",
+    "components"
+  ]
 }
