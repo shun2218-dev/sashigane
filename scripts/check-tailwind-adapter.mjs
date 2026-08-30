@@ -104,6 +104,18 @@ const EXPECTATIONS = [
   ['bg-overlay', false, '面は写像しない。overlay も data-sg-surface で作る（決定5-13）'],
   ['bg-hover', false, 'hover の面も写像しない。data-sg-interactive で作る（決定5-13）'],
   ['border-border-strong', true, '境界の第3段。hover 以外の強調で使う（決定5-13）'],
+  /*
+   * 文字の役割は境界と輪郭にも出す（決定6-30）。
+   * **mark では足りない場面がある**——深い面の上で明るい側へ寄ると、
+   * 赤のように明るい側で彩度が落ちるランプが白っぽく見える。
+   */
+  ['border-danger', true, '入力の誤りなど、状態を境界で表すとき（決定6-30）'],
+  ['border-success', true, '同上'],
+  ['border-accent', true, '同上。ランプ間で非対称を作らない'],
+  ['border-warning', true, '同上'],
+  ['border-info', true, '同上'],
+  ['outline-danger', true, '境界と同じ理由で輪郭にも出す'],
+  ['outline-success', true, '同上'],
   /** グリッド線は**線**である。塗りには使わない（決定6-10） */
   ['bg-chart-gridline', false, 'グリッド線は線。bg- では出さない（決定6-10）'],
   ['stroke-chart-gridline', true, 'UI の境界より薄い第4の段（決定5-13）'],

@@ -17,7 +17,7 @@
  * ─────────────────────────────────────────────
  */
 import { cva, type VariantProps } from 'class-variance-authority';
-import { ChevronDown, Plus, X } from 'lucide-react';
+import { Check, ChevronDown, Plus, X } from 'lucide-react';
 import type { LucideIcon, LucideProps } from 'lucide-react';
 
 /**
@@ -104,3 +104,6 @@ export const IconPlus = defineIcon(Plus);
 
 /** 下向きの矢印。**開く／閉じるを表す**（Accordion が使う） */
 export const IconChevronDown = defineIcon(ChevronDown);
+
+/** 印。**満たしていることを表す**（Field が使う） */
+export const IconCheck = defineIcon(Check);

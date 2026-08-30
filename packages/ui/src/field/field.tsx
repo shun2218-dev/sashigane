@@ -15,6 +15,7 @@
  * ─────────────────────────────────────────────
  */
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
+import { IconCheck } from '../icon/icon.tsx';
 import { Slot } from '../internal/slot.tsx';
 
 /**
@@ -54,6 +55,15 @@ export interface FieldProps extends Omit<HTMLAttributes<HTMLDivElement>, 'childr
   error?: ReactNode;
   /** 入力が要るかどうか。**札にも入力にも届く** */
   required?: boolean;
+  /**
+   * 満たしていること。**印と境界で表す。**
+   *
+   * 誤りと同時には使えない。**両方は成り立たない**ので、誤りが勝つ。
+   *
+   * 誤りには `aria-invalid` という標準の属性があるが、
+   * **満たしていることを表す属性は無い。** そこだけ形が違うのはそのためである。
+   */
+  valid?: boolean;
   /** 入力そのもの。**要素1つだけ** */
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
@@ -65,10 +75,13 @@ export function Field({
   description,
   error,
   required = false,
+  valid = false,
   className,
   children,
   ...props
 }: FieldProps) {
+  // **両方は成り立たない。** 誤りが勝つ
+  const showValid = valid && !error;
   const descriptionId = description ? `${id}-description` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   // **両方あるときは両方渡す。** 片方だけにすると、もう片方が読み上げに届かない
@@ -92,15 +105,38 @@ export function Field({
         {required ? <span className="sr-only">（必須）</span> : null}
       </label>
 
-      {/* 配線を子へ移す。**利用側が書き忘れる余地を作らない** */}
-      <Slot
-        id={id}
-        required={required}
-        aria-describedby={describedBy}
-        aria-invalid={error ? true : undefined}
-      >
-        {children}
-      </Slot>
+      {/*
+        配線を子へ移す。**利用側が書き忘れる余地を作らない。**
+
+        満たしているときは印を重ねるので、**入力を包む。**
+        包むのはそのときだけである——常に包むと、
+        中身の無い器が全部の欄に増える。
+      */}
+      {showValid ? (
+        <div className="relative flex flex-col">
+          <Slot id={id} required={required} aria-describedby={describedBy} valid>
+            {children}
+          </Slot>
+          {/*
+            印は読み上げから隠れている。**満たしていることは境界が伝える**——
+            印を読ませても「チェック」としか言わない。
+
+            ここで `aria-hidden` を書いていないのは、**Icon の既定がそうだから**である。
+            書くと同じことが2箇所に並び、片方だけ直したときにずれる。
+            **重複を外したとき、壊し方が1件も落ちなくなって気づいた。**
+          */}
+          <IconCheck size="sm" className="pointer-events-none absolute end-3 top-3 text-success" />
+        </div>
+      ) : (
+        <Slot
+          id={id}
+          required={required}
+          aria-describedby={describedBy}
+          aria-invalid={error ? true : undefined}
+        >
+          {children}
+        </Slot>
+      )}
 
       {description ? (
         <p data-sg-component="field-description" id={descriptionId} className="text-caption text-muted">

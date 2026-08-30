@@ -10,6 +10,10 @@ import { Field } from '../field.tsx';
  *
  * 必須の印は記号だけでは読み上げに届かないので、**文字も一緒に置く。**
  *
+ * 満たしていることも表せる。**誤りとは別の仕組みで受け取る**——
+ * 誤りには `aria-invalid` という標準の属性があるが、
+ * 満たしていることを表す属性は無い。
+ *
  * 規則は持たない。**誤りの文言を受け取るだけ**である——
  * 走らせるのは利用側で、どのライブラリとも組める。
  */
@@ -24,6 +28,9 @@ export default function Edge() {
         required
       >
         <Input type="email" defaultValue="not-an-email" />
+      </Field>
+      <Field id="edge-ok" label="満たしているとき" description="印と境界で表します" valid>
+        <Input defaultValue="you@example.com" />
       </Field>
       <Field id="edge-note" label="備考" description="何行でも構いません">
         <Textarea rows={4} placeholder="長い文章もここに" />

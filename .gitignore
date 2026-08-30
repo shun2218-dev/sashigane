@@ -21,3 +21,9 @@ packages/*/src/**/__screenshots__/
 apps/*/out/
 # Next.js が生成する型参照。中身が .next/ を指すので、ビルド前は解決できない
 apps/*/next-env.d.ts
+
+# next dev が書き出す。**生成物なのでコミットしない**（原則1）。
+# 中身は「この Next.js は訓練データと違う。node_modules/next/dist/docs/ を読め」という
+# 案内で、消しても next dev が書き直す。読む必要があるときは node_modules から読む。
+apps/*/AGENTS.md
+apps/*/CLAUDE.md
