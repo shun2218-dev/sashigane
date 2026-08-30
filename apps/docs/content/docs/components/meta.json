@@ -2,6 +2,7 @@
   "title": "コンポーネント",
   "pages": [
     "card",
-    "button"
+    "button",
+    "spinner"
   ]
 }

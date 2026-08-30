@@ -236,3 +236,43 @@ describe('tokens.css の動き（決定1-14）', () => {
     expect(off).toBeGreaterThan(on);
   });
 });
+
+/**
+ * 回り続ける表示（決定6-18）。**骨組み表示と同じ形で出している。**
+ *
+ * ここで測るのは**規則の側**である。
+ * コンポーネントはプリミティブを参照できない（原則3）ので、
+ * 「周期がスケールから来ていること」を測れるのはここだけである。
+ */
+describe('tokens.css の回転（決定6-18）', () => {
+  it('keyframes と、それを使う規則が対で出ている', () => {
+    expect(css).toMatch(/@keyframes\s+sg-spin\s*\{/);
+    const rule = blockOf('[data-sg-spinner]');
+    expect(rule, '[data-sg-spinner] が無い').not.toBeNull();
+    expect(rule!.body).toMatch(/\bsg-spin\b/);
+  });
+
+  it('周期はループスケールから引いている（素の秒数を書いていない）', () => {
+    expect(blockOf('[data-sg-spinner]')!.body).toMatch(/var\(--sg-duration-loop-\d+\)/);
+  });
+
+  it('遷移のスケールを借りていない', () => {
+    // **回り続けるものは「>500ms は鈍重」の制約の外にある。**
+    // 遷移の段を借りると、別スケールにした理由が消える
+    expect(blockOf('[data-sg-spinner]')!.body).not.toMatch(/--sg-duration-transition-/);
+  });
+
+  it('加減速を付けていない', () => {
+    // 回り続けるものに始点と終点は無い
+    expect(blockOf('[data-sg-spinner]')!.body).toMatch(/\blinear\b/);
+  });
+
+  it('動きを減らす設定で止まる', () => {
+    const on = css.indexOf('[data-sg-spinner] {');
+    const off = css.indexOf('[data-sg-spinner]', on + 1);
+    expect(off, '止める規則が無い').toBeGreaterThan(on);
+    const block = css.slice(css.lastIndexOf('@media', off), css.indexOf('\n}', off));
+    expect(block).toContain('prefers-reduced-motion');
+    expect(block).toMatch(/animation:\s*none/);
+  });
+});

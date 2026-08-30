@@ -243,6 +243,25 @@ export const SKELETON_ANIMATION = 'skeleton var(--sg-duration-loop-1) ease-in-ou
  * `--sg-color-deeper-bg` は面の文脈が控えている内部の値で、hover の規則と共有する。
  * どちらも読んでいるのは「1段深い面の地」という同じ関係である。
  */
+/**
+ * 回り続ける表示の周期（決定6-18）。**ループスケールの一番速い段から引く。**
+ *
+ * 骨組み表示（1000ms）より速い。**待たされていることが読み取れる速さ**が要るためで、
+ * 遅くすると止まって見える。速い側の段はループスケールに1つしかない。
+ *
+ * 遷移のスケールは借りない。**回り続けるものは >500ms を鈍重とみなす制約の外**にある
+ * ——それが遷移とループを別スケールにした理由である。
+ */
+export const SPIN_ANIMATION = 'sg-spin var(--sg-duration-loop-0) linear infinite';
+
+/**
+ * 回転そのもの。**新しい定数を持ち込まない。**
+ *
+ * `1turn` は角度の全体であって、決めた値ではない。
+ * 加減速も付けない（`linear`）——回り続けるものに始点と終点は無い。
+ */
+export const SPIN_KEYFRAMES = ['@keyframes sg-spin {', '  to { transform: rotate(1turn); }', '}'];
+
 export const SKELETON_KEYFRAMES = [
   '@keyframes skeleton {',
   '  50% { background-color: var(--sg-color-deeper-bg); }',
