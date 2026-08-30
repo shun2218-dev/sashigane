@@ -7,7 +7,9 @@ node_modules/
 packages/*/dist/
 apps/*/dist/
 apps/*/public/tokens.css
+apps/*/public/preview.css
 apps/*/public/r/
+apps/*/generated/
 *.tsbuildinfo
 
 # ビルド成果物

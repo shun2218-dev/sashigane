@@ -57,6 +57,7 @@ packages/ui/src/<component>/examples/
 
 **この3つは必須。** 追加の例は自由に置いてよい。素の React コンポーネントとして書く。
 ドキュメントサイトの描画・配信 JSON・型表は**すべてここから出す**（唯一の正）。
+**`pnpm check:component-examples` が検査する**（教訓3）。
 
 **道具名では書かない。** 要求は3状態が見られることであって、特定の道具ではない。
 
@@ -80,6 +81,8 @@ pnpm check:docs-refs          # 文書が挙げている名前と参照が実在
                               # version を持つ package.json が1つだけであること（決定4-6）
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
+pnpm check:component-examples # 3状態の例が揃っていること（決定6-4）
+pnpm docs:data                # 例・ソース・型表を生成する（決定6-4。typecheck より前に要る）
 pnpm check:component-classes  # コンポーネントが書いたクラスを生成 CSS の側から見る（決定6-2）と
                               # 書いたのに生成されないクラスが無いこと（決定6-3）と
                               # 同名クラスが素の Tailwind と同じ値になること（決定6-5）
@@ -96,8 +99,8 @@ CI はその順で走らせている。
 コンポーネントを守っているのは後者である（決定6-2）。
 規則は `scripts/lib/class-rules.mjs` に1つだけ置いて共有している。
 
-`check:token-usage` `check:sample-page` `check:docs-refs` `check:component-classes` は
-実行のたびに、まず意図的な違反を含むフィクスチャへ検出器を当てる。
+`check:token-usage` `check:sample-page` `check:docs-refs` `check:component-classes`
+`check:component-examples` は実行のたびに、まず意図的な違反を含むフィクスチャへ検出器を当てる。
 **発火しなければ検査自体が落ちる。** 0 件という結果を、検査が壊れている状態と
 区別できるようにするため（教訓2）。
 

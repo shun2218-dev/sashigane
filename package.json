@@ -19,6 +19,7 @@
     "check:docs-scales": "node scripts/check-docs-scales.mjs",
     "check:docs-refs": "node scripts/check-docs-refs.mjs",
     "build:tokens": "pnpm --filter @sashigane/tokens build",
+    "docs:data": "node scripts/build-component-docs.mjs",
     "check:tokens-standalone": "node scripts/check-tokens-standalone.mjs",
     "check:tailwind-adapter": "node scripts/check-tailwind-adapter.mjs",
     "check:scss": "node scripts/check-scss-compiles.mjs",
@@ -27,10 +28,12 @@
     "check:token-values": "node scripts/check-token-values.mjs",
     "check:token-types": "node scripts/check-token-types.mjs",
     "check:output-header": "node scripts/check-output-header.mjs",
-    "check:component-classes": "node scripts/check-component-classes.mjs"
+    "check:component-classes": "node scripts/check-component-classes.mjs",
+    "check:component-examples": "node scripts/check-component-examples.mjs"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.3.3",
+    "react-docgen-typescript": "^2.4.0",
     "sass": "^1.103.1",
     "tailwindcss": "4.3.3",
     "typescript": "^5.9.2",
