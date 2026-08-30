@@ -81,7 +81,8 @@ pnpm check:docs-refs          # 文書が挙げている名前と参照が実在
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
 pnpm check:component-classes  # コンポーネントが書いたクラスを生成 CSS の側から見る（決定6-2）と
-                              # 書いたのに生成されないクラスが無いこと（決定6-3）
+                              # 書いたのに生成されないクラスが無いこと（決定6-3）と
+                              # 同名クラスが素の Tailwind と同じ値になること（決定6-5）
 ```
 
 `check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` `check:token-values`
