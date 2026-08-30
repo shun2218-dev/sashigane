@@ -59,6 +59,31 @@ describe('横に溢れたとき', () => {
     expect(getComputedStyle(wrapperIn(container)).overflowX).toBe('auto');
   });
 
+  it('包む枠は親の幅に従う', async () => {
+    /*
+     * **枠は利用側から触れない**（`className` は表に付く）。
+     * 触れなくて困らないのは、**枠が常に親の幅いっぱいになる**ためである。
+     * 幅を決めたいときは、親の幅を決めればよい。
+     */
+    const { container } = await render(
+      onSurface(
+        <div style={{ width: 240 }}>
+          <Table>
+            <tbody>
+              <TableRow>
+                <TableCell>x</TableCell>
+              </TableRow>
+            </tbody>
+          </Table>
+        </div>,
+      ),
+    );
+    const outer = container.querySelector('div[style]');
+    const wrap = outer?.querySelector('div');
+    if (!outer || !wrap) throw new Error('包む枠が描画されていません');
+    expect(wrap.getBoundingClientRect().width).toBe(outer.getBoundingClientRect().width);
+  });
+
   it('溢れるのは枠の中だけで、ページは動かない', async () => {
     const { container } = await render(
       onSurface(
@@ -124,6 +149,27 @@ describe('行の線', () => {
     const s = getComputedStyle(cell);
     expect(Number.parseFloat(s.paddingLeft)).toBeGreaterThan(0);
     expect(Number.parseFloat(s.paddingTop)).toBeGreaterThan(0);
+  });
+});
+
+describe('見出しの文字', () => {
+  it('大文字化の加算項を足していない', async () => {
+    /*
+     * 見出しに当てているのは**ラベルの役割**である。
+     * この役割は大文字の見出しで使われることが多く、
+     * **大文字化の加算項を足すと和文では字が間延びする。**
+     *
+     * 足していないことを測る——足すと役割の字間より広くなる。
+     */
+    const { container } = await render(onSurface(sample));
+    const th = container.querySelector('thead th');
+    if (!th) throw new Error('見出しの升が描画されていません');
+    const declared = getComputedStyle(document.documentElement)
+      .getPropertyValue('--sg-text-label-tracking')
+      .trim();
+    const fontSize = Number.parseFloat(getComputedStyle(th).fontSize);
+    const expected = Number.parseFloat(declared) * fontSize;
+    expect(Number.parseFloat(getComputedStyle(th).letterSpacing)).toBeCloseTo(expected, 2);
   });
 });
 
