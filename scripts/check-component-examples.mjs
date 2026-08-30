@@ -51,6 +51,10 @@
  * `Separator` に要るかは自明でなく、`Table` にはおそらく要らない。
  *
  * 見ているのは**持つなら形が1つであること**だけである。
+ *
+ * **コメントは落としてから見る。** 落とさずに `asChild` の語を探すと、
+ * 「`asChild` を持たない」と**書いた説明そのものに反応する。**
+ * 実際そうなって CI が落ちた（Spinner）。
  * `asChild` を受け取りながら `cloneElement` を自前で呼ぶと、
  * 移し方（class の連結・行事の合成・ref の配り方）が2つになる。
  * **2つになったことは、壊れるまで誰も気づかない。**
@@ -283,11 +287,24 @@ if (!previewHasTokens && !globalHasTokens) {
 /** 移し方を1つにするための共有部品 */
 const SLOT = 'internal/slot.tsx';
 
-/** `asChild` を受け取っているか。props の型でも分解でも拾う */
-const takesAsChild = (source) => /\basChild\b/.test(source);
+/**
+ * コメントを落とす。**残りが実装である。**
+ *
+ * 行コメントは `://` を避ける——URL の中の `//` を落とすと、
+ * その行の残りごと消えて**見逃す側に倒れる。**
+ */
+const withoutComments = (source) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(?<!:)\/\/[^\n]*/g, '');
+
+/**
+ * `asChild` を受け取っているか。props の型でも分解でも拾う。
+ *
+ * **コメントは見ない。** 「持たない」と書いた説明に反応してしまう。
+ */
+const takesAsChild = (source) => /\basChild\b/.test(withoutComments(source));
 /** 移し方を自前で書いていないか。**共有の Slot 以外で要素を複製していないこと** */
-const clonesItself = (source) => /\bcloneElement\b/.test(source);
-const usesSlot = (source) => source.includes(SLOT);
+const clonesItself = (source) => /\bcloneElement\b/.test(withoutComments(source));
+const usesSlot = (source) => withoutComments(source).includes(SLOT);
 
 const contractOf = (name, source) => {
   if (!takesAsChild(source)) return [];
@@ -303,6 +320,9 @@ const controls = [
   ['Slot を通していない', 'export function X({ asChild }) { return asChild ? <S/> : <b/> }', true],
   ['Slot を通している', "import { Slot } from '../internal/slot.tsx';\nexport function X({ asChild }) {}", false],
   ['asChild を持たない', 'export function X() { return <b/> }', false],
+  // **説明に反応しないこと。** 実際に CI が落ちた形である
+  ['コメントで asChild に触れているだけ', '/* asChild を持たない。渡す中身が無い */\nexport function X() {}', false],
+  ['行コメントで触れているだけ', '// asChild は持たない\nexport function X() {}', false],
 ];
 for (const [label, source, shouldFire] of controls) {
   if (contractOf('x', source).length > 0 !== shouldFire) {
@@ -331,7 +351,7 @@ const withAsChild = components.filter((name) =>
 );
 
 console.log(
-  `✓ 対照 9 件が期待どおり（欠落・既定エクスポート無し・揃っている形・トークン読み込み2件・asChild 4件）`,
+  '✓ 対照 11 件が期待どおり（欠落・既定エクスポート無し・揃っている形・トークン読み込み2件・asChild 6件）',
 );
 console.log(
   `✓ コンポーネント ${components.length} 件（${components.join(' ')}）に ` +
