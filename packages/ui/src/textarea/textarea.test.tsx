@@ -18,9 +18,14 @@ const look = (el: Element) => {
   return {
     background: s.backgroundColor,
     color: s.color,
-    // 線は輪郭で描いている。**境界も一緒に見る**——片方に残ると線が2本出る
-    line: `${s.outlineWidth} ${s.outlineColor} ${s.outlineStyle}`,
-    border: s.borderTopWidth,
+    // 線を描くのは器である。**中身の側は線を持たないこと**も一緒に見る
+    line: (() => {
+      const f = el.closest('[data-sg-component$="-frame"]');
+      if (!f) throw new Error('器が描画されていません');
+      const fs = getComputedStyle(f);
+      return `${fs.outlineWidth} ${fs.outlineColor} ${fs.outlineStyle} / ${fs.borderTopWidth}`;
+    })(),
+    border: `${s.borderTopWidth} ${s.outlineStyle}`,
     padding: s.padding,
     radius: s.borderTopLeftRadius,
     fontSize: s.fontSize,

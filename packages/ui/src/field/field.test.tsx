@@ -23,6 +23,17 @@ const inputIn = (container: HTMLElement) => {
   return el;
 };
 
+/**
+ * 線を描くのは入力そのものではなく、**外側の器**である。
+ * 面を宣言した要素の中では色がその面の段で解決され、
+ * **誤りの文言と別の赤**になるため（決定6-34）。
+ */
+const frameIn = (container: HTMLElement) => {
+  const el = container.querySelector('[data-sg-component="input-frame"]');
+  if (!el) throw new Error('器が描画されていません');
+  return el;
+};
+
 describe('前提', () => {
   it('生成した CSS が当たっている', () => {
     expect(
@@ -142,8 +153,8 @@ describe('誤りの見た目', () => {
         </Field>,
       ),
     );
-    const lineColor = (el: Element) => getComputedStyle(el).outlineColor;
-    expect(lineColor(inputIn(bad.container))).not.toBe(lineColor(inputIn(plain.container)));
+    const lineColor = (c: HTMLElement) => getComputedStyle(frameIn(c)).outlineColor;
+    expect(lineColor(bad.container)).not.toBe(lineColor(plain.container));
   });
 });
 
@@ -179,7 +190,7 @@ describe('満たしていること', () => {
         </Field>,
       ),
     );
-    const lineColor = (c: HTMLElement) => getComputedStyle(inputIn(c)).outlineColor;
+    const lineColor = (c: HTMLElement) => getComputedStyle(frameIn(c)).outlineColor;
     const seen = new Set([
       lineColor(plain.container),
       lineColor(ok.container),
@@ -211,7 +222,7 @@ describe('満たしていること', () => {
         </Field>,
       ),
     );
-    const w = (c: HTMLElement) => Number.parseFloat(getComputedStyle(inputIn(c)).outlineWidth);
+    const w = (c: HTMLElement) => Number.parseFloat(getComputedStyle(frameIn(c)).outlineWidth);
     // **1px では色の面積が足りず、違いが読み取りにくい**
     expect(w(ok.container)).toBeGreaterThan(w(plain.container));
     expect(w(bad.container)).toBeGreaterThan(w(plain.container));
@@ -302,7 +313,7 @@ describe('入力中に状態が変わるとき', () => {
     const { container } = await render(onSurface(<Toggling />));
     const field = () => container.querySelector('[data-sg-component="field"]') as HTMLElement;
     const mark = () => field().querySelector('svg');
-    const lineColor = () => getComputedStyle(inputIn(container)).outlineColor;
+    const lineColor = () => getComputedStyle(frameIn(container)).outlineColor;
 
     await userEvent.click(inputIn(container));
     await userEvent.keyboard('ab');
@@ -327,7 +338,7 @@ describe('入力中に状態が変わるとき', () => {
         </Field>,
       ),
     );
-    const success = getComputedStyle(inputIn(reference.container)).outlineColor;
+    const success = getComputedStyle(frameIn(reference.container)).outlineColor;
     await expect.poll(() => mark()).not.toBe(null);
     await expect.poll(() => lineColor()).toBe(success);
     const ok = lineColor();

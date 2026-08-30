@@ -142,9 +142,24 @@ const colorUtilities = (palette: Palette): string[] => {
 
   const status = ['danger', 'warning', 'success', 'info'] as const;
 
-  // 文字
+  /*
+   * 文字。**輪郭にも出す。**
+   *
+   * 境界の役割はどの段も**自分が乗る面に対して 3:1 に届かない**
+   * （最も強い `border-strong` でも、ページの面の上で 2.67。実測）。
+   * 入力欄のように**線が無いと部品だと分からないもの**には足りない。
+   *
+   * 文字の役割なら届く（`faint` で 3.46）。境界には過剰だが、
+   * **過剰な側に外れるぶんには保証は崩れない**——決定6-30 と同じ理由である。
+   *
+   * **`border-` には出さない。** 出すと `border-default` という名前ができるが、
+   * これは「既定の境界」ではなく**文字色**を指す。
+   * 境界の役割は `border-border` なので、取り違えても検査は捕まえない
+   * （card-parts.tsx の覚書が先に警告している）。輪郭側は `outline-border` と
+   * 名前が離れているので、この罠が無い。
+   */
   for (const n of ['default', 'muted', 'faint'] as const)
-    emit(n, ['text'], `--sg-color-text-${n}`);
+    emit(n, ['text', 'outline'], `--sg-color-text-${n}`);
   /*
    * 文字の役割は境界にも出す（決定6-30）。
    *

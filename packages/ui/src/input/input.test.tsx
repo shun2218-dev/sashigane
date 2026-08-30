@@ -49,26 +49,44 @@ describe('面', () => {
   });
 });
 
-/** 線の測り方。**幅も見る**——色だけを見ると、線を消しても通る */
-const line = (el: Element) => {
-  const s = getComputedStyle(el);
+/**
+ * 線の測り方。**器の側から読む。**
+ *
+ * 線を描くのは入力そのものではなく、**外側の器**である——
+ * 面を宣言した要素の中では色がその面の段で解決され、
+ * 誤りの文言と別の赤になるため。
+ *
+ * **幅も見る。** 色だけを見ると、線を消しても通る。
+ * **中身の側の線も一緒に見る。** どちらかに残ると2本出る。
+ */
+const frameIn = (container: HTMLElement) => {
+  const el = container.querySelector('[data-sg-component="input-frame"]');
+  if (!el) throw new Error('器が描画されていません');
+  return el;
+};
+
+const line = (container: HTMLElement) => {
+  const f = getComputedStyle(frameIn(container));
+  const i = getComputedStyle(inputIn(container));
   return {
-    width: Number.parseFloat(s.outlineWidth),
-    color: s.outlineColor,
-    style: s.outlineStyle,
-    // **境界は 0 でなければならない。** 輪郭と両方あると線が2本出る
-    border: Number.parseFloat(s.borderTopWidth),
+    width: Number.parseFloat(f.outlineWidth),
+    color: f.outlineColor,
+    style: f.outlineStyle,
+    // **器にも中身にも境界を持たない。** 中身の輪郭も持たない
+    others:
+      Number.parseFloat(f.borderTopWidth) +
+      Number.parseFloat(i.borderTopWidth) +
+      (i.outlineStyle === 'none' ? 0 : Number.parseFloat(i.outlineWidth)),
   };
 };
 
 describe('線', () => {
   it('輪郭が実線で幅を持ち、文字色ではない', async () => {
     const { container } = await render(onSurface(<Input aria-label="x" />));
-    const el = inputIn(container);
-    const l = line(el);
+    const l = line(container);
     expect(l.style).toBe('solid');
     expect(l.width).toBeGreaterThan(0);
-    expect(l.color).not.toBe(getComputedStyle(el).color);
+    expect(l.color).not.toBe(getComputedStyle(inputIn(container)).color);
   });
 
   it.each([
@@ -84,14 +102,14 @@ describe('線', () => {
      * `input` はブラウザ既定で境界を持つので、**preflight が無い配布先でも
      * 0 であること**をここで測る。
      */
-    expect(line(inputIn(container)).border).toBe(0);
+    expect(line(container).others).toBe(0);
   });
 
   it('誤りのときは線の色が変わり、太くなる', async () => {
     const plain = await render(onSurface(<Input aria-label="x" />));
     const bad = await render(onSurface(<Input aria-label="x" aria-invalid />));
-    const a = line(inputIn(plain.container));
-    const b = line(inputIn(bad.container));
+    const a = line(plain.container);
+    const b = line(bad.container);
     expect(b.color).not.toBe(a.color);
     // **色だけで伝えない。** 面積が足りないと色の違いが読み取りにくい
     expect(b.width).toBeGreaterThan(a.width);
@@ -100,13 +118,13 @@ describe('線', () => {
   it('満たしているときは線の色が変わり、太くなる', async () => {
     const plain = await render(onSurface(<Input aria-label="x" />));
     const ok = await render(onSurface(<Input aria-label="x" valid />));
-    const a = line(inputIn(plain.container));
-    const b = line(inputIn(ok.container));
+    const a = line(plain.container);
+    const b = line(ok.container);
     expect(b.color).not.toBe(a.color);
     expect(b.width).toBeGreaterThan(a.width);
     // **誤りとは別の色である。** 同じなら、どちらの状態か線からは読めない
     const bad = await render(onSurface(<Input aria-label="x" aria-invalid />));
-    expect(b.color).not.toBe(line(inputIn(bad.container)).color);
+    expect(b.color).not.toBe(line(bad.container).color);
   });
 
   it('aria-invalid を自分では書かない', async () => {
@@ -120,12 +138,12 @@ describe('フォーカス', () => {
   it('太さで差がつき、線は増えない', async () => {
     const { container } = await render(onSurface(<Input aria-label="x" />));
     const el = inputIn(container);
-    const before = line(el);
+    const before = line(container);
     await userEvent.click(el);
     // **遷移の途中を読まない。** 計算値が遷移前のまま返る
-    await expect.poll(() => line(el).width).toBeGreaterThan(before.width);
-    const after = line(el);
-    expect(after.border).toBe(0);
+    await expect.poll(() => line(container).width).toBeGreaterThan(before.width);
+    const after = line(container);
+    expect(after.others).toBe(0);
     // 状態が無いときは色も変わる。**灰色が 1px 太るだけでは見落とす**
     expect(after.color).not.toBe(before.color);
   });
@@ -133,9 +151,9 @@ describe('フォーカス', () => {
   it('誤りのときは赤いまま太くなる', async () => {
     const { container } = await render(onSurface(<Input aria-label="x" aria-invalid />));
     const el = inputIn(container);
-    const before = line(el);
+    const before = line(container);
     await userEvent.click(el);
-    await expect.poll(() => line(el).width).toBeGreaterThan(before.width);
+    await expect.poll(() => line(container).width).toBeGreaterThan(before.width);
     /*
      * **直している最中に赤が消えない。** フォーカスの色で上書きすると、
      * 誤りを直そうとして入力欄に入った瞬間に、誤りの色が消える。
@@ -153,17 +171,17 @@ describe('フォーカス', () => {
      * つまりここが固定しているのは**見た目の結果**であって、
      * **出力順に依存していないこと**ではない。順序が変われば黙って青くなる。
      */
-    expect(line(el).color).toBe(before.color);
-    expect(line(el).border).toBe(0);
+    expect(line(container).color).toBe(before.color);
+    expect(line(container).others).toBe(0);
   });
 
   it('満たしているときは緑のまま太くなる', async () => {
     const { container } = await render(onSurface(<Input aria-label="x" valid />));
     const el = inputIn(container);
-    const before = line(el);
+    const before = line(container);
     await userEvent.click(el);
-    await expect.poll(() => line(el).width).toBeGreaterThan(before.width);
-    expect(line(el).color).toBe(before.color);
+    await expect.poll(() => line(container).width).toBeGreaterThan(before.width);
+    expect(line(container).color).toBe(before.color);
   });
 
   it('太さが変わっても寸法が動かない', async () => {
@@ -171,7 +189,7 @@ describe('フォーカス', () => {
     const el = inputIn(container);
     const before = el.getBoundingClientRect();
     await userEvent.click(el);
-    await expect.poll(() => line(el).width).toBeGreaterThan(1);
+    await expect.poll(() => line(container).width).toBeGreaterThan(1);
     const after = el.getBoundingClientRect();
     /*
      * **輪郭で描いている理由がこれである。** 境界の幅を変えると箱の高さが変わり、
