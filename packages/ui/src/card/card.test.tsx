@@ -2,7 +2,7 @@ import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { Card } from './card.tsx';
-import './card.css';
+import '../../test/tokens.css';
 
 /**
  * Card の保証（決定6-6）。**実ブラウザで走る。**
@@ -93,6 +93,26 @@ describe('設計の不変条件', () => {
     expect([...cardIn(container).classList].sort()).toEqual(
       ['border-1', 'border-border', 'p-surface', 'rounded-sm'].sort(),
     );
+  });
+
+  it('elevation の4段が、それぞれ意図した浮きになる', async () => {
+    /*
+     * **4段すべてを測る**（自己レビュー K3）。
+     * クラスが cva の中にあれば CSS は生成されるが、
+     * **props を渡したときに実際に付くか**は別である。
+     */
+    const none = await render(onSurface(<Card>x</Card>));
+    expect(styleOf(cardIn(none.container)).boxShadow).toBe('none');
+
+    const shadows = new Set<string>();
+    for (const level of ['raised', 'overlay', 'front'] as const) {
+      const { container } = await render(onSurface(<Card elevation={level}>x</Card>));
+      const shadow = styleOf(cardIn(container)).boxShadow;
+      expect(shadow, `elevation=${level} で浮きが付かない`).not.toBe('none');
+      shadows.add(shadow);
+    }
+    // **段ごとに違う値であること。** 同じ値なら段を分けた意味が無い
+    expect(shadows.size).toBe(3);
   });
 
   it('overlay を選ぶと、elevation を書かなくても浮く', async () => {
