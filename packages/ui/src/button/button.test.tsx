@@ -34,6 +34,29 @@ const buttonIn = (container: HTMLElement) => {
 /** 面の文脈を作る器。塗りが面から独立していることを見るために要る */
 const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}</div>;
 
+/**
+ * hover を測るための器。**ポインタを外す先を一緒に描く。**
+ *
+ * 描いた要素は前のテストと同じ位置に出ることがあり、
+ * **ポインタが乗ったままだと `before` が既に hover 後の値になる。**
+ * そうなると「変わったこと」を測れない——Card で CI が実際に落ちた
+ * （`expected X not to be X`）。同じ形をここでも塞いでおく。
+ */
+const withAway = (node: React.ReactNode) =>
+  onSurface(
+    <>
+      <span data-testid="away">away</span>
+      {node}
+    </>,
+  );
+
+/** ポインタを、測る相手から外す */
+const moveAway = async (container: HTMLElement) => {
+  const away = container.querySelector('[data-testid="away"]');
+  if (!away) throw new Error('ポインタの逃げ先が描画されていません');
+  await page.elementLocator(away).hover();
+};
+
 describe('前提', () => {
   it('生成した CSS が当たっている', () => {
     expect(
@@ -164,8 +187,10 @@ describe('設計の不変条件', () => {
      * 実際 `subtle` だけ何も起きておらず、利用者に指摘されるまで気づかなかった。
      */
     for (const variant of ['solid', 'subtle', 'outline', 'ghost'] as const) {
-      const { container } = await render(onSurface(<Button variant={variant}>x</Button>));
+      const { container } = await render(withAway(<Button variant={variant}>x</Button>));
       const el = buttonIn(container);
+      // **先にポインタを外す。** 乗ったままだと before が既に hover 後の値になる
+      await moveAway(container);
       const before = styleOf(el).background;
       await page.elementLocator(el).hover();
       await expect
@@ -180,7 +205,7 @@ describe('設計の不変条件', () => {
      * hover した瞬間にランプの色が消えて灰色になる。
      * 色が付いたまま深くなることを、**彩度で見る。**
      */
-    const { container } = await render(onSurface(<Button variant="subtle">x</Button>));
+    const { container } = await render(withAway(<Button variant="subtle">x</Button>));
     const el = buttonIn(container);
     /**
      * 彩度を読む。**表記が2つある**——`oklch(L C H)` と `oklab(L a b)` で、
@@ -201,6 +226,7 @@ describe('設計の不変条件', () => {
      * 実際、止めずに書いたときは**塗りの再主張を外しても通っていた。**
      */
     el.style.transition = 'none';
+    await moveAway(container);
     const beforeBg = styleOf(el).background;
     expect(chroma(), '塗りに色が付いていない').toBeGreaterThan(0.02);
 
@@ -261,8 +287,9 @@ describe('トークンの保証（実ブラウザでしか測れない）', () =
   });
 
   it('hover すると塗りが1段ずれる（決定5-15）', async () => {
-    const { container } = await render(onSurface(<Button>hover me</Button>));
+    const { container } = await render(withAway(<Button>hover me</Button>));
     const el = buttonIn(container);
+    await moveAway(container);
     const before = styleOf(el).background;
     await page.elementLocator(el).hover();
     await expect.poll(() => styleOf(el).background).not.toBe(before);
