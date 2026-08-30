@@ -67,12 +67,29 @@
  * **逃げ道が実際に効くことは陽性対照で確かめている**——Issue #63 で
  * 「文書が案内していた逃げ道が一度も機能していなかった」をやっているため（教訓2）。
  *
+ * ## もう1つ見るもの — **同名クラスの値が一致すること**（決定6-5、Issue #102）
+ *
+ * ドキュメントサイトは chrome を素の Tailwind、プレビューを我々のアダプタで
+ * **別々にビルドして同じページに載せる**（決定6-4）。同名のクラスが両方に現れると、
+ * **読み込み順で勝った方が効く。** 値が違えばどちらかが黙って変わる（教訓4）。
+ *
+ * `theme.css` の名前空間から候補を組み立て、両方のビルドに通して値を突き合わせる。
+ * **段は手で並べない**ので、写像を増やすと自動で対象が増える。
+ * ただし**名前空間とユーティリティ接頭辞の対応は手で持っている**（`NAMESPACE_UTILITIES`）。
+ * **新しい次元を写像したら接頭辞を足す。** 足し忘れた次元は黙って通る（教訓5）。
+ * 実際、`ease` を持っていなかったために `ease-in-out` の食い違いを素通りしていた。
+ *
+ * **変種（`sm:` `md:`）は見ていない。** `--breakpoint-*` はクラスではなく変種を作るので、
+ * 同名クラスの比較には現れない。値がずれると**適用される画面幅が変わる**が検出できない。
+ *
  * ## 対照（教訓2）
  *
  * 実行のたびに3つのフィクスチャへ検出器を当てる。
  *
  *   陰性対照1  cva / オブジェクト引き / 定数1本の中に隠した違反で**発火すること**
  *   陰性対照2  cva の中に隠した shadcn 語彙が**消えたと検出されること**
+ *   比較器     値が同じものを不一致と言わず、**違うものを検出すること**
+ *              （CSS の文字列で当てる。純粋な関数にしてあるのはこのため）
  *   陽性対照   通るべき cva が**落ちないこと**、**消えたと言われないこと**、
  *              **クラスが実際に生成されていること**、
  *              かつ**逃げ道（`rounded-*` `text-{sm}`）が効くこと**
@@ -227,6 +244,177 @@ const violationsIn = (sourceDir) => {
 };
 
 /* ============================================================
+   同名クラスの値が一致すること（決定6-5、Issue #102）
+   ============================================================ */
+
+/**
+ * ドキュメントサイトは **chrome を素の Tailwind、プレビューを我々のアダプタ**で
+ * 別々にビルドし、**同じページに載せる**（決定6-4）。
+ * このとき同名のクラスが両方に現れ、**読み込み順で勝った方が効く。**
+ *
+ * いま値が揃っているのは決定3-3 の規約のおかげであって、**検査されていなかった。**
+ * 値のずれた名前を写像に足すと、chrome かプレビューのどちらかが黙って変わる（教訓4）。
+ *
+ * ## 何と何を比べるか
+ *
+ * **同じ候補一覧**を、我々のアダプタと素の Tailwind の両方でビルドし、
+ * **両方が生成したクラス**について値を突き合わせる。
+ * 片方しか生成しないものは衝突しないので対象外である。
+ *
+ * ## 候補は生成物から導く
+ *
+ * **手で並べない。** 並べると写像を増やしたときに、足し忘れた分だけ黙って検査されない
+ * （`check:token-usage` が許す数値を theme.css から取っているのと同じ判断）。
+ * `theme.css` の名前空間から、その次元のユーティリティ名を組み立てる。
+ */
+const NAMESPACE_UTILITIES = [
+  {
+    ns: /^\s*--spacing-([0-9.\\]+)\s*:/gm,
+    prefixes: ['p', 'px', 'py', 'pt', 'pb', 'm', 'mx', 'my', 'gap', 'w', 'h', 'size', 'top', 'left', 'inset', 'basis'],
+  },
+  { ns: /^\s*--radius-([a-z0-9-]+)\s*:/gm, prefixes: ['rounded'] },
+  { ns: /^\s*--border-width-([0-9.\\]+)\s*:/gm, prefixes: ['border', 'border-t', 'border-x'] },
+  { ns: /^\s*--transition-duration-([0-9.\\]+)\s*:/gm, prefixes: ['duration'] },
+  { ns: /^\s*--transition-delay-([0-9.\\]+)\s*:/gm, prefixes: ['delay'] },
+  { ns: /^\s*--outline-width-([0-9.\\]+)\s*:/gm, prefixes: ['outline'] },
+  { ns: /^\s*--ring-width-([0-9.\\]+)\s*:/gm, prefixes: ['ring'] },
+  { ns: /^\s*--color-([a-z0-9-]+)\s*:/gm, prefixes: ['bg', 'text', 'border'] },
+  { ns: /^\s*--text-([a-z0-9-]+)\s*:/gm, prefixes: ['text'] },
+  // **`--font-weight-*` を巻き込まないこと**（自己レビュー F2）。
+  // 巻き込むと `font-weight-base` という存在しない候補ができ、本来の `font-base` が漏れる
+  { ns: /^\s*--font-(?!weight-)([a-z0-9-]+)\s*:/gm, prefixes: ['font'] },
+  { ns: /^\s*--font-weight-([a-z0-9-]+)\s*:/gm, prefixes: ['font'] },
+  { ns: /^\s*--tracking-([a-z0-9-]+)\s*:/gm, prefixes: ['tracking'] },
+  { ns: /^\s*--shadow-([a-z0-9-]+)\s*:/gm, prefixes: ['shadow'] },
+  { ns: /^\s*--ease-([a-z0-9-]+)\s*:/gm, prefixes: ['ease'] },
+];
+
+/** 候補のクラス名を theme.css から組み立てる */
+const parityCandidates = () => {
+  const themeCss = readFileSync(join(dist, 'theme.css'), 'utf8');
+  const out = new Set();
+  for (const { ns, prefixes } of NAMESPACE_UTILITIES) {
+    for (const m of themeCss.matchAll(ns)) {
+      // 鍵の小数点は CSS の識別子としてエスケープされている（--transition-duration-141\.4）
+      const step = m[1].replace(/\\/g, '');
+      for (const p of prefixes) out.add(`${p}-${step}`);
+    }
+  }
+  return [...out].sort();
+};
+
+/** `:root` と `@theme` が宣言している変数。値を解決するために要る */
+const cssVariables = (css) => {
+  const vars = new Map();
+  for (const re of [/:root[^{]*\{([^}]*)\}/g, /@theme[^{]*\{([^}]*)\}/g]) {
+    for (const block of css.matchAll(re)) {
+      for (const d of block[1].matchAll(/(--[a-zA-Z0-9._-]+)\s*:\s*([^;]+);/g)) vars.set(d[1], d[2].trim());
+    }
+  }
+  return vars;
+};
+
+/** クラスセレクタ1つだけの規則を「クラス名 → 宣言の並び」で取り出す */
+const simpleRules = (css) => {
+  const out = new Map();
+  let last = 0;
+  const stack = [];
+  for (let i = 0; i < css.length; i++) {
+    const c = css[i];
+    if (c === '{') {
+      stack.push({ prelude: css.slice(last, i).trim(), start: i + 1 });
+      last = i + 1;
+    } else if (c === '}') {
+      const top = stack.pop();
+      if (top) {
+        const m = top.prelude.match(/^\.((?:\\.|[A-Za-z0-9_-])+)$/);
+        if (m) out.set(unescapeClass(m[1]), css.slice(top.start, i));
+      }
+      last = i + 1;
+    } else if (c === ';') {
+      last = i + 1;
+    }
+  }
+  return out;
+};
+
+/** `var()` を再帰的に解いて、値どうしを比べられる形にする */
+const resolveVars = (value, vars, depth = 0) => {
+  if (depth > 10) return value;
+  return value.replace(/var\((--[a-zA-Z0-9._-]+)(?:\s*,[^)]*)?\)/g, (whole, name) =>
+    vars.has(name) ? resolveVars(vars.get(name), vars, depth + 1) : whole,
+  );
+};
+
+/**
+ * 値を正規化する。**書き方の違いを潰して、値だけを比べる。**
+ *
+ *   calc(0.25rem * 4)      → 1rem      素の Tailwind は倍数で書く
+ *   calc(infinity * 1px)   → 9999px    rounded-full の書き方が違う
+ *   0px / 0rem             → 0
+ */
+const normalizeValue = (raw) => {
+  let v = raw.trim();
+  const mul = v.match(/^calc\(\s*([\d.]+)(rem|px|ms|s|em)\s*\*\s*([\d.]+)\s*\)$/);
+  if (mul) v = `${+(Number(mul[1]) * Number(mul[3])).toFixed(6)}${mul[2]}`;
+  v = v.replace(/^calc\(\s*infinity\s*\*\s*1px\s*\)$/, '9999px');
+  v = v.replace(/^0(px|rem|ms|s|em)$/, '0');
+  const num = v.match(/^([\d.]+)(rem|px|ms|s|em)$/);
+  if (num) v = `${+Number(num[1]).toFixed(6)}${num[2]}`;
+  return v;
+};
+
+/** 宣言の並びを、順序に依存しない正規形にする */
+const normalizeBody = (body, vars) =>
+  body
+    .split(';')
+    .map((d) => d.trim())
+    .filter(Boolean)
+    .map((d) => {
+      const at = d.indexOf(':');
+      if (at === -1) return d;
+      return `${d.slice(0, at).trim()}:${normalizeValue(resolveVars(d.slice(at + 1), vars))}`;
+    })
+    .sort()
+    .join('; ');
+
+/**
+ * 2つの CSS を突き合わせて、同名クラスで値が違うものを返す。
+ * **純粋な関数にしてある。** 対照をフィクスチャの文字列で当てられるようにするため。
+ */
+const valueMismatches = (oursCss, stockCss) => {
+  const ourVars = cssVariables(oursCss);
+  const stockVars = cssVariables(stockCss);
+  const ours = simpleRules(oursCss);
+  const stock = simpleRules(stockCss);
+  const out = [];
+  let shared = 0;
+  for (const [cls, body] of ours) {
+    if (!stock.has(cls)) continue;
+    shared += 1;
+    const a = normalizeBody(body, ourVars);
+    const b = normalizeBody(stock.get(cls), stockVars);
+    if (a !== b) out.push({ what: cls, ours: a, stock: b });
+  }
+  return { shared, mismatches: out };
+};
+
+/**
+ * **一致しないことを許す名前**（教訓5 の許可リスト方式）。
+ * **足すときは理由を書く。** 理由が書けないなら、写像の側を直すべき事案である。
+ */
+const PARITY_ALLOW = new Map([
+  [
+    'ease-in-out',
+    '決定1-14。**イージングは値を持たない。** 観測4本にカスタムの cubic-bezier は1件も無く、' +
+      '使われていたのは CSS の組み込み語だけだった。--ease-* のリセットで ease-in-out が' +
+      '消えていたので、**語をそのまま戻している**（--ease-in-out: ease-in-out）。' +
+      '素の Tailwind は cubic-bezier(0.4, 0, 0.2, 1) を当てるので値は一致しないが、' +
+      '**こちらは値を決めていない**ので、写像を直す事案ではない',
+  ],
+]);
+
+/* ============================================================
    対照 — 検出器が発火し、通すべきものを落とさないことを毎回確かめる（教訓2）
    ============================================================ */
 
@@ -311,6 +499,30 @@ const fixtureDir = (name, source) => {
 const failures = [];
 
 {
+  /**
+   * 比較器そのものの対照。**CSS の文字列で当てる。**
+   * 0 件は「検出器が壊れている」と区別がつかない（教訓2）。
+   */
+  const OURS = ':root { --sg-space-4: 1rem; }\n.p-4 { padding: var(--sg-space-4); }\n.gap-2 { gap: 0.5rem; }\n';
+  const STOCK_SAME = ':root { --spacing: 0.25rem; }\n.p-4 { padding: calc(var(--spacing) * 4); }\n.gap-2 { gap: calc(var(--spacing) * 2); }\n';
+  const STOCK_DIFF = ':root { --spacing: 0.25rem; }\n.p-4 { padding: calc(var(--spacing) * 5); }\n.gap-2 { gap: calc(var(--spacing) * 2); }\n';
+
+  const same = valueMismatches(OURS, STOCK_SAME);
+  if (same.shared !== 2) failures.push(`比較器が同名クラスを2件見つけられていない（${same.shared} 件）`);
+  if (same.mismatches.length) {
+    failures.push(`比較器が、値の一致するものを不一致と報告した: ${same.mismatches.map((m) => m.what).join(' ')}`);
+  }
+
+  const diff = valueMismatches(OURS, STOCK_DIFF);
+  if (!diff.mismatches.some((m) => m.what === 'p-4')) {
+    failures.push('比較器が、値の違う p-4 を検出できていない');
+  }
+  if (diff.mismatches.some((m) => m.what === 'gap-2')) {
+    failures.push('比較器が、値の同じ gap-2 を不一致と報告した');
+  }
+}
+
+{
   const { found } = violationsIn(fixtureDir('neg', NEGATIVE));
   for (const e of NEGATIVE_EXPECT) {
     if (!found.some((v) => v.kind === e.kind && v.what === e.what)) {
@@ -369,6 +581,19 @@ const { classes, found } = violationsIn(TARGET);
 const dropped = droppedClasses(TARGET);
 
 /**
+ * 同名クラスの値が一致すること（決定6-5）。
+ * **対象は `packages/ui` ではなく、生成物から導いた候補一覧である。**
+ * コンポーネントが実際に使ったものだけを見ると、**まだ書かれていない写像のずれに
+ * 気づけない。** 危険は「書いたか」ではなく「両方が生成しうるか」で決まる。
+ */
+const parityDir = fixtureDir('parity', `export const all = \`${parityCandidates().join(' ')}\`;\n`);
+const parity = valueMismatches(
+  compile(parityDir).replace(COMMENT, ''),
+  compile(parityDir, { stock: true }).replace(COMMENT, ''),
+);
+const parityFailures = parity.mismatches.filter((m) => !PARITY_ALLOW.has(m.what));
+
+/**
  * 違反したクラスがソースのどこにあるかを探す。
  * **生成された CSS にはクラス名しか残らない**ので、位置は後から引き当てる。
  * 間接の向こう側にあっても、文字列としては書かれているので見つかる。
@@ -419,6 +644,24 @@ if (found.length) {
   process.exit(1);
 }
 
+if (parityFailures.length) {
+  console.error('同名のクラスで、素の Tailwind と値が食い違っています。\n');
+  for (const m of parityFailures) {
+    console.error(`  ✗ .${m.what}`);
+    console.error(`      我々: ${m.ours}`);
+    console.error(`      素  : ${m.stock}`);
+  }
+  console.error(
+    '\nドキュメントサイトは chrome を素の Tailwind、プレビューを我々のアダプタで' +
+      '\n別々にビルドし、同じページに載せます（決定6-4）。同名で値が違うと、' +
+      '\n**読み込み順で勝った方が効き、どちらかが黙って変わります**（教訓4）。\n' +
+      '\n直し方は2つです。' +
+      '\n  1. 写像する Tailwind 名を、値の一致するものに変える（決定3-3 の作法）' +
+      '\n  2. 一致しないことに理由があるなら PARITY_ALLOW に理由つきで足す',
+  );
+  process.exit(1);
+}
+
 if (dropped.length) {
   console.error('書かれているのに CSS が生成されないクラスがあります。\n');
   for (const cls of dropped) {
@@ -456,6 +699,10 @@ console.log(
 );
 console.log(`✓ ${TARGET.replace(`${process.cwd()}/`, '')} が生成したクラス ${classes.size} 件に違反なし`);
 console.log('✓ 書かれているのに生成されないクラスは無い（決定6-3）');
+console.log(
+  `✓ 素の Tailwind と同名になる ${parity.shared} 件のクラスは、すべて値が一致する（決定6-5）` +
+    (PARITY_ALLOW.size ? `。例外 ${PARITY_ALLOW.size} 件は理由つきで許可` : ''),
+);
 if (classes.size === 0) {
   console.log(
     '  **ただし生成されたクラスは 0 件である。** いま守っているものは無い（教訓2）。' +
