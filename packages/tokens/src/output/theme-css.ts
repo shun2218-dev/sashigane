@@ -142,9 +142,24 @@ const colorUtilities = (palette: Palette): string[] => {
 
   const status = ['danger', 'warning', 'success', 'info'] as const;
 
-  // 文字
+  /*
+   * 文字。**輪郭にも出す。**
+   *
+   * 境界の役割はどの段も**自分が乗る面に対して 3:1 に届かない**
+   * （最も強い `border-strong` でも、ページの面の上で 2.67。実測）。
+   * 入力欄のように**線が無いと部品だと分からないもの**には足りない。
+   *
+   * 文字の役割なら届く（`faint` で 3.46）。境界には過剰だが、
+   * **過剰な側に外れるぶんには保証は崩れない**——決定6-30 と同じ理由である。
+   *
+   * **`border-` には出さない。** 出すと `border-default` という名前ができるが、
+   * これは「既定の境界」ではなく**文字色**を指す。
+   * 境界の役割は `border-border` なので、取り違えても検査は捕まえない
+   * （card-parts.tsx の覚書が先に警告している）。輪郭側は `outline-border` と
+   * 名前が離れているので、この罠が無い。
+   */
   for (const n of ['default', 'muted', 'faint'] as const)
-    emit(n, ['text'], `--sg-color-text-${n}`);
+    emit(n, ['text', 'outline'], `--sg-color-text-${n}`);
   /*
    * 文字の役割は境界にも出す（決定6-30）。
    *
@@ -162,10 +177,19 @@ const colorUtilities = (palette: Palette): string[] => {
   for (const n of ['accent', ...status] as const)
     emit(`${n}-mark`, ['fill', 'stroke', 'border'], `--sg-color-${n}-mark`);
 
-  // 境界
-  emit('border', ['border'], '--sg-color-border-default');
-  emit('border-subtle', ['border'], '--sg-color-border-subtle');
-  emit('border-strong', ['border'], '--sg-color-border-strong');
+  /*
+   * 境界。**輪郭にも出す。**
+   *
+   * `border-focus` だけが `outline-` を持ち、他の3つが持っていない状態だった。
+   * 同じ族の中の非対称は、利用側から見ると**書ける場所と書けない場所の差**になる（教訓7）。
+   *
+   * 実際に詰まった。**線の太さを変えても何も動かない**ようにするには輪郭が要る——
+   * `border` の幅を変えると箱の高さが変わり、下にあるものがずれる。
+   * 中立色の輪郭が無かったため、入力欄は輪郭を使えなかった。
+   */
+  emit('border', ['border', 'outline'], '--sg-color-border-default');
+  emit('border-subtle', ['border', 'outline'], '--sg-color-border-subtle');
+  emit('border-strong', ['border', 'outline'], '--sg-color-border-strong');
   emit('border-focus', ['border', 'outline'], '--sg-color-border-focus');
 
   // 淡い塗りと、その上の文字

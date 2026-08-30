@@ -2,18 +2,23 @@
  * ── 維持する側への覚書 ───────────────────────────────
  *
  * **見た目は Input と同じものを使う。** 別に書くと、片方だけ直したときにずれる。
+ * 器（`frame`）も中身（`control`）も Input から借りている。
  *
  * 高さだけが違う。**行数は利用側が決める**（`rows`）——
  * 何行が適切かは中身の事情であって、システムの事情ではない。
  * ─────────────────────────────────────────────
  */
-import type { VariantProps } from 'class-variance-authority';
 import type { Ref, TextareaHTMLAttributes } from 'react';
-import { control } from '../input/input.tsx';
+import { control, frame, stateOf } from '../input/input.tsx';
 
-export interface TextareaProps
-  extends TextareaHTMLAttributes<HTMLTextAreaElement>,
-    VariantProps<typeof control> {
+export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+  /**
+   * 満たしていることを示す。**誤りとは別の仕組みで受け取る。**
+   *
+   * 誤りには `aria-invalid` という標準の属性があるが、
+   * **満たしていることを表す属性は無い**ので、props で受け取るしかない。
+   */
+  valid?: boolean;
   ref?: Ref<HTMLTextAreaElement>;
 }
 
@@ -26,13 +31,22 @@ export interface TextareaProps
  * 何行が適切かは中身の事情であって、システムの事情ではない。
  */
 export function Textarea({ valid, className, ...props }: TextareaProps) {
-  const classes = `${control({ valid })} min-h-24`;
+  const state = stateOf(valid, props['aria-invalid']);
+  const outer = frame({ state });
+  // 式の中で組み立てない。cva の呼び出しを補間の中へ直接置くと、
+  // 静的解析の検査が読み切れずに落ちる
+  const inner = `${control({ state })} min-h-24`;
   return (
-    <textarea
-      data-sg-component="textarea"
-      data-sg-surface="inset"
-      className={className ? `${classes} ${className}` : classes}
-      {...props}
-    />
+    <div
+      data-sg-component="textarea-frame"
+      className={className ? `${outer} ${className}` : outer}
+    >
+      <textarea
+        data-sg-component="textarea"
+        data-sg-surface="inset"
+        className={inner}
+        {...props}
+      />
+    </div>
   );
 }

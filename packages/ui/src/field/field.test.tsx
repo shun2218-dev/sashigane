@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
+import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { Input } from '../input/input.tsx';
 import { Field } from './field.tsx';
@@ -18,6 +20,17 @@ const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}<
 const inputIn = (container: HTMLElement) => {
   const el = container.querySelector('input');
   if (!el) throw new Error('入力が描画されていません');
+  return el;
+};
+
+/**
+ * 線を描くのは入力そのものではなく、**外側の器**である。
+ * 面を宣言した要素の中では色がその面の段で解決され、
+ * **誤りの文言と別の赤**になるため（決定6-34）。
+ */
+const frameIn = (container: HTMLElement) => {
+  const el = container.querySelector('[data-sg-component="input-frame"]');
+  if (!el) throw new Error('器が描画されていません');
   return el;
 };
 
@@ -140,8 +153,8 @@ describe('誤りの見た目', () => {
         </Field>,
       ),
     );
-    const border = (el: Element) => getComputedStyle(el).borderTopColor;
-    expect(border(inputIn(bad.container))).not.toBe(border(inputIn(plain.container)));
+    const lineColor = (c: HTMLElement) => getComputedStyle(frameIn(c)).outlineColor;
+    expect(lineColor(bad.container)).not.toBe(lineColor(plain.container));
   });
 });
 
@@ -151,11 +164,11 @@ describe('誤りの見た目', () => {
  * 測るのは3つである。
  *
  *   **誤りと同じ見た目にならないこと** — 同じなら状態を分けた意味が無い
- *   **境界が太いこと** — 1px では色の面積が足りず、違いが読み取りにくい
+ *   **線が太いこと** — 1px では色の面積が足りず、違いが読み取りにくい
  *   **印が読み上げに出ないこと** — 出ても「チェック」としか言わない
  */
 describe('満たしていること', () => {
-  it('境界が誤りとも通常とも違う', async () => {
+  it('線が誤りとも通常とも違う', async () => {
     const plain = await render(
       onSurface(
         <Field id="v1" label="札">
@@ -177,13 +190,17 @@ describe('満たしていること', () => {
         </Field>,
       ),
     );
-    const border = (c: HTMLElement) => getComputedStyle(inputIn(c)).borderTopColor;
-    const seen = new Set([border(plain.container), border(ok.container), border(bad.container)]);
+    const lineColor = (c: HTMLElement) => getComputedStyle(frameIn(c)).outlineColor;
+    const seen = new Set([
+      lineColor(plain.container),
+      lineColor(ok.container),
+      lineColor(bad.container),
+    ]);
     // **3つとも違うこと。** 潰れていたら状態を分けた意味が無い
     expect(seen.size).toBe(3);
   });
 
-  it('状態の境界は通常より太い', async () => {
+  it('状態の線は通常より太い', async () => {
     const plain = await render(
       onSurface(
         <Field id="w1" label="札">
@@ -205,7 +222,7 @@ describe('満たしていること', () => {
         </Field>,
       ),
     );
-    const w = (c: HTMLElement) => Number.parseFloat(getComputedStyle(inputIn(c)).borderTopWidth);
+    const w = (c: HTMLElement) => Number.parseFloat(getComputedStyle(frameIn(c)).outlineWidth);
     // **1px では色の面積が足りず、違いが読み取りにくい**
     expect(w(ok.container)).toBeGreaterThan(w(plain.container));
     expect(w(bad.container)).toBeGreaterThan(w(plain.container));
@@ -256,5 +273,89 @@ describe('満たしていること', () => {
     // **両方は成り立たない**
     expect(container.querySelector('[data-sg-component="icon-check"]')).toBeNull();
     expect(inputIn(container).getAttribute('aria-invalid')).toBe('true');
+  });
+});
+
+/**
+ * 状態が変わっても入力が続けられること。
+ *
+ * **入力中に誤りと満たしているが入れ替わる。** そこで入力が描き直されると、
+ * **打っている最中にフォーカスが外れる。**
+ *
+ * 見た目には何も出ない——文字が入らなくなるだけである。
+ */
+const Toggling = () => {
+  const [value, setValue] = useState('');
+  const short = value.length > 0 && value.length < 3;
+  return (
+    <Field
+      id="tg"
+      label="札"
+      valid={value.length >= 3}
+      error={short ? '短い' : undefined}
+    >
+      <Input value={value} onChange={(e) => setValue(e.target.value)} />
+    </Field>
+  );
+};
+
+describe('入力中に状態が変わるとき', () => {
+  it('誤りから満たしているへ変わっても、打ち続けられる', async () => {
+    const { container } = await render(onSurface(<Toggling />));
+    await userEvent.click(inputIn(container));
+    // 3文字目で満たしている側へ変わる。**そこで描き直されると4文字目が入らない**
+    await userEvent.keyboard('abcd');
+    expect(inputIn(container).value).toBe('abcd');
+    expect(document.activeElement).toBe(inputIn(container));
+  });
+
+  it('状態が変わると、線と印がその場で追従する', async () => {
+    const { container } = await render(onSurface(<Toggling />));
+    const field = () => container.querySelector('[data-sg-component="field"]') as HTMLElement;
+    const mark = () => field().querySelector('svg');
+    const lineColor = () => getComputedStyle(frameIn(container)).outlineColor;
+
+    await userEvent.click(inputIn(container));
+    await userEvent.keyboard('ab');
+    // **遷移の途中を読まない。** 計算値が遷移前のまま返る
+    await expect.poll(() => mark()).toBe(null);
+    const bad = lineColor();
+
+    await userEvent.keyboard('c');
+    /*
+     * **フォーカスが残ることだけを測っていた。** 器を常に置くように変えたとき、
+     * 見た目が追従することは1件も測っていなかった——
+     * 印が出なくなっても、線が変わらなくなっても、落ちない状態だった。
+     *
+     * **「別の色」では足りない。** 満たしている表示を渡さなくなっても、
+     * 誤りが消えたぶん通常の色へ動くので、違う色にはなる。
+     * 止まった先が**満たしている色そのもの**であることまで測る。
+     */
+    const reference = await render(
+      onSurface(
+        <Field id="ref" label="札" valid>
+          <Input />
+        </Field>,
+      ),
+    );
+    const success = getComputedStyle(frameIn(reference.container)).outlineColor;
+    await expect.poll(() => mark()).not.toBe(null);
+    await expect.poll(() => lineColor()).toBe(success);
+    const ok = lineColor();
+
+    await userEvent.keyboard('{Backspace}');
+    await expect.poll(() => mark()).toBe(null);
+    await expect.poll(() => lineColor()).toBe(bad);
+    expect(ok).not.toBe(bad);
+  });
+
+  it('満たしているから誤りへ戻っても、打ち続けられる', async () => {
+    const { container } = await render(onSurface(<Toggling />));
+    await userEvent.click(inputIn(container));
+    await userEvent.keyboard('abc');
+    // 3文字目を消すと誤りの側へ戻る。**逆向きでも同じことが起きる**
+    await userEvent.keyboard('{Backspace}{Backspace}');
+    expect(inputIn(container).value).toBe('a');
+    expect(document.activeElement).toBe(inputIn(container));
   });
 });

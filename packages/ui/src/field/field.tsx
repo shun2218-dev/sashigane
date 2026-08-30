@@ -11,9 +11,16 @@
  * **配線は Slot で子へ移す。** 子が1つだけという制約は `asChild` と同じ形で、
  * 仕組みも共有している——移し方が2つになると、壊れるまで誰も気づかない。
  *
+ * **移し方は子を勝たせる。** つまり入力の側で `id` を書くと、
+ * こちらが渡した `id` が消える。札は元の `id` を指したままなので、
+ * **結びつきだけが静かに切れる。** 見た目は正常で、読み上げだけが黙る。
+ * だから**重なるものが来たら投げる。**
+ * `register()` が返す `name` / `onChange` / `onBlur` / `ref` は重ならない。
+ *
  * **説明でクラス名に触れるときは `{}` で囲む。**
  * ─────────────────────────────────────────────
  */
+import { isValidElement } from 'react';
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import { IconCheck } from '../icon/icon.tsx';
 import { Slot } from '../internal/slot.tsx';
@@ -69,6 +76,9 @@ export interface FieldProps extends Omit<HTMLAttributes<HTMLDivElement>, 'childr
   ref?: Ref<HTMLDivElement>;
 }
 
+/** 配線に使う props。**入力の側で書かれると、こちらが渡したものが消える** */
+const WIRED = ['id', 'aria-describedby', 'aria-invalid'] as const;
+
 export function Field({
   id,
   label,
@@ -82,12 +92,35 @@ export function Field({
 }: FieldProps) {
   // **両方は成り立たない。** 誤りが勝つ
   const showValid = valid && !error;
+
+  /*
+   * **黙って通さない。** 移し方は子を勝たせるので、
+   * 入力の側で配線を書かれると**こちらの配線が消える。**
+   * 消えても見た目は正常で、読み上げだけが黙る。
+   */
+  if (isValidElement(children)) {
+    const own = children.props as Record<string, unknown>;
+    const taken = WIRED.filter((key) => own[key] !== undefined);
+    if (taken.length > 0) {
+      throw new Error(
+        `Field の中の入力に ${taken.join(' / ')} を書かないでください。` +
+          'これらは Field が札と誤りに結びつけるために渡します——' +
+          '入力の側で書くと、こちらが渡したものが消えて結びつきだけが切れます。' +
+          '見た目は正常なままなので気づけません。',
+      );
+    }
+  }
   const descriptionId = description ? `${id}-description` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   // **両方あるときは両方渡す。** 片方だけにすると、もう片方が読み上げに届かない
   const describedBy = [descriptionId, errorId].filter(Boolean).join(' ') || undefined;
 
-  const classes = 'flex flex-col gap-1';
+  /*
+   * 間隔は入力の輪郭を見込んである。**輪郭は箱の外へ出る**ので、
+   * 隙間をそのぶん食う。フォーカス中の誤りは 3px まで太るため、
+   * 4px だと線が説明文にほとんど触れる。
+   */
+  const classes = 'flex flex-col gap-2';
   return (
     <div
       data-sg-component="field"
@@ -108,35 +141,42 @@ export function Field({
       {/*
         配線を子へ移す。**利用側が書き忘れる余地を作らない。**
 
-        満たしているときは印を重ねるので、**入力を包む。**
-        包むのはそのときだけである——常に包むと、
-        中身の無い器が全部の欄に増える。
-      */}
-      {showValid ? (
-        <div className="relative flex flex-col">
-          <Slot id={id} required={required} aria-describedby={describedBy} valid>
-            {children}
-          </Slot>
-          {/*
-            印は読み上げから隠れている。**満たしていることは境界が伝える**——
-            印を読ませても「チェック」としか言わない。
+        ## 器は状態によらず常に置く
 
-            ここで `aria-hidden` を書いていないのは、**Icon の既定がそうだから**である。
-            書くと同じことが2箇所に並び、片方だけ直したときにずれる。
-            **重複を外したとき、壊し方が1件も落ちなくなって気づいた。**
-          */}
-          <IconCheck size="sm" className="pointer-events-none absolute end-3 top-3 text-success" />
-        </div>
-      ) : (
+        印を重ねるために入力を包む必要があるが、**包むのを満たしているときだけに
+        していた。** 状態が変わるとその位置の要素の型が変わるので、
+        **React が入力を作り直す。**
+
+        入力中に誤りと満たしているが入れ替わると、**打っている最中に
+        フォーカスが外れる。** 見た目には何も出ない——文字が入らなくなるだけである。
+        `xxx@gmail.c` まで打ったところで切り替わり、その先が打てなくなっていた。
+
+        **中身の無い器が増えるのを嫌って条件つきにしていた。** 代償が合っていない。
+      */}
+      <div className="relative flex flex-col">
         <Slot
           id={id}
           required={required}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
+          // **満たしていないときは渡さない。** `false` を渡すと、
+          // 素の `input` を子に置いた利用側で不明な属性になる
+          valid={showValid || undefined}
         >
           {children}
         </Slot>
-      )}
+        {/*
+          印は読み上げから隠れている。**満たしていることは線が伝える**——
+          印を読ませても「チェック」としか言わない。
+
+          ここで `aria-hidden` を書いていないのは、**Icon の既定がそうだから**である。
+          書くと同じことが2箇所に並び、片方だけ直したときにずれる。
+          **重複を外したとき、壊し方が1件も落ちなくなって気づいた。**
+        */}
+        {showValid ? (
+          <IconCheck size="sm" className="pointer-events-none absolute end-3 top-3 text-success" />
+        ) : null}
+      </div>
 
       {description ? (
         <p data-sg-component="field-description" id={descriptionId} className="text-caption text-muted">

@@ -4,6 +4,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { examples } from '../generated/examples';
 import props from '../generated/props.json';
 import sources from '../generated/sources.json';
+import { previewProps } from './preview.tsx';
 
 /**
  * コンポーネントの展示。**中身は全部、例と型から出る**（決定6-4）。
@@ -100,15 +101,8 @@ export function ComponentDemo({ name }: { name: string }) {
       */}
       <Tabs items={['表示', 'ソース']}>
         <Tab value="表示">
-          {/*
-            例の描画。**面の文脈を page に置く**ので、中の Card が1段深くなる（決定5-12）。
-
-            `data-sg-preview` はプレビュー用 CSS の効く範囲である。
-            この目印の中だけに限定していないと、preflight と汎用ユーティリティが
-            サイト外枠に当たり、外枠側の変種を後勝ちで潰す
-            （`scripts/scope-preview-css.mjs`）。
-          */}
-          <div data-sg-preview data-sg-surface="page" className="flex flex-col gap-4">
+          {/* 器は `preview.tsx` が持つ。**面の宣言と本文スタイルの遮断が要る** */}
+          <div {...previewProps('flex flex-col gap-4')}>
             <Example />
           </div>
         </Tab>
