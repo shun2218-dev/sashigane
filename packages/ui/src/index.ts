@@ -14,6 +14,9 @@ export {
 } from './accordion/index.ts';
 export { Badge, type BadgeProps } from './badge/index.ts';
 export { Button, type ButtonProps } from './button/index.ts';
+export { Field, type FieldProps } from './field/index.ts';
+export { Input, type InputProps } from './input/index.ts';
+export { Textarea, type TextareaProps } from './textarea/index.ts';
 export { defineIcon, IconX, IconPlus, IconChevronDown, type IconProps } from './icon/index.ts';
 export {
   Card,
