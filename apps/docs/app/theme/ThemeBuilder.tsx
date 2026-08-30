@@ -291,8 +291,20 @@ export const ThemeBuilder = () => {
   const [hex, setHex] = useState('#3b82f6');
   const palette = useMemo(() => generatePalette(hexToOklch(hex)), [hex]);
   const css = useMemo(() => toTokensCss(palette), [palette]);
-  /** 独立したサンプルページへ、選んだ色をそのまま渡す */
-  const sampleHref = `/sample?primary=${encodeURIComponent(hex)}`;
+  /**
+   * 独立したサンプルページへ渡すもの。**埋め込まないので状態はここに残らない。**
+   * 以前は iframe の中の属性を触っていたが、別の URL になったのでパラメータで渡す。
+   */
+  const [theme, setTheme] = useState('');
+  const [density, setDensity] = useState('');
+  const [brand, setBrand] = useState(false);
+  const sampleHref = useMemo(() => {
+    const p = new URLSearchParams({ primary: hex });
+    if (theme) p.set('theme', theme);
+    if (density) p.set('density', density);
+    if (brand) p.set('brand', 'on');
+    return `/sample?${p}`;
+  }, [hex, theme, density, brand]);
   const [copied, setCopied] = useState(false);
 
   return (
@@ -338,10 +350,38 @@ export const ThemeBuilder = () => {
         同じドキュメントに入れるとこのページの見た目まで巻き込む。
         以前は iframe で隔離していたが、**別のページにすれば隔離そのものが要らない。**
       */}
+      <div className="sample-controls">
+        <label>
+          テーマ
+          <select value={theme} onChange={(e) => setTheme(e.target.value)}>
+            <option value="">OS に従う</option>
+            <option value="light">明色に固定</option>
+            <option value="dark">暗色に固定</option>
+          </select>
+        </label>
+        <label>
+          密度
+          <select value={density} onChange={(e) => setDensity(e.target.value)}>
+            <option value="">画面幅に従う</option>
+            <option value="compact">compact</option>
+            <option value="default">default</option>
+            <option value="comfortable">comfortable</option>
+          </select>
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={brand} onChange={(e) => setBrand(e.target.checked)} />
+          見出しに書体を差す
+        </label>
+      </div>
       <p>
         <a className="sample-link" href={sampleHref} target="_blank" rel="noreferrer">
           このテーマでサンプルページを開く →
         </a>
+      </p>
+      <p className="note">
+        密度は画面幅に従うのが既定です（決定1-12）。画面幅そのものは、開いた先の
+        ブラウザ窓を狭めれば確かめられます——<strong>以前 iframe の幅を選ばせていたのは、
+        埋め込んでいたからです。</strong>
       </p>
 
       <section>
