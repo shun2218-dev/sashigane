@@ -640,30 +640,37 @@ describe('読み込み中', () => {
   });
 
   it('沈まない。無効とは見た目が違う', async () => {
+    /*
+     * **別々に描いた2つの計算値を突き合わせない。**
+     *
+     * この器は `transition-colors` を持つので、読む時点によって
+     * 補間の途中の値が返る。同じ色でも書き方が変わる
+     * （`oklch(...)` が `oklab(...)` になる）ので文字列の比較が落ちる。
+     * 両側を待つ形にしてもなお CI で落ちた——**2つの木が別々に落ち着く**ためである。
+     *
+     * 代わりに**宣言そのもの**を比べる。同じ塗りを宣言していれば、
+     * 背景も前景も同じ規則から来る。これは時点に依らない。
+     */
     const loading = await render(onSurface(<Button loading>x</Button>));
     const off = await render(onSurface(<Button disabled>x</Button>));
     const plain = await render(onSurface(<Button>x</Button>));
 
     const l = buttonIn(loading.container);
+    const o = buttonIn(off.container);
+
     // **面を宣言しない。** 宣言すると背景と前景が同時に沈む
     expect(l.getAttribute('data-sg-surface')).toBeNull();
-    expect(buttonIn(off.container).getAttribute('data-sg-surface')).toBe('inset');
+    expect(o.getAttribute('data-sg-surface')).toBe('inset');
 
-    /*
-     * 塗りは通常のまま残る。
-     *
-     * **遷移が終わるまで待つ。** この器は transition-colors を持っているので、
-     * 直後に読むと**補間の途中の値**が返る。同じ色でも書き方が変わる
-     * （`oklch(...)` ではなく `oklab(...)` になる）ので、
-     * 文字列の比較が落ちる。CI で実際に落ちた。
-     */
-    const plainEl = buttonIn(plain.container);
-    // **両側を待つ。** 片側だけを1回読むと、そちらが補間の途中だったときに
-    // 比べる相手そのものが間違った値になる（実際に落ちた）
-    await expect
-      .poll(() => styleOf(l).background === styleOf(plainEl).background)
-      .toBe(true);
-    expect(styleOf(l).background).not.toBe(styleOf(buttonIn(off.container)).background);
+    // 塗りの宣言が通常のものと同じであること
+    expect(l.getAttribute('data-sg-fill')).toBe(
+      buttonIn(plain.container).getAttribute('data-sg-fill'),
+    );
+    // **無効は塗りを宣言しない。** 沈んだうえに塗りが残ると「押せそうに見えて押せない」
+    expect(o.getAttribute('data-sg-fill')).toBeNull();
+
+    // 見た目としても違うこと。**落ち着くまで待つ**
+    await expect.poll(() => styleOf(l).background !== styleOf(o).background).toBe(true);
   });
 
   it('文字は残る', async () => {

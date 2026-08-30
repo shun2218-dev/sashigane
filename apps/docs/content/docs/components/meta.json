@@ -4,6 +4,7 @@
     "card",
     "button",
     "badge",
+    "separator",
     "spinner"
   ]
 }
