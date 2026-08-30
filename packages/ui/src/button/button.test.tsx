@@ -468,3 +468,134 @@ describe('asChild', () => {
     ).toThrow(/1つだけ/);
   });
 });
+
+/**
+ * アイコン（決定6-17）。
+ *
+ * 測るのは2つである。
+ *
+ *   **正方形になり、文字のボタンと高さが揃うこと** — 揃わないと横に並べられない
+ *   **名前の無いものが通らないこと** — 書き忘れても見た目は正常なので、
+ *   これは実行時に落とすしかない
+ */
+describe('塗り方によらない寸法', () => {
+  it('4種の高さが揃う', async () => {
+    const { container } = await render(
+      onSurface(
+        <>
+          <Button variant="solid">x</Button>
+          <Button variant="subtle">x</Button>
+          <Button variant="outline">x</Button>
+          <Button variant="ghost">x</Button>
+        </>,
+      ),
+    );
+    const heights = new Set(
+      [...container.querySelectorAll('button')].map((b) =>
+        Math.round(b.getBoundingClientRect().height),
+      ),
+    );
+    /*
+     * **1つに揃うこと。** 塗りと枠だけが境界を持っていたとき、
+     * 境界の 2px ぶんだけ 42 と 40 に割れて**同じ列で揃っていなかった。**
+     */
+    expect(heights.size).toBe(1);
+  });
+});
+
+describe('アイコン', () => {
+  const Glyph = () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M4 4l8 8" stroke="currentColor" />
+    </svg>
+  );
+
+  /** 行の高さと同じ大きさ（`size-6` = 24px） */
+  const Big = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 6l12 12" stroke="currentColor" />
+    </svg>
+  );
+
+  it('アイコンだけのボタンは左右の余白が詰まる', async () => {
+    const text = await render(onSurface(<Button>文字</Button>));
+    const icon = await render(
+      onSurface(
+        <Button iconOnly aria-label="閉じる">
+          <Glyph />
+        </Button>,
+      ),
+    );
+    const px = (el: Element) => Number.parseFloat(getComputedStyle(el).paddingLeft);
+    expect(px(buttonIn(icon.container))).toBeLessThan(px(buttonIn(text.container)));
+  });
+
+  it('行の高さと同じアイコンなら正方形になる', async () => {
+    // 上下の余白を変えていないので、**中身が行の高さと同じなら縦横が揃う**
+    const { container } = await render(
+      onSurface(
+        <Button iconOnly aria-label="閉じる">
+          <Big />
+        </Button>,
+      ),
+    );
+    const r = buttonIn(container).getBoundingClientRect();
+    expect(Math.abs(r.width - r.height)).toBeLessThan(1);
+  });
+
+  it('行の高さと同じアイコンなら、文字のボタンと高さが揃う', async () => {
+    /*
+     * **揃うのは中身が行の高さと同じときだけ**である。
+     * 上下の余白は同じなので、中身の高さがそのまま差になる。
+     *
+     * 縦横を段で固定する道は無い——文字のボタンの高さは段の上に乗っていない。
+     * 固定すると、横に並べたときに**かえって揃わなくなる。**
+     */
+    const { container } = await render(
+      onSurface(
+        <>
+          <Button>文字</Button>
+          <Button iconOnly aria-label="閉じる">
+            <Big />
+          </Button>
+          <Button iconOnly aria-label="小さい">
+            <Glyph />
+          </Button>
+        </>,
+      ),
+    );
+    const [text, big, small] = [...container.querySelectorAll('button')];
+    if (!text || !big || !small) throw new Error('Button が3つ描画されていません');
+    expect(big.getBoundingClientRect().height).toBe(text.getBoundingClientRect().height);
+    // **小さいアイコンでは揃わない。** これは仕様であって、測って残しておく
+    expect(small.getBoundingClientRect().height).toBeLessThan(
+      text.getBoundingClientRect().height,
+    );
+  });
+
+  it('文字と並べるとき、アイコンとの間が空く', async () => {
+    const { container } = await render(
+      onSurface(
+        <Button>
+          <Glyph />
+          追加する
+        </Button>,
+      ),
+    );
+    expect(Number.parseFloat(getComputedStyle(buttonIn(container)).columnGap)).toBeGreaterThan(0);
+  });
+
+  it('アイコンだけで名前が無いと落ちる', () => {
+    // 型では塞いであるが、型を持たない側から来ることもある。
+    // **書き忘れても見た目は正常**なので、ここで落とすしかない
+    const props = { iconOnly: true } as unknown as Parameters<typeof Button>[0];
+    expect(() => Button({ ...props, children: <Glyph /> })).toThrow(/aria-label/);
+  });
+
+  it('aria-labelledby でも通る', () => {
+    const props = { iconOnly: true, 'aria-labelledby': 'x' } as unknown as Parameters<
+      typeof Button
+    >[0];
+    expect(() => Button({ ...props, children: <Glyph /> })).not.toThrow();
+  });
+});
