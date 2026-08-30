@@ -33,7 +33,7 @@ hozo-ui は観測対象に含めていない。
 | `bg-inset` | i p s | **凹んだ面**。入力欄、進捗トラック、コードブロック地 |
 | `bg-overlay` | h s | **不透明でなければならない**（下記）。`data-sg-surface="overlay"`（決定5-13） |
 | `bg-hover` | i p h | `data-sg-interactive` で作る面の文脈（決定5-13） |
-| `bg-active` | i p h | **保留。** 2段深い面は梯子に無い（決定5-13） |
+| `bg-active` | i p h | **押下ではなく選択状態だった**（決定6-7 で測り直した）。pylabo は `bg-inset`、holosphere は淡い塗り。**どちらも既存の役割で書ける。** 押下（`:active`）の観測は**4本とも0件** |
 | `bg-decorative-grid` | i | 方眼の描画線。罫線とは別の値を持っている |
 
 **面はすべて不透明なので、下の制約は sashigane では既に満たされている。**
