@@ -1,0 +1,52 @@
+---
+title: Table
+description: 表。横に溢れたら表の中だけが動き、数字の桁は揃う
+---
+
+## 包む枠は自分で描きます
+
+**列が増えると表は必ず溢れます。** 包む枠を利用側に書かせると、
+書き忘れたときに**ページ全体が横に動きます。**
+
+`Table` が枠を描くので、**忘れる道がありません。** 溢れたら表の中だけが動きます。
+
+## `thead` と `tbody` は素のまま書きます
+
+どちらにも当てるものがありません。**中身の無い部品は置いていません。**
+
+```tsx
+<Table>
+  <thead>
+    <TableRow>
+      <TableHeaderCell>距離帯</TableHeaderCell>
+      <TableHeaderCell numeric>本数</TableHeaderCell>
+    </TableRow>
+  </thead>
+  <tbody>
+    <TableRow>
+      <TableCell>5km</TableCell>
+      <TableCell numeric>128</TableCell>
+    </TableRow>
+  </tbody>
+</Table>
+```
+
+## 数字の列は `numeric` を付けます
+
+**右に寄り、桁の幅が揃います。** 揃えないと、上下の行で桁の位置がずれて
+読み比べられません。
+
+見出しの升にも付けてください。**中身と見出しが別の側に寄ると読みにくくなります。**
+
+## 見出しは申告されます
+
+`TableHeaderCell` は既定で**列の見出し**として申告します。
+行の見出しにするときは `scope="row"` を渡してください。
+
+申告しないと、読み上げが**どの升がどの見出しに属するかを言えません。**
+
+## 表そのものは素の `table` です
+
+役割を付け替えていません。**素の `table` が既に表として読まれます。**
+
+<ComponentDemo name="table" />

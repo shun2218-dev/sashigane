@@ -5,6 +5,7 @@
     "button",
     "badge",
     "separator",
-    "spinner"
+    "spinner",
+    "table"
   ]
 }
