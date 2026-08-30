@@ -7,10 +7,13 @@
  * 何行が適切かは中身の事情であって、システムの事情ではない。
  * ─────────────────────────────────────────────
  */
+import type { VariantProps } from 'class-variance-authority';
 import type { Ref, TextareaHTMLAttributes } from 'react';
-import { controlClasses } from '../input/input.tsx';
+import { control } from '../input/input.tsx';
 
-export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface TextareaProps
+  extends TextareaHTMLAttributes<HTMLTextAreaElement>,
+    VariantProps<typeof control> {
   ref?: Ref<HTMLTextAreaElement>;
 }
 
@@ -22,8 +25,8 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
  * 違うのは高さだけである。**行数は利用側が決める**——
  * 何行が適切かは中身の事情であって、システムの事情ではない。
  */
-export function Textarea({ className, ...props }: TextareaProps) {
-  const classes = `${controlClasses} min-h-24`;
+export function Textarea({ valid, className, ...props }: TextareaProps) {
+  const classes = `${control({ valid })} min-h-24`;
   return (
     <textarea
       data-sg-component="textarea"

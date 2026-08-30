@@ -144,3 +144,117 @@ describe('誤りの見た目', () => {
     expect(border(inputIn(bad.container))).not.toBe(border(inputIn(plain.container)));
   });
 });
+
+/**
+ * 満たしていることの表示（決定6-30）。
+ *
+ * 測るのは3つである。
+ *
+ *   **誤りと同じ見た目にならないこと** — 同じなら状態を分けた意味が無い
+ *   **境界が太いこと** — 1px では色の面積が足りず、違いが読み取りにくい
+ *   **印が読み上げに出ないこと** — 出ても「チェック」としか言わない
+ */
+describe('満たしていること', () => {
+  it('境界が誤りとも通常とも違う', async () => {
+    const plain = await render(
+      onSurface(
+        <Field id="v1" label="札">
+          <Input />
+        </Field>,
+      ),
+    );
+    const ok = await render(
+      onSurface(
+        <Field id="v2" label="札" valid>
+          <Input />
+        </Field>,
+      ),
+    );
+    const bad = await render(
+      onSurface(
+        <Field id="v3" label="札" error="誤り">
+          <Input />
+        </Field>,
+      ),
+    );
+    const border = (c: HTMLElement) => getComputedStyle(inputIn(c)).borderTopColor;
+    const seen = new Set([border(plain.container), border(ok.container), border(bad.container)]);
+    // **3つとも違うこと。** 潰れていたら状態を分けた意味が無い
+    expect(seen.size).toBe(3);
+  });
+
+  it('状態の境界は通常より太い', async () => {
+    const plain = await render(
+      onSurface(
+        <Field id="w1" label="札">
+          <Input />
+        </Field>,
+      ),
+    );
+    const ok = await render(
+      onSurface(
+        <Field id="w2" label="札" valid>
+          <Input />
+        </Field>,
+      ),
+    );
+    const bad = await render(
+      onSurface(
+        <Field id="w3" label="札" error="誤り">
+          <Input />
+        </Field>,
+      ),
+    );
+    const w = (c: HTMLElement) => Number.parseFloat(getComputedStyle(inputIn(c)).borderTopWidth);
+    // **1px では色の面積が足りず、違いが読み取りにくい**
+    expect(w(ok.container)).toBeGreaterThan(w(plain.container));
+    expect(w(bad.container)).toBeGreaterThan(w(plain.container));
+  });
+
+  it('印が出て、読み上げには出ない', async () => {
+    const { container } = await render(
+      onSurface(
+        <Field id="v4" label="札" valid>
+          <Input />
+        </Field>,
+      ),
+    );
+    const check = container.querySelector('[data-sg-component="icon-check"]');
+    expect(check).not.toBeNull();
+    // **出ても「チェック」としか言わない。** 状態は境界が伝える
+    expect(check?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('印が文字に重ならない', async () => {
+    const { container } = await render(
+      onSurface(
+        <Field id="v5" label="札" valid>
+          <Input />
+        </Field>,
+      ),
+    );
+    const input = inputIn(container);
+    const check = container.querySelector('[data-sg-component="icon-check"]');
+    if (!check) throw new Error('印が描画されていません');
+    const gap = input.getBoundingClientRect().right - check.getBoundingClientRect().right;
+    // 器の中に収まっていること
+    expect(gap).toBeGreaterThan(0);
+    // **文字の入る幅を空けていること。** 空けないと長い文字が印の下へ潜る
+    expect(Number.parseFloat(getComputedStyle(input).paddingInlineEnd)).toBeGreaterThan(
+      Number.parseFloat(getComputedStyle(input).paddingInlineStart),
+    );
+  });
+
+  it('誤りと同時に渡すと、誤りが勝つ', async () => {
+    const { container } = await render(
+      onSurface(
+        <Field id="v6" label="札" valid error="誤り">
+          <Input />
+        </Field>,
+      ),
+    );
+    // **両方は成り立たない**
+    expect(container.querySelector('[data-sg-component="icon-check"]')).toBeNull();
+    expect(inputIn(container).getAttribute('aria-invalid')).toBe('true');
+  });
+});

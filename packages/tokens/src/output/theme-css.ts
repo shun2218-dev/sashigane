@@ -145,7 +145,18 @@ const colorUtilities = (palette: Palette): string[] => {
   // 文字
   for (const n of ['default', 'muted', 'faint'] as const)
     emit(n, ['text'], `--sg-color-text-${n}`);
-  for (const n of ['accent', ...status] as const) emit(n, ['text'], `--sg-color-${n}`);
+  /*
+   * 文字の役割は境界にも出す（決定6-30）。
+   *
+   * **mark では足りない場面がある。** 深い面の上では mark が要件ぎりぎりまで
+   * 明るい側へ寄るので、赤のように明るい側で彩度が落ちるランプは
+   * **白っぽく見える**（凹んだ面・暗色で C* が 21 まで落ちた）。
+   *
+   * 文字の役割は 4.5:1 を満たす段なので、境界には**過剰な**対比である。
+   * 過剰な側に外れるぶんには保証は崩れない。
+   */
+  for (const n of ['accent', ...status] as const)
+    emit(n, ['text', 'border', 'outline'], `--sg-color-${n}`);
 
   // マーク。文字ではないので 3:1 で足りる（決定5-7）
   for (const n of ['accent', ...status] as const)
