@@ -1,0 +1,49 @@
+---
+title: テーマの切り替え
+description: 明色と暗色をどう切り替えるか
+---
+
+既定では **OS の設定に従います**。`prefers-color-scheme` を見ているので、
+何も書かなくても明色と暗色が切り替わります。
+
+## 固定したいとき
+
+`<html>` に `data-theme` を付けます。
+
+```html
+<html data-theme="dark">
+```
+
+付けなければ OS に従い、付ければその値で固定されます。
+
+## next-themes を使うとき
+
+**`attribute` に `data-theme` を含めてください。** 既定では `class` しか付かないため、
+`class="dark"` は切り替わるのに**色が変わらない**という状態になります。
+
+```tsx
+<ThemeProvider attribute={['class', 'data-theme']}>
+```
+
+サイトの見た目を `class` で組んでいる場合は、上のように**両方**を出すのが確実です。
+
+<Callout type="warn">
+このサイト自身が一度これで壊れていました。ヘッダの切り替えは動くのに、
+コンポーネントのプレビューだけが暗いままだった、という形です。
+`class` と `data-theme` は別の仕組みなので、片方だけでは届きません。
+</Callout>
+
+## 面ごとの深さ
+
+`data-theme` は明暗を決めるだけです。**同じテーマの中の深さ**は
+`data-sg-surface` で宣言します。
+
+```html
+<body data-sg-surface="page">
+  <article data-sg-surface="surface">…</article>
+</body>
+```
+
+深い面では、文字色や境界色が**自動で1段深い値を指します**。
+背景だけを塗る方法は用意していません——塗れてしまうと前景が浅いまま残り、
+読みにくい組み合わせができてもエラーになりません。
