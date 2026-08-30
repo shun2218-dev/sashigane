@@ -1,8 +1,3 @@
-/**
- * コンポーネントの入口。
- *
- * 作る順序は決定6-1 で決めてある。
- * Card → Button → Badge → Separator → Table の順に、1つずつここへ足す。
- */
+/* コンポーネントの入口。Card → Button → Badge → Separator → Table の順に足していく。 */
 export { Button, type ButtonProps } from './button/index.ts';
 export { Card, type CardProps } from './card/index.ts';

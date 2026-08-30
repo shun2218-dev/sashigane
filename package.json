@@ -29,7 +29,8 @@
     "check:token-types": "node scripts/check-token-types.mjs",
     "check:output-header": "node scripts/check-output-header.mjs",
     "check:component-classes": "node scripts/check-component-classes.mjs",
-    "check:component-examples": "node scripts/check-component-examples.mjs"
+    "check:component-examples": "node scripts/check-component-examples.mjs",
+    "check:public-language": "node scripts/check-public-language.mjs"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.3.3",

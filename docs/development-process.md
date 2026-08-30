@@ -31,7 +31,8 @@ pnpm install
 
 ## コミット
 
-**日本語の Conventional Commits。**
+**日本語の Conventional Commits。** **決定番号や教訓番号は書かない**（決定6-8）。
+読むのは開発者であって、番号の定義を毎回引きに行く人ではない。理由をそのまま書く。
 
 ```
 feat(tokens): スケール生成器と不変条件テストを実装する
@@ -87,6 +88,7 @@ pnpm check:docs-refs          # 文書が挙げている名前と参照が実在
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
 pnpm check:component-examples # 3状態の例・展示ページ・テストが揃っていること（決定6-4・6-6）
+pnpm check:public-language    # 利用者に届く文面に内部の参照が無いこと（決定6-8）
 pnpm docs:data                # 例・ソース・型表を生成する（決定6-4。typecheck より前に要る）
 pnpm check:component-classes  # コンポーネントが書いたクラスを生成 CSS の側から見る（決定6-2）と
                               # 書いたのに生成されないクラスが無いこと（決定6-3）と
@@ -105,7 +107,8 @@ CI はその順で走らせている。
 規則は `scripts/lib/class-rules.mjs` に1つだけ置いて共有している。
 
 `check:token-usage` `check:sample-page` `check:docs-refs` `check:component-classes`
-`check:component-examples` は実行のたびに、まず意図的な違反を含むフィクスチャへ検出器を当てる。
+`check:component-examples` `check:public-language` は実行のたびに、
+まず意図的な違反を含むフィクスチャへ検出器を当てる。
 **発火しなければ検査自体が落ちる。** 0 件という結果を、検査が壊れている状態と
 区別できるようにするため（教訓2）。
 
