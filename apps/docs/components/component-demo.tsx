@@ -7,7 +7,12 @@ import sources from '../generated/sources.json';
  *
  * ここに書いてあるのは並べ方だけで、**何を並べるかは `packages/ui` の例が決める。**
  * 索引は `scripts/build-component-docs.mjs` がファイルシステムから作るので、
- * 例を足せば自動で出る。**手で並べる場所はどこにも無い。**
+ * 例を足せば自動で索引と型表に入る。
+ *
+ * **ただし展示ページ（`content/docs/components/<name>.mdx`）と `meta.json` の
+ * `pages` は手で書く。** ページ本文には設計の説明を書くので生成していない。
+ * 足し忘れると**索引には入るのに展示されない**ので、
+ * `check:component-examples` が両方を検査する（自己レビュー J1・J2）。
  *
  * プレビューの CSS は `<link href="/preview.css">` で読む（`app/docs/layout.tsx`）。
  * chrome の Tailwind にアダプタは入れられない（決定6-4）。

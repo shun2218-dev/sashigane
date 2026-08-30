@@ -1,5 +1,5 @@
 /**
- * コンポーネントに3状態の例が揃っていることを検査する（決定6-4）。
+ * コンポーネントが**実際に展示されること**を検査する（決定6-4）。
  *
  * `development-process.md` は「**3状態の例を必ず添える。例がない時点で自己レビュー不合格**」
  * と決めているが、**人が見るしかなかった。**
@@ -17,6 +17,17 @@
  *   1. `packages/ui/src/<component>/` に `examples/` があること
  *   2. その中に `default` `empty` `edge` が揃っていること
  *   3. どれも**既定エクスポートを持つ**こと（描画に使うため）
+ *   4. **展示ページ（`content/docs/components/<component>.mdx`）があること**
+ *   5. **そのページが `meta.json` の `pages` に載っていること**
+ *
+ * 4 と 5 は自己レビュー J1・J2 で足した。索引と型表はファイルシステムから導いているが、
+ * **ページと `pages` の並びは手で書く。** 足し忘れると、
+ * **索引にも型表にも入るのに展示されない**——しかも他のどの検査も緑のままである。
+ *
+ * ページ本文には設計の説明（原則5 との関係など）を書くので**生成はしない。**
+ * 生成すると、その説明を置く場所が無くなる。
+ *
+ * 「ページはあるのに `pages` に無い」は**無いのと同じで、しかも気づきにくい。**
  *
  * ## この検査が見ていないもの（教訓5）
  *
@@ -34,6 +45,9 @@ import { join } from 'node:path';
 const REQUIRED = ['default', 'empty', 'edge'];
 
 const UI = 'packages/ui/src';
+
+/** 展示ページの置き場。**ここも手で書くので検査する**（自己レビュー J1） */
+const DOCS = 'apps/docs/content/docs/components';
 
 /** 既定エクスポートを持つか。`export default function` も `export default X` も拾う */
 const hasDefaultExport = (source) => /^\s*export\s+default\s/m.test(source);
@@ -134,6 +148,22 @@ for (const name of components) {
   problems.push(...inspect(name, files));
 }
 
+/* --- 展示ページ（自己レビュー J1・J2）--- */
+
+const pageProblems = [];
+const metaPath = join(DOCS, 'meta.json');
+const listed = existsSync(metaPath)
+  ? new Set(JSON.parse(readFileSync(metaPath, 'utf8')).pages ?? [])
+  : new Set();
+
+for (const name of components) {
+  if (!existsSync(join(DOCS, `${name}.mdx`))) {
+    pageProblems.push({ component: name, why: 'no-page' });
+    continue;
+  }
+  if (!listed.has(name)) pageProblems.push({ component: name, why: 'not-listed' });
+}
+
 const MESSAGE = {
   missing: '例がありません',
   'no-default-export': '既定エクスポートがありません（描画に使えません）',
@@ -152,6 +182,23 @@ if (problems.length) {
   process.exit(1);
 }
 
+if (pageProblems.length) {
+  console.error('コンポーネントの展示ページが揃っていません（決定6-4）。\n');
+  for (const p of pageProblems) {
+    if (p.why === 'no-page') {
+      console.error(`  ✗ ${DOCS}/${p.component}.mdx がありません`);
+    } else {
+      console.error(`  ✗ ${p.component} が ${metaPath} の pages に載っていません`);
+    }
+  }
+  console.error(
+    '\n**索引と型表はファイルシステムから導いていますが、ページと pages の並びは手で書きます。**' +
+      '\n足し忘れると、索引にも型表にも入るのに展示されません。' +
+      '\nページ本文には設計の説明を書くので、生成はしていません。',
+  );
+  process.exit(1);
+}
+
 if (components.length === 0) {
   console.error(`${UI} にコンポーネントがありません。検査対象が消えています。`);
   process.exit(1);
@@ -162,3 +209,4 @@ console.log(
   `✓ コンポーネント ${components.length} 件（${components.join(' ')}）に ` +
     `${REQUIRED.join(' / ')} が揃っている`,
 );
+console.log(`✓ ${components.length} 件とも展示ページがあり、meta.json の pages に載っている`);
