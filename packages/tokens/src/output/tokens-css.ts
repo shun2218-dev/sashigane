@@ -4,7 +4,7 @@
  * **これだけを読み込めば動くことが、原則4（依存は一方通行）の実証になる。**
  * React も Tailwind も無い素の HTML で変数が解決することを CI が検査する。
  */
-import type { Palette } from '../color/palette.ts';
+import { statusNames, surfaceRolesFor, type Palette } from '../color/palette.ts';
 import { breakpoint, breakpointUnit, densityLevels } from '../scales.ts';
 import {
   colorPrimitiveVars,
@@ -57,6 +57,64 @@ const surfaceBlocks = (
     return [`${selector} {`, ...surfaceContextVars(mode, palette, depth), '}', ''];
   });
 
+/**
+ * 宣言する塗り（決定6-9）。**面と同じ形で、宣言が背景と前景を同時に与える。**
+ *
+ * ```html
+ * <button data-sg-fill="accent">押す</button>
+ * ```
+ *
+ * 塗りの段は**面にもモードにも依存しない。** ブランドの色はテーマで変わらない。
+ * 文字は明るい端（白）で、全360色相の最悪で 4.50:1。
+ *
+ * **境界が部品の識別を担う。** 深い面では塗りだけでは 3:1 に届かない
+ * （実測 暗色の surface で 2.56、inset で 2.03）ので、境界を面ごとに解く。
+ * hover では**塗りだけが濃くなり、境界は動かない**——識別は保たれる。
+ *
+ * 塗るだけの道は用意しない。`bg-*` で塗っても前景は付いてこない（原則5 と同じ形）。
+ */
+const fillBlocks = (mode: 'light' | 'dark', palette: Palette, scope: string): string[] => {
+  const roles = surfaceRolesFor(palette, mode);
+  const ramps = ['accent', ...statusNames] as const;
+  const rampVar = (name: string) => (name === 'accent' ? 'primary' : name);
+  return [...new Set(surfaceNames.map(depthOf))].sort().flatMap((depth) => {
+    const r = roles[depth]!;
+    const surfaceAttrs = surfaceNames
+      .filter((n) => depthOf(n) === depth)
+      .map((n) => `[data-sg-surface="${n}"]`);
+    return ramps.flatMap((ramp) => {
+      const fillAttr = `[data-sg-fill="${ramp}"]`;
+      // 面の中に置かれた塗り。page（depth 0）は面の宣言が無い場合もあるので単独でも出す
+      const bases = depth === 0 ? [...surfaceAttrs, ''] : surfaceAttrs;
+      const sel = bases
+        .flatMap((a) => {
+          const inner = a ? `${a} ${fillAttr}` : fillAttr;
+          return scope ? [`${scope} ${inner}`, `${scope}${inner}`] : [inner];
+        })
+        .join(', ');
+      const hoverSel = bases
+        .flatMap((a) => {
+          const inner = a ? `${a} ${fillAttr}:hover` : `${fillAttr}:hover`;
+          return scope ? [`${scope} ${inner}`, `${scope}${inner}`] : [inner];
+        })
+        .join(', ');
+      return [
+        `${sel} {`,
+        `  background-color: var(--sg-${rampVar(ramp)}-${r.fill});`,
+        `  border-color: var(--sg-${rampVar(ramp)}-${r.fillBorder});`,
+        `  color: var(--sg-neutral-${r.onDeclaredFill[ramp]});`,
+        '}',
+        '@media (hover: hover) {',
+        `  ${hoverSel} {`,
+        `    background-color: var(--sg-${rampVar(ramp)}-${r.fillStrong});`,
+        '  }',
+        '}',
+        '',
+      ];
+    });
+  });
+};
+
 export const toTokensCss = (palette: Palette): string =>
   [
     ...outputHeader('block', 'CSS 変数。これ1つでフレームワーク非依存に動く。', palette, [
@@ -102,6 +160,7 @@ export const toTokensCss = (palette: Palette): string =>
     '   保証が成立するのは面の1段目だけなので、深い面では役割が1段深い段を指す。',
     '   塗るだけの道は塞いである（Tailwind アダプタに bg-surface / bg-inset は無い）。 */',
     ...surfaceBlocks('light', palette, ''),
+    ...fillBlocks('light', palette, ''),
     '@media (prefers-color-scheme: dark) {',
     '  :root {',
     ...[
@@ -112,6 +171,7 @@ export const toTokensCss = (palette: Palette): string =>
     '  }',
     '',
     ...surfaceBlocks('dark', palette, '').map((l) => (l ? `  ${l}` : l)),
+    ...fillBlocks('dark', palette, '').map((l) => (l ? `  ${l}` : l)),
     '}',
     '',
     '/* 明示的な指定は OS の設定より優先する。',
@@ -124,6 +184,7 @@ export const toTokensCss = (palette: Palette): string =>
     '}',
     '',
     ...surfaceBlocks('light', palette, '[data-theme="light"]'),
+    ...fillBlocks('light', palette, '[data-theme="light"]'),
     '[data-theme="dark"] {',
     ...colorSemanticVars('dark', palette),
     ...hoverMirrorVars('dark', palette, 0),
@@ -131,6 +192,7 @@ export const toTokensCss = (palette: Palette): string =>
     '}',
     '',
     ...surfaceBlocks('dark', palette, '[data-theme="dark"]'),
+    ...fillBlocks('dark', palette, '[data-theme="dark"]'),
     '/* hover の文脈（決定5-13）。**規則は1本だけ**で、値は面が控えた --sg-color-hover-* から',
     '   継承で届く。セレクタで面ごとに書き分けると、overlay が梯子の途中に戻る面である',
     '   ために「入れ子の深さ」と「出力の順序」が一致せず、どちらかの入れ子が必ず外れる。',

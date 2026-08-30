@@ -535,6 +535,42 @@ export interface SurfaceRoles {
    */
   onFill: { accent: number } & { [K in StatusName]: number };
   /**
+   * **宣言する塗りの上に載せる文字**（決定6-9）。`onFill` と規則は同じで、段が違う。
+   *
+   * `onFill` は `colorText` の塗りに対して解いており、暗色ではその段が明るいので
+   * 暗い端が選ばれる。**宣言する塗りは面にもモードにも依存しない段（`fill`）**なので、
+   * そちらに対して解き直すと両モードとも明るい端になる。
+   */
+  onDeclaredFill: { accent: number } & { [K in StatusName]: number };
+  /**
+   * **宣言する塗りの段**（決定6-9）。`data-sg-fill` が使う。
+   *
+   * 面にもモードにも依存しない。**ランプの明るい端（白）が文字として成立する
+   * 最も浅い段**を取る。塗りはブランドの色であって、テーマで変わるものではない。
+   *
+   * `colorText` と分けているのは、`colorText` が**面の上の文字**として解かれており、
+   * 暗色では明るい段（400）になって白が載らないためである。
+   * 1つの役割で塗りと文字を兼ねると、どちらかが必ず割れる。
+   */
+  fill: number;
+  /**
+   * 宣言する塗りの**境界**の段（決定6-9）。**面ごとに解く。**
+   *
+   * 塗り自体が面から 3:1 離れていればその塗り自身。離れていなければ、
+   * 面から見て 3:1 を満たす最も浅い段を取る。
+   *
+   * **部品の識別を担うのは境界である。** そのため hover で塗りが動いても境界は動かさない。
+   * 暗色の深い面では、塗りだけでは 3:1 に届かない（実測 2.56 / 2.03 / 1.54）。
+   */
+  fillBorder: number;
+  /**
+   * 宣言する塗りの hover の段（決定6-9）。**文字から遠ざかる向きへ1段。**
+   *
+   * 文字は明るい端なので、遠ざかる＝濃くなる。対比は増えるだけである。
+   * 面との比は下がるが、識別は `fillBorder` が担っている。
+   */
+  fillStrong: number;
+  /**
    * 識別色の系列ごとの段。**面が深いと段が足りず null になる。**
    *
    * 暗色の inset では 3:1 を満たす段が4つしか残らず、5系列を配れない。
@@ -673,8 +709,8 @@ const solveSurfaceRoles = (
      * 解かれている（決定5-2）ので、その裏返しも必ず 4.5:1 になる。
      * 深い面では塗りがさらに端へ寄るので、余裕は増えるだけである。
      */
-    const onFillFor = (ramp: Ramp): number => {
-      const fill = ramp.byStep[colorText]!;
+    const onFillFor = (ramp: Ramp, step: number = colorText): number => {
+      const fill = ramp.byStep[step]!;
       const ends = [cfg.steps[0]!, cfg.steps[cfg.steps.length - 1]!];
       return ends.reduce((best, e) =>
         contrastBetween(palette.neutral.byStep[e]!, fill) >
@@ -684,8 +720,30 @@ const solveSurfaceRoles = (
       );
     };
 
+    /**
+     * **宣言する塗り**（決定6-9）。面にもモードにも依存しない。
+     * 明るい端（白）が全ランプで文字として成立する最も浅い段を取る。
+     */
+    const whiteEnd = palette.neutral.byStep[cfg.steps[0]!]!;
+    const fill =
+      cfg.steps.find((s) =>
+        colored.every((r) => contrastBetween(whiteEnd, r.byStep[s]!) >= g.textMin),
+      ) ?? cfg.steps[cfg.steps.length - 1]!;
+    /** 文字から遠ざかる向きへ1段。文字は明るい端なので濃くなる */
+    const fillStrong = cfg.steps[cfg.steps.indexOf(fill) + 1] ?? fill;
+    /**
+     * 境界。塗り自体が面から 3:1 離れていればそれでよい。
+     * 離れていなければ、面から見て 3:1 を満たす最も浅い段を取る。
+     */
+    const fillBorder = meets(fill, bg, g.markMin, colored)
+      ? fill
+      : shallowest(g.markMin, colored);
+
     return {
       surface: surfaceStep,
+      fill,
+      fillBorder,
+      fillStrong,
       /** 文字の最も強い段は面によらず動かさない。どの面でも要件を満たす */
       text: { default: mode === 'light' ? 900 : 100, muted, faint },
       border: {
@@ -701,6 +759,12 @@ const solveSurfaceRoles = (
       colorStrong: strongStep(colorText),
       colorSubtle: justOutside,
       onSubtle,
+      onDeclaredFill: {
+        accent: onFillFor(palette.primary, fill),
+        ...(Object.fromEntries(
+          statusNames.map((n) => [n, onFillFor(palette.status[n]!, fill)]),
+        ) as { [K in StatusName]: number }),
+      },
       onFill: {
         accent: onFillFor(palette.primary),
         ...(Object.fromEntries(
