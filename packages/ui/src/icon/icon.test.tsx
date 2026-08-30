@@ -1,7 +1,8 @@
-import { Search } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
-import { defineIcon, IconX } from './icon.tsx';
+import * as icons from './icon.tsx';
+import { defineIcon, IconX, type IconProps } from './icon.tsx';
 import '../../test/tokens.css';
 
 /**
@@ -95,12 +96,39 @@ describe('名乗りと包む形', () => {
 
   it('ここに無い図案も同じ形で包める', async () => {
     // **包む形を公開している。** 図案を全部持たない代わりに、足す道を配る
-    const IconSearch = defineIcon(Search, 'icon-search');
+    const IconSearch = defineIcon(Search);
     const { container } = await render(onSurface(<IconSearch />));
     const el = svgIn(container);
     expect(el.getAttribute('data-sg-component')).toBe('icon-search');
     expect(Math.round(el.getBoundingClientRect().width)).toBe(24);
     expect(el.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('2語の図案も正しく名乗る', async () => {
+    // `ChevronDown` → `icon-chevron-down`。**手で書かないので、ずれようがない**
+    const IconChevronDown = defineIcon(ChevronDown);
+    const { container } = await render(onSurface(<IconChevronDown />));
+    expect(svgIn(container).getAttribute('data-sg-component')).toBe('icon-chevron-down');
+  });
+
+  it('export しているものが、すべて自分の名前を名乗る', async () => {
+    /*
+     * **1つずつ書かない。** 足したものが名乗るかは、足した本人しか知らない——
+     * ここで全部まわせば、**足すだけで検査に入る。**
+     */
+    const exported = Object.entries(icons).filter(([name]) => name.startsWith('Icon'));
+    // **0 件を成功にしない。** 名前の付け方を変えたときに、黙って何も測らなくなる
+    expect(exported.length).toBeGreaterThan(0);
+
+    for (const [name, Component] of exported) {
+      const Render = Component as (props: IconProps) => React.ReactElement;
+      const { container } = await render(onSurface(<Render />));
+      const expected = `icon-${name
+        .slice('Icon'.length)
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .toLowerCase()}`;
+      expect(svgIn(container).getAttribute('data-sg-component')).toBe(expected);
+    }
   });
 
   it('色は前景を継承する', async () => {

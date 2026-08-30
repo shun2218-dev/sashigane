@@ -8,8 +8,12 @@
  * **`size` を渡しても何も起きないまま消える**（測ってある）。
  * スケールの外の寸法を書かせないためでもある。
  *
- * **名乗りは `icon-` で始める。** 検査が export 名から
- * `IconX` → `icon-x` を導くので、第2引数はその形で渡す。
+ * **名乗りは図案の名前から導く。** lucide が `displayName` を持っている
+ * （`X` / `ChevronDown`）ので、そこから `icon-x` / `icon-chevron-down` を作る。
+ * **手で書かない**——書くと `IconX` と `'icon-x'` の2箇所に同じことが並び、
+ * 片方だけ直したときに静かにずれる。
+ *
+ * 検査は `export const IconX = defineIcon(X)` の**対応**を見ている。
  * ─────────────────────────────────────────────
  */
 import { cva, type VariantProps } from 'class-variance-authority';
@@ -45,6 +49,9 @@ const icon = cva('shrink-0', {
  */
 export interface IconProps extends Omit<LucideProps, 'size'>, VariantProps<typeof icon> {}
 
+/** `ChevronDown` → `chevron-down`。**図案の名前から名乗りを導く** */
+const kebab = (name: string) => name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+
 /**
  * lucide のアイコンを、このシステムの形に包む。
  *
@@ -61,10 +68,12 @@ export interface IconProps extends Omit<LucideProps, 'size'>, VariantProps<typeo
  *
  * ```tsx
  * import { Search } from 'lucide-react';
- * export const IconSearch = defineIcon(Search, 'icon-search');
+ * export const IconSearch = defineIcon(Search);
  * ```
  */
-export function defineIcon(Source: LucideIcon, name: string) {
+export function defineIcon(Source: LucideIcon) {
+  // 図案の名前から導く。**手で書かない**——2箇所に同じことが並ぶと静かにずれる
+  const name = `icon-${kebab(Source.displayName ?? 'unknown')}`;
   return function Icon({ size, className, ...props }: IconProps) {
     const named = props['aria-label'] !== undefined || props['aria-labelledby'] !== undefined;
     // 式の中で組み立てない。cva の呼び出しを補間の中へ直接置くと、
@@ -88,7 +97,7 @@ export function defineIcon(Source: LucideIcon, name: string) {
  *
  * **図案は lucide のものである。** 寸法と読み上げの既定だけがこちらのものになる。
  */
-export const IconX = defineIcon(X, 'icon-x');
+export const IconX = defineIcon(X);
 
 /** 足す。 */
-export const IconPlus = defineIcon(Plus, 'icon-plus');
+export const IconPlus = defineIcon(Plus);

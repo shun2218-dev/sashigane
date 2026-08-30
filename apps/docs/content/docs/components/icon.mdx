@@ -9,6 +9,13 @@ description: 図案は lucide から来る。寸法と読み上げの既定だ�
 
 このシステムが持つのは**寸法・読み上げの既定・名乗り**だけです。図案そのものは lucide のものです。
 
+## `lucide-react` は一緒に入ります
+
+Icon を入れると `lucide-react` も入ります。**別途インストールする必要はありません。**
+
+ただし**ここに無い図案を足すときは、利用側が `lucide-react` から import します**——
+図案そのものは lucide のものだからです。
+
 ## ここに無い図案は、同じ形で足せます
 
 包む形を公開しています。**全部を持たない代わりに、足す道を配ります。**
@@ -17,10 +24,14 @@ description: 図案は lucide から来る。寸法と読み上げの既定だ�
 import { Search } from 'lucide-react';
 import { defineIcon } from '@sashigane/ui';
 
-export const IconSearch = defineIcon(Search, 'icon-search');
+export const IconSearch = defineIcon(Search);
 ```
 
 props は lucide のものをそのまま引き継ぎます。
+
+**名乗りは図案の名前から導きます。** `Search` なら `icon-search`、
+`ChevronDown` なら `icon-chevron-down` です。**手で書きません**——
+書くと2箇所に同じことが並び、片方だけ直したときに静かにずれます。
 
 ## 既定は読み上げから隠れます
 
