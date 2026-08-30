@@ -141,35 +141,42 @@ export function Field({
       {/*
         配線を子へ移す。**利用側が書き忘れる余地を作らない。**
 
-        満たしているときは印を重ねるので、**入力を包む。**
-        包むのはそのときだけである——常に包むと、
-        中身の無い器が全部の欄に増える。
-      */}
-      {showValid ? (
-        <div className="relative flex flex-col">
-          <Slot id={id} required={required} aria-describedby={describedBy} valid>
-            {children}
-          </Slot>
-          {/*
-            印は読み上げから隠れている。**満たしていることは境界が伝える**——
-            印を読ませても「チェック」としか言わない。
+        ## 器は状態によらず常に置く
 
-            ここで `aria-hidden` を書いていないのは、**Icon の既定がそうだから**である。
-            書くと同じことが2箇所に並び、片方だけ直したときにずれる。
-            **重複を外したとき、壊し方が1件も落ちなくなって気づいた。**
-          */}
-          <IconCheck size="sm" className="pointer-events-none absolute end-3 top-3 text-success" />
-        </div>
-      ) : (
+        印を重ねるために入力を包む必要があるが、**包むのを満たしているときだけに
+        していた。** 状態が変わるとその位置の要素の型が変わるので、
+        **React が入力を作り直す。**
+
+        入力中に誤りと満たしているが入れ替わると、**打っている最中に
+        フォーカスが外れる。** 見た目には何も出ない——文字が入らなくなるだけである。
+        `xxx@gmail.c` まで打ったところで切り替わり、その先が打てなくなっていた。
+
+        **中身の無い器が増えるのを嫌って条件つきにしていた。** 代償が合っていない。
+      */}
+      <div className="relative flex flex-col">
         <Slot
           id={id}
           required={required}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
+          // **満たしていないときは渡さない。** `false` を渡すと、
+          // 素の `input` を子に置いた利用側で不明な属性になる
+          valid={showValid || undefined}
         >
           {children}
         </Slot>
-      )}
+        {/*
+          印は読み上げから隠れている。**満たしていることは線が伝える**——
+          印を読ませても「チェック」としか言わない。
+
+          ここで `aria-hidden` を書いていないのは、**Icon の既定がそうだから**である。
+          書くと同じことが2箇所に並び、片方だけ直したときにずれる。
+          **重複を外したとき、壊し方が1件も落ちなくなって気づいた。**
+        */}
+        {showValid ? (
+          <IconCheck size="sm" className="pointer-events-none absolute end-3 top-3 text-success" />
+        ) : null}
+      </div>
 
       {description ? (
         <p data-sg-component="field-description" id={descriptionId} className="text-caption text-muted">

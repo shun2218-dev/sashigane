@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
+import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { Input } from '../input/input.tsx';
 import { Field } from './field.tsx';
@@ -260,5 +262,49 @@ describe('満たしていること', () => {
     // **両方は成り立たない**
     expect(container.querySelector('[data-sg-component="icon-check"]')).toBeNull();
     expect(inputIn(container).getAttribute('aria-invalid')).toBe('true');
+  });
+});
+
+/**
+ * 状態が変わっても入力が続けられること。
+ *
+ * **入力中に誤りと満たしているが入れ替わる。** そこで入力が描き直されると、
+ * **打っている最中にフォーカスが外れる。**
+ *
+ * 見た目には何も出ない——文字が入らなくなるだけである。
+ */
+const Toggling = () => {
+  const [value, setValue] = useState('');
+  const short = value.length > 0 && value.length < 3;
+  return (
+    <Field
+      id="tg"
+      label="札"
+      valid={value.length >= 3}
+      error={short ? '短い' : undefined}
+    >
+      <Input value={value} onChange={(e) => setValue(e.target.value)} />
+    </Field>
+  );
+};
+
+describe('入力中に状態が変わるとき', () => {
+  it('誤りから満たしているへ変わっても、打ち続けられる', async () => {
+    const { container } = await render(onSurface(<Toggling />));
+    await userEvent.click(inputIn(container));
+    // 3文字目で満たしている側へ変わる。**そこで描き直されると4文字目が入らない**
+    await userEvent.keyboard('abcd');
+    expect(inputIn(container).value).toBe('abcd');
+    expect(document.activeElement).toBe(inputIn(container));
+  });
+
+  it('満たしているから誤りへ戻っても、打ち続けられる', async () => {
+    const { container } = await render(onSurface(<Toggling />));
+    await userEvent.click(inputIn(container));
+    await userEvent.keyboard('abc');
+    // 3文字目を消すと誤りの側へ戻る。**逆向きでも同じことが起きる**
+    await userEvent.keyboard('{Backspace}{Backspace}');
+    expect(inputIn(container).value).toBe('a');
+    expect(document.activeElement).toBe(inputIn(container));
   });
 });
