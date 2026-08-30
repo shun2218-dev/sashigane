@@ -518,9 +518,11 @@ if (!/not-prose/.test(readFileSync(PREVIEW_HOST, 'utf8'))) {
   process.exit(1);
 }
 
+// **`.mdx` も見る。** 展示ページの中でも JSX は書けるので、
+// `.tsx` だけを見ていると、器を手で組む道が1本残る
 const strayHosts = execSync('git ls-files apps/docs', { encoding: 'utf8' })
   .split('\n')
-  .filter((f) => f.endsWith('.tsx') && f !== PREVIEW_HOST)
+  .filter((f) => (f.endsWith('.tsx') || f.endsWith('.mdx')) && f !== PREVIEW_HOST)
   .filter((f) => PREVIEW_MARK.test(withoutComments(readFileSync(f, 'utf8'))));
 
 if (strayHosts.length) {
