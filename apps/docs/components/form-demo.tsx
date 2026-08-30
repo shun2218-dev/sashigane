@@ -2,6 +2,7 @@
 
 import { Button, Field, Input } from '@sashigane/ui';
 import { useForm } from 'react-hook-form';
+import { previewProps } from './preview.tsx';
 
 /**
  * **react-hook-form と組んだ、実際に動くフォーム。**
@@ -25,9 +26,7 @@ export function FormDemo() {
       // 送っても何処へも行かない。**検証が走ることだけを見せる**
       onSubmit={handleSubmit(() => {})}
       noValidate
-      data-sg-preview
-      data-sg-surface="page"
-      className="flex max-w-sm flex-col gap-4"
+      {...previewProps('flex max-w-sm flex-col gap-4')}
     >
       <Field
         id="demo-mail"

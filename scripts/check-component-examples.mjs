@@ -478,10 +478,66 @@ if (markerProblems.length) {
   process.exit(1);
 }
 
+/* ============================================================
+   11. プレビューの器は1箇所だけであること
+   ============================================================ */
+
+/**
+ * プレビューの器を持つ唯一のファイル。
+ *
+ * **`data-sg-preview` と `not-prose` は対で要る。** 前者はプレビュー用 CSS の範囲、
+ * 後者はサイト外枠の本文スタイル（`p` に 1.25em の余白）の遮断である。
+ *
+ * **忘れても静かに壊れる**——余白が広いだけで、エラーは出ない。
+ * 実際に忘れて、フォームの説明文が入力から 20px 離れて見えていた。
+ */
+const PREVIEW_HOST = 'apps/docs/components/preview.tsx';
+const PREVIEW_MARK = /data-sg-preview/;
+
+// 対照。**発火することを確かめてから 0 件と言う**（教訓2）
+if (!PREVIEW_MARK.test('<div data-sg-preview className="flex">')) {
+  console.error('陽性対照が落ちた: 器を自分で書いている行を見逃した');
+  process.exit(1);
+}
+if (PREVIEW_MARK.test("<div {...previewProps('flex')}>")) {
+  console.error('陰性対照が発火した: 共有の器を通している行を問題として報告した');
+  process.exit(1);
+}
+
+if (!existsSync(PREVIEW_HOST)) {
+  console.error(`${PREVIEW_HOST} がありません。プレビューの器の置き場所が変わっています。`);
+  process.exit(1);
+}
+if (!/not-prose/.test(readFileSync(PREVIEW_HOST, 'utf8'))) {
+  console.error(
+    `${PREVIEW_HOST} が not-prose を持っていません。\n\n` +
+      '**外枠の本文スタイルがプレビューの中に当たります。**\n' +
+      '`p` に 1.25em の余白が付き、コンポーネントが gap で持っている間隔では出ません。\n' +
+      'エラーは出ません——余白が広いだけです。',
+  );
+  process.exit(1);
+}
+
+const strayHosts = execSync('git ls-files apps/docs', { encoding: 'utf8' })
+  .split('\n')
+  .filter((f) => f.endsWith('.tsx') && f !== PREVIEW_HOST)
+  .filter((f) => PREVIEW_MARK.test(withoutComments(readFileSync(f, 'utf8'))));
+
+if (strayHosts.length) {
+  console.error('プレビューの器を自分で組んでいる場所があります。\n');
+  for (const f of strayHosts) console.error(`  ✗ ${f}`);
+  console.error(
+    `\n${PREVIEW_HOST} の previewProps() を通してください。` +
+      '\n**器には not-prose が要ります。** 書き忘れても余白が広くなるだけで、エラーは出ません。',
+  );
+  process.exit(1);
+}
+
 console.log(
-  '✓ 対照 18 件が期待どおり（欠落・既定エクスポート無し・揃っている形・' +
-    'トークン読み込み2件・asChild 6件・名乗り7件）',
+  '✓ 対照 20 件が期待どおり（欠落・既定エクスポート無し・揃っている形・' +
+    'トークン読み込み2件・asChild 6件・名乗り7件・プレビューの器2件）',
 );
+console.log(`✓ プレビューの器は ${PREVIEW_HOST} だけが持ち、not-prose を伴っている`);
 console.log(
   `✓ コンポーネント ${components.length} 件（${components.join(' ')}）に ` +
     `${REQUIRED.join(' / ')} が揃っている`,
