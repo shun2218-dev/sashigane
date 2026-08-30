@@ -48,7 +48,18 @@ jobs:
       - name: typecheck
         run: pnpm typecheck
 
-      # スケールの不変条件（docs/decisions.md との一致を含む）
+      # トークンを生成する（以降の検査と、コンポーネントのテストが dist/ を使う）
+      # **test より前に置く。** コンポーネントのテストは実ブラウザで走り、
+      # 生成した CSS を実際に当てるため（決定6-6）
+      - name: トークンの生成
+        run: pnpm build:tokens
+
+      # 実ブラウザのテストに要る（決定6-6）
+      - name: Playwright の導入
+        run: pnpm exec playwright install --with-deps chromium
+
+      # スケールの不変条件（docs/decisions.md との一致を含む）と、
+      # コンポーネント（実ブラウザ）
       - name: test
         run: pnpm test
 
@@ -59,10 +70,6 @@ jobs:
       # docs/decisions.md の数値表が生成器と一致すること
       - name: 決定文書との一致
         run: pnpm check:docs-scales
-
-      # トークンを生成する（以降の検査が dist/ を使う）
-      - name: トークンの生成
-        run: pnpm build:tokens
 
       # 原則4: tokens.css がフレームワーク非依存で単体成立すること
       - name: tokens.css の単体成立性

@@ -55,6 +55,10 @@ packages/ui/src/<component>/examples/
   edge.tsx      エッジケース
 ```
 
+**テストも一緒に添える**（`<component>.test.tsx`。決定6-6）。**実ブラウザで走る。**
+props の写像だけでなく、**面の宣言が背景と前景を同時に変えること**まで測る——
+jsdom では CSS が解決されないので、塗るだけの道が残っていても通ってしまう。
+
 **この3つは必須。** 追加の例は自由に置いてよい。素の React コンポーネントとして書く。
 ドキュメントサイトの描画・配信 JSON・型表は**すべてここから出す**（唯一の正）。
 **`pnpm check:component-examples` が検査する**（教訓3）。
@@ -64,7 +68,8 @@ packages/ui/src/<component>/examples/
 ## 検査
 
 ```bash
-pnpm test                     # スケールの不変条件（decisions.md との一致を含む）
+pnpm test                     # スケールの不変条件（decisions.md との一致を含む）と
+                              # コンポーネント（実ブラウザ。決定6-6。build:tokens が先に要る）
 pnpm typecheck
 pnpm check:tokens-isolation   # packages/tokens が単体で成立していること（原則4）
 pnpm check:docs-scales        # decisions.md の数値表が生成器と一致すること
@@ -81,7 +86,7 @@ pnpm check:docs-refs          # 文書が挙げている名前と参照が実在
                               # version を持つ package.json が1つだけであること（決定4-6）
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
-pnpm check:component-examples # 3状態の例が揃っていること（決定6-4）
+pnpm check:component-examples # 3状態の例・展示ページ・テストが揃っていること（決定6-4・6-6）
 pnpm docs:data                # 例・ソース・型表を生成する（決定6-4。typecheck より前に要る）
 pnpm check:component-classes  # コンポーネントが書いたクラスを生成 CSS の側から見る（決定6-2）と
                               # 書いたのに生成されないクラスが無いこと（決定6-3）と
