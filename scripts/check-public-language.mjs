@@ -16,17 +16,39 @@
  *
  *   1. `packages/ui/src` の **JSDoc**（`/** … *␘/`）と**例のファイル全体**
  *   2. `apps/docs/content` の MDX
+ *   3. **生成物**（`packages/tokens/dist`）。レジストリ配信で利用側へ落ちる
+ *   4. **画面に出る文**——ドキュメントサイトの実装（`apps/docs/app`）と
+ *      デモページ（`apps/docs/src/*.html`）から**コメントを除いた残り**
  *
- * どちらも「決定N-M」「教訓N」「原則N」の形を落とす。
+ * どれも「決定N-M」「教訓N」「原則N」の形を落とす。
+ *
+ * ## 生成物とサイトの実装を後から足した
+ *
+ * もとは `packages/ui` と MDX だけを見ていた。**足りていなかった。**
+ * テーマビルダーの画面にも、そこがコピペさせる CSS のコメントにも、
+ * デモページの本文にも番号が残っており、利用者から指摘された。
+ *
+ * 生成物のヘッダは絶対 URL で「番号の定義はここ」と案内していたが、
+ * **辿った先は和文の設計記録である。** 受け取った側の役に立たない。
  *
  * ## 何を見ないか（教訓5）
  *
  *   - **JSDoc でない普通のコメント**（`/* … *␘/` と `//`）。
- *     維持する側への覚書はここに書く。**型表には出ない**ので利用者に届かない
+ *     維持する側への覚書はここに書く。**型表には出ない**ので利用者に届かない。
+ *     サイトの実装とデモページでも同じで、**コメントは落としてから見る**
  *   - `scripts/` と `docs/`。**維持する側が読むもので、番号の定義がある場所である**
- *   - `apps/docs/app` と `apps/docs/components`。サイト自身の実装で、利用者は読まない
  *   - **テスト。** 利用者に届かない。設計の根拠を書く場所としてはむしろ適している
  *   - **番号を使わずに書かれた不親切な文章。** 「読んで分かるか」は機械では見えない
+ *
+ * ## コメント落としが原理的に見逃す範囲（教訓5）
+ *
+ * `stripComments` は字句解析をしない。**文字列やテンプレートリテラルの中の
+ * `/* ` や `//` をコメントの開始として落とす。**
+ * 落としすぎる方向なので、**見逃す側に倒れる。**
+ *
+ * `://` は除いてあるので URL では起きないが、
+ * `'a // b（決定1-2）'` のような文字列は見逃す。
+ * 番号を文字列リテラルに書く必要が出たら、ここを字句解析に替える。
  *
  * ## 配布先で壊れる参照も見る
  *
@@ -52,15 +74,35 @@ const REPO_PATH = /(?<!https:\/\/[^\s)]{0,200})\b(?:\.\.\/)*docs\/[a-z-]+\.md\b/
 const JSDOC = /\/\*\*[\s\S]*?\*\//g;
 
 /**
+ * コメントを落とす。**残りが画面に出る文である。**
+ *
+ * 行コメントは `://` を避ける——URL の中の `//` を落とすと、
+ * その行の残りごと消えて**見逃す側に倒れる。**
+ */
+const stripComments = (text) =>
+  text
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(?<!:)\/\/[^\n]*/g, '');
+
+/**
  * 1つのファイルを見る。**純粋な関数にしてある。**
  * 対照を文字列で当てられるようにするため。
  */
 const inspect = (path, text) => {
   const found = [];
   const isExample = /\/examples\//.test(path);
-  const isMdx = path.endsWith('.mdx');
-  // 例と MDX は**全体が利用者に届く。** それ以外は JSDoc だけ
-  const targets = isExample || isMdx ? [text] : [...text.matchAll(JSDOC)].map((m) => m[0]);
+  const whole = isExample || path.endsWith('.mdx') || path.startsWith('packages/tokens/dist/');
+  // **コメントを落とした残りが画面に出る**もの
+  const rendered = /^apps\/docs\/(app|components)\/.*\.tsx?$/.test(path) || /^apps\/docs\/src\/.*\.html$/.test(path);
+
+  // 例・MDX・生成物は**全体が利用者に届く。** 画面に出る文はコメントを落とす。
+  // それ以外は JSDoc だけ
+  const targets = whole
+    ? [text]
+    : rendered
+      ? [stripComments(text)]
+      : [...text.matchAll(JSDOC)].map((m) => m[0]);
 
   for (const chunk of targets) {
     for (const m of chunk.matchAll(INTERNAL_REF)) found.push({ path, kind: 'ref', what: m[0] });
@@ -119,6 +161,46 @@ expectPass(
 );
 expectPass('絶対 URL', 'packages/ui/src/card/card.tsx', '/* https://example.com/docs/decisions.md */');
 
+expectFire(
+  '生成物のコメントの中の決定番号',
+  'packages/tokens/dist/tokens.css',
+  '/* spacing — 決定1-2 */\n:root { --sg-space-1: 0.25rem; }',
+  'ref',
+);
+expectFire(
+  '画面に出る文の中の決定番号',
+  'apps/docs/app/theme/ThemeBuilder.tsx',
+  'export const A = () => <p>これは規則が解いています（決定5-1）。</p>;',
+  'ref',
+);
+expectFire(
+  'デモページの本文の中の決定番号',
+  'apps/docs/src/sample-page.html',
+  '<p class="caption">段をずらして配ります（決定5-8）。</p>',
+  'ref',
+);
+
+expectPass(
+  'サイトの実装のコメントの中の番号',
+  'apps/docs/app/theme/ThemeBuilder.tsx',
+  '// 面ごとに段が変わる（決定5-12）\nexport const A = () => <p>面ごとに段が変わります。</p>;',
+);
+expectPass(
+  'JSX コメントの中の番号',
+  'apps/docs/app/docs/layout.tsx',
+  'export const A = () => <div>{/* 別ビルドである（決定6-4） */}</div>;',
+);
+expectPass(
+  'デモページの HTML コメントと CSS コメントの中の番号',
+  'apps/docs/src/sample-page.html',
+  '<!-- 原則4 の実証 -->\n<style>/* 面は data-sg-surface が塗る（決定5-12） */</style>',
+);
+expectPass(
+  '行コメントに見える URL',
+  'apps/docs/app/layout.config.tsx',
+  "export const o = { githubUrl: 'https://github.com/x/y' };",
+);
+
 if (failures.length) {
   console.error('対照に失敗しました。**この検査は機能していません。**\n');
   for (const m of failures) console.error(`  ✗ ${m}`);
@@ -133,12 +215,30 @@ if (failures.length) {
 const TARGETS = [
   { re: /^packages\/ui\/src\/.*\.tsx?$/, skip: /\.test\.tsx?$/ },
   { re: /^apps\/docs\/content\/.*\.mdx$/ },
+  { re: /^apps\/docs\/(app|components)\/.*\.tsx?$/ },
+  { re: /^apps\/docs\/src\/.*\.html$/ },
 ];
 
-const files = execSync('git ls-files packages/ui apps/docs/content', { encoding: 'utf8' })
+const tracked = execSync('git ls-files packages/ui apps/docs', { encoding: 'utf8' })
   .split('\n')
   .filter((f) => f && existsSync(f))
   .filter((f) => TARGETS.some((t) => t.re.test(f) && !(t.skip && t.skip.test(f))));
+
+/**
+ * 生成物。**追跡されていない**ので `git ls-files` には出ない（原則1）。
+ * 先に `pnpm build:tokens` が要る——他の生成物を見る検査と同じ形である。
+ */
+const DIST = 'packages/tokens/dist';
+const DIST_FILES = ['tokens.css', 'theme.css', 'tokens.scss', 'tokens.js', 'tokens.d.ts'].map(
+  (f) => `${DIST}/${f}`,
+);
+const missing = DIST_FILES.filter((f) => !existsSync(f));
+if (missing.length) {
+  console.error(`生成物がありません: ${missing.join(' ')}\n先に pnpm build:tokens を実行してください。`);
+  process.exit(1);
+}
+
+const files = [...tracked, ...DIST_FILES];
 
 const violations = files.flatMap((f) => inspect(f, readFileSync(f, 'utf8')));
 
@@ -163,5 +263,5 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-console.log('✓ 対照 7 件が期待どおり（発火 4・通過 3）');
+console.log('✓ 対照 14 件が期待どおり（発火 7・通過 7）');
 console.log(`✓ 利用者に届く ${files.length} ファイルに内部の参照なし`);

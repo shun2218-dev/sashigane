@@ -5,7 +5,7 @@ export const baseOptions: BaseLayoutProps = {
   links: [
     { text: 'ドキュメント', url: '/docs' },
     { text: 'テーマビルダー', url: '/theme' },
-    { text: 'サンプル', url: '/sample' },
+    { text: 'デモ', url: '/demo' },
   ],
   githubUrl: 'https://github.com/shun2218-dev/sashigane',
 };

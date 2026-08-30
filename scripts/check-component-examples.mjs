@@ -20,6 +20,7 @@
  *   4. **展示ページ（`content/docs/components/<component>.mdx`）があること**
  *   5. **そのページが `meta.json` の `pages` に載っていること**
  *   6. **テスト（`<component>.test.tsx`）があること**（決定6-6）
+ *   7. **展示がトークンを受け取れる形になっていること**（決定6-12）
  *
  * 4 と 5 は自己レビュー J1・J2 で足した。索引と型表はファイルシステムから導いているが、
  * **ページと `pages` の並びは手で書く。** 足し忘れると、
@@ -29,6 +30,19 @@
  * 生成すると、その説明を置く場所が無くなる。
  *
  * 「ページはあるのに `pages` に無い」は**無いのと同じで、しかも気づきにくい。**
+ *
+ * ## 7 は暗黙になった依存を見ている
+ *
+ * プレビュー用 CSS（`apps/docs/preview.css`）は**トークンの変数を持たない。**
+ * サイト外枠（`app/global.css`）が `public/tokens.css` を読むので、
+ * 二重に持つ意味が無いためである（決定6-12）。
+ *
+ * **外枠からその1行が消えると、展示は色を1つも持たない状態になる。**
+ * `--sg-*` が未定義になるだけなので**エラーは出ない**（教訓4）。
+ * `check:component-classes` は生成 CSS を読むので発火せず、
+ * コンポーネントのテストは実ブラウザだが**展示ページを見ていない。**
+ *
+ * 依存を暗黙にしたので、**壊れたときに落ちる場所をここに1つ置く。**
  *
  * ## この検査が見ていないもの（教訓5）
  *
@@ -212,11 +226,53 @@ if (components.length === 0) {
   process.exit(1);
 }
 
-console.log(`✓ 対照 3 件が期待どおり（欠落・既定エクスポート無し・揃っている形）`);
+/* ============================================================
+   7. 展示がトークンを受け取れること（決定6-12）
+   ============================================================ */
+
+const GLOBAL_CSS = 'apps/docs/app/global.css';
+const PREVIEW_CSS = 'apps/docs/preview.css';
+/** 外枠が読むトークン。**この形が消えると展示から色が消える** */
+const TOKENS_IMPORT = /@import\s+['"][^'"]*tokens\.css['"]/;
+
+// 対照。**発火することを確かめてから 0 件と言う**（教訓2）
+if (TOKENS_IMPORT.test("@import 'tailwindcss';\n@import 'fumadocs-ui/css/preset.css';")) {
+  console.error('陰性対照が発火しない: トークンを読んでいない global.css');
+  process.exit(1);
+}
+if (!TOKENS_IMPORT.test("@import '../public/tokens.css';")) {
+  console.error('陽性対照が落ちた: トークンを読んでいる global.css');
+  process.exit(1);
+}
+
+for (const f of [GLOBAL_CSS, PREVIEW_CSS]) {
+  if (!existsSync(f)) {
+    console.error(`${f} がありません。展示の CSS の構成が変わっています。`);
+    process.exit(1);
+  }
+}
+
+const previewHasTokens = TOKENS_IMPORT.test(readFileSync(PREVIEW_CSS, 'utf8'));
+const globalHasTokens = TOKENS_IMPORT.test(readFileSync(GLOBAL_CSS, 'utf8'));
+
+if (!previewHasTokens && !globalHasTokens) {
+  console.error(
+    `${GLOBAL_CSS} も ${PREVIEW_CSS} も tokens.css を読んでいません。\n\n` +
+      '**展示は色を1つも持たない状態になります。**\n' +
+      '--sg-* が未定義になるだけなので、エラーは出ません。\n\n' +
+      `どちらかで読んでください。いまは ${GLOBAL_CSS} が読む形にしてあります。`,
+  );
+  process.exit(1);
+}
+
+console.log(`✓ 対照 5 件が期待どおり（欠落・既定エクスポート無し・揃っている形・トークン読み込み2件）`);
 console.log(
   `✓ コンポーネント ${components.length} 件（${components.join(' ')}）に ` +
     `${REQUIRED.join(' / ')} が揃っている`,
 );
 console.log(
   `✓ ${components.length} 件とも展示ページがあり、meta.json の pages に載っていて、テストがある`,
+);
+console.log(
+  `✓ 展示がトークンを受け取れる（${globalHasTokens ? GLOBAL_CSS : PREVIEW_CSS} が tokens.css を読む）`,
 );

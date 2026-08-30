@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>sashigane サンプルページ</title>
+<title>sashigane デモページ</title>
 <!--
-  生成した CSS 変数を**使い切る**ためのサンプルページ（Issue #61）。
+  生成した CSS 変数を**使い切る**ためのデモページ（Issue #61）。
+  ファイル名は sample-page.html のまま。決定文書と実験記録が名指しで参照しているため。
 
   ## 何を見せているか
 
@@ -486,7 +487,7 @@
     <div class="grid split" style="margin-top: var(--sg-space-5)">
       <article class="card" data-sg-surface="surface">
         <h3 class="h3">系列を見分ける</h3>
-        <p class="caption">段をずらして配るので、二色覚のもとでも潰れません（決定5-8）。</p>
+        <p class="caption">段をずらして配るので、二色覚のもとでも潰れません。</p>
         <div class="bars" style="margin-top: var(--sg-space-4)">
           <div style="background: var(--sg-color-chart-1); height: 72%"></div>
           <div style="background: var(--sg-color-chart-2); height: 100%"></div>
@@ -505,7 +506,7 @@
 
       <article class="card" data-sg-surface="surface">
         <h3 class="h3">大小を読む</h3>
-        <p class="caption">面に近い側から遠い側へ並べます。面と同じ段は帯に入りません（決定5-11）。</p>
+        <p class="caption">面に近い側から遠い側へ並べます。面と同じ段は帯に入りません。</p>
         <div class="band">
           <span style="background: var(--sg-color-sequential-1)"></span>
           <span style="background: var(--sg-color-sequential-2)"></span>
@@ -575,7 +576,7 @@
             <tr data-sg-interactive><td>印</td><td>primary</td><td class="n">400</td><td class="n">300</td></tr>
           </tbody>
         </table>
-        <p class="caption" style="margin-top: var(--sg-space-2)">数字は等幅で揃えています（決定1-11）。</p>
+        <p class="caption" style="margin-top: var(--sg-space-2)">数字は等幅で揃えています。</p>
       </article>
 
       <!-- 送信させないのはボタンの型で解く。**このページに script は1つも置かない**（B1） -->
@@ -642,8 +643,8 @@
         <p class="prose" style="margin-top: var(--sg-space-4); color: var(--sg-color-text-muted)">
           この段落だけ行高が違います。UI の中に置く文字と、続けて読ませる文章とでは
           読みやすい行間が違うためです。サイズは同じ段で、行高だけが別の族から来ています。
-          <a href="#data">決定1-4</a> がそう決めており、サイズと行高は必ず対で提供されます。
-          対応が崩れないように、プリミティブだけを公開することはしていません。
+          サイズと行高は必ず対で提供されます。対応が崩れないように、
+          サイズだけを取り出して使う道は用意していません。
         </p>
       </article>
       <aside class="card" data-sg-surface="inset">

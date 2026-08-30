@@ -42,15 +42,15 @@ const rampVars = (prefix: string, ramp: Ramp): string[] =>
 export const colorPrimitiveVars = (p: Palette): string[] => {
   const ink = shadowInkFor(p);
   return [
-    '  /* 色 — primary から生成（決定5-1）。段は保証境界に解かれている（決定5-2） */',
+    '  /* 色 — primary から生成。段は対比の保証境界に解かれている */',
     ...rampVars('neutral', p.neutral),
     ...rampVars('primary', p.primary),
     ...statusNames.flatMap((n) => rampVars(n, p.status[n])),
     ...p.categorical.flatMap((r, i) => rampVars(`series-${i + 1}`, r)),
     '',
-    '  /* 影の色（決定1-8 改訂）。**唯一、透過を持つ色である。**',
+    '  /* 影の色。**唯一、透過を持つ色である。**',
     '     中間色ランプの暗端に、面の梯子1段分になるアルファを解いて足したもの。',
-    '     色相は決定5-6 で primary から来るので、純黒の影にはならない。',
+    '     色相は primary から来るので、純黒の影にはならない。',
     '     明色モードでしか使わない。暗色では影が機能しないため（測定済み） */',
     `  --sg-shadow-ink: ${toCss(ink.color, ink.alpha)};`,
   ];

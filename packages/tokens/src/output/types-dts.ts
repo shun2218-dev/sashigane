@@ -31,13 +31,13 @@ export const toTypeDefinitions = (palette: Palette): string => {
     .filter((v): v is string => v !== null);
   return [
     ...outputHeader('line', 'tokens.js に対する型。', palette, [
-      '参照してよいトークン名だけを出す。プリミティブは含めない（原則3）。',
+      '参照してよいトークン名だけを出す。プリミティブは含めない。',
     ]),
     '',
     '/**',
     ' * 参照してよいトークン名。',
     ' * プリミティブ（--sg-{category}-{数字}）は意図的に含めていない。',
-    ' * コンポーネントはセマンティックしか参照できない（原則3）。',
+    ' * コンポーネントはセマンティックしか参照できない。',
     ' */',
     'export type SemanticToken =',
     ...names.map((n) => `  | '${n}'`),

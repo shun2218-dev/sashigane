@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { generatePalette, hexToOklch, toTokensCss } from '@sashigane/tokens';
 
 /**
- * サンプルページ。**独立した URL であり、React を1行も使わない**（決定6-4 の改訂）。
+ * デモページ。**独立した URL であり、React を1行も使わない**（決定6-4 の改訂）。
  *
  * 以前はテーマビルダーの中に iframe で埋め込み、`srcdoc` に流し込んでいた。
  * 生成物は `:root` と `@media (prefers-color-scheme)` と `[data-theme]` を書くので、
@@ -13,9 +13,11 @@ import { generatePalette, hexToOklch, toTokensCss } from '@sashigane/tokens';
  * さらに、ページとして React を経由しなくなったので、
  * **「React が要らないことを見せるページ」が実際に React を通らない。**
  *
- * ## HTML の場所を動かしていない
+ * ## HTML の名前は `sample-page.html` のままである
  *
- * `src/sample-page.html` のまま読む。`check:sample-page` がこのパスを見ている（Issue #61）。
+ * 利用者に見える名前だけを「デモ」に揃えた（決定6-11）。
+ * ファイル名と `check:sample-page` は、決定文書と実験記録が名指しで参照しているため
+ * 動かしていない。**記録を書き換えないことを優先している。**
  * Next.js の追跡に入ることは確認済み（`route.js.nft.json`）。
  *
  * ## 受け取るもの

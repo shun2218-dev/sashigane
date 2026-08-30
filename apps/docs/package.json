@@ -5,7 +5,7 @@
   "scripts": {
     "prepare:tokens": "pnpm --filter @sashigane/tokens build && cp ../../packages/tokens/dist/tokens.css public/tokens.css",
     "prepare:docs-data": "node ../../scripts/build-component-docs.mjs",
-    "prepare:preview-css": "tailwindcss -i preview.css -o public/preview.css",
+    "prepare:preview-css": "tailwindcss -i preview.css -o public/preview.css && node ../../scripts/scope-preview-css.mjs public/preview.css",
     "prepare:all": "pnpm prepare:tokens && pnpm prepare:docs-data && pnpm prepare:preview-css",
     "dev": "pnpm prepare:all && next dev",
     "build": "pnpm prepare:all && next build",
