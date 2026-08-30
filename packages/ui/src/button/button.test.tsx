@@ -156,17 +156,57 @@ describe('設計の不変条件', () => {
    * 塗る variant は塗りを1段ずらし（決定5-15）、塗らない variant は面の hover を使う。
    * **塗る variant にだけ hover がある形にしない**（教訓7）。
    */
-  it('塗らない variant も hover で変わる', async () => {
-    for (const variant of ['outline', 'ghost'] as const) {
+  it('**4種すべて**が hover で背景を変える', async () => {
+    /*
+     * 押せることが見た目から分かること。**1つでも変わらないと、
+     * 利用者は「押せるのか分からない」状態になる。**
+     * 実際 `subtle` だけ何も起きておらず、利用者に指摘されるまで気づかなかった。
+     */
+    for (const variant of ['solid', 'subtle', 'outline', 'ghost'] as const) {
       const { container } = await render(onSurface(<Button variant={variant}>x</Button>));
       const el = buttonIn(container);
-      expect(el.hasAttribute('data-sg-interactive'), `${variant} が面の hover を持たない`).toBe(
-        true,
-      );
       const before = styleOf(el).background;
       await page.elementLocator(el).hover();
-      await expect.poll(() => styleOf(el).background, { timeout: 2000 }).not.toBe(before);
+      await expect
+        .poll(() => styleOf(el).background, { timeout: 2000 })
+        .not.toBe(before);
     }
+  });
+
+  it('subtle の hover は色味を保ったまま1段深くなる', async () => {
+    /*
+     * **面の hover は中立色で塗る。** 自前で塗っている `subtle` がそれに上書きされると、
+     * hover した瞬間にランプの色が消えて灰色になる。
+     * 色が付いたまま深くなることを、**彩度で見る。**
+     */
+    const { container } = await render(onSurface(<Button variant="subtle">x</Button>));
+    const el = buttonIn(container);
+    /**
+     * 彩度を読む。**表記が2つある**——`oklch(L C H)` と `oklab(L a b)` で、
+     * 遷移を経ると後者で返る。`oklab` の彩度は a と b の長さである。
+     * 片方しか読まない式にして一度落とした。
+     */
+    const chroma = () => {
+      const bg = styleOf(el).background;
+      const lch = bg.match(/oklch\(\s*[\d.]+\s+([\d.]+)/);
+      if (lch) return Number(lch[1]);
+      const lab = bg.match(/oklab\(\s*[\d.]+\s+(-?[\d.]+)\s+(-?[\d.]+)/);
+      if (lab) return Math.hypot(Number(lab[1]), Number(lab[2]));
+      throw new Error(`彩度を読めない表記です: ${bg}`);
+    };
+    /*
+     * **遷移を止めてから測る。** 色は 200ms かけて動くので、
+     * 途中を読むと「変わった」も「色が残っている」も**両方たまたま通ってしまう。**
+     * 実際、止めずに書いたときは**塗りの再主張を外しても通っていた。**
+     */
+    el.style.transition = 'none';
+    const beforeBg = styleOf(el).background;
+    expect(chroma(), '塗りに色が付いていない').toBeGreaterThan(0.02);
+
+    await page.elementLocator(el).hover();
+    await expect.poll(() => styleOf(el).background, { timeout: 2000 }).not.toBe(beforeBg);
+    // **そのうえで色が残っていること。** 中立色に上書きされると彩度が落ちる
+    expect(chroma(), 'hover で色味が消えている').toBeGreaterThan(0.02);
   });
 
   it('無効のときは面の hover を付けない', async () => {
