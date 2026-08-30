@@ -2,7 +2,20 @@ import { RootProvider } from 'fumadocs-ui/provider/next';
 import type { ReactNode } from 'react';
 import './global.css';
 
+/**
+ * 絵の URL は**絶対でなければ届かない。** 相対のままだと
+ * Next.js が `http://localhost:3000` を補い、**そのまま本番に出る。**
+ *
+ * まだ配信していないので既定は手元の住所である。
+ * 配信を始めるときに `NEXT_PUBLIC_SITE_URL` を渡す。
+ *
+ * **渡す先はビルドである。** `NEXT_PUBLIC_*` はビルド時に埋め込まれるので、
+ * `next start` に渡しても効かない——**手元で一度そう試して、効かないことを確かめた。**
+ */
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+
 export const metadata = {
+  metadataBase: new URL(siteUrl),
   title: 'sashigane',
   description: 'トークンが唯一の正であるデザインシステム',
 };

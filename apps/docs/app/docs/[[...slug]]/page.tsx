@@ -1,7 +1,7 @@
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/page';
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '../../../mdx-components';
-import { source } from '../../../lib/source';
+import { pageImage, source } from '../../../lib/source';
 
 export default async function Page(props: { params: Promise<{ slug?: string[] }> }) {
   const params = await props.params;
@@ -28,5 +28,11 @@ export async function generateMetadata(props: { params: Promise<{ slug?: string[
   const params = await props.params;
   const page = source.getPage(params.slug);
   if (!page) notFound();
-  return { title: page.data.title, description: page.data.description };
+  return {
+    title: page.data.title,
+    description: page.data.description,
+    // 絵もページから出す。**手で書かない**——ページを直したときに絵だけ古くなる
+    openGraph: { images: pageImage(page).url },
+    twitter: { card: 'summary_large_image', images: pageImage(page).url },
+  };
 }
