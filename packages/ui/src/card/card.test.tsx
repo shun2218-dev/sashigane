@@ -24,6 +24,29 @@ const onSurface = (node: React.ReactNode, surface = 'page') => (
   <div data-sg-surface={surface}>{node}</div>
 );
 
+/**
+ * hover を測るための器。**ポインタを外す先を一緒に描く。**
+ *
+ * 描いた要素は前のテストと同じ位置に出ることがあり、
+ * **ポインタが乗ったままだと `before` が既に hover 後の値になる。**
+ * そうなると「変わったこと」を測れない——CI で実際に落ちた
+ * （`expected X not to be X`）。
+ */
+const withAway = (node: React.ReactNode) =>
+  onSurface(
+    <>
+      <span data-testid="away">away</span>
+      {node}
+    </>,
+  );
+
+/** ポインタを、測る相手から外す */
+const moveAway = async (container: HTMLElement) => {
+  const away = container.querySelector('[data-testid="away"]');
+  if (!away) throw new Error('ポインタの逃げ先が描画されていません');
+  await page.elementLocator(away).hover();
+};
+
 /** 計算値を読む。**クラスではなく、実際に効いている値を見る** */
 const styleOf = (el: Element) => {
   const s = getComputedStyle(el);
@@ -159,16 +182,21 @@ describe('トークンの保証（実ブラウザでしか測れない）', () =
   });
 
   it('hover すると1段深い文脈になる（決定5-13）', async () => {
-    const { container } = await render(onSurface(<Card interactive>hover me</Card>));
-    const card = cardIn(container);
+    const { container } = await render(withAway(<Card interactive>hover me</Card>));
+    const card = container.querySelector('[data-sg-component="card"]');
+    if (!card) throw new Error('Card が描画されていません');
+    // **先にポインタを外す。** 乗ったままだと before が既に hover 後の値になる
+    await moveAway(container);
     const before = styleOf(card).background;
     await page.elementLocator(card).hover();
     await expect.poll(() => styleOf(card).background).not.toBe(before);
   });
 
   it('interactive でなければ hover しても変わらない', async () => {
-    const { container } = await render(onSurface(<Card>no hover</Card>));
-    const card = cardIn(container);
+    const { container } = await render(withAway(<Card>no hover</Card>));
+    const card = container.querySelector('[data-sg-component="card"]');
+    if (!card) throw new Error('Card が描画されていません');
+    await moveAway(container);
     const before = styleOf(card).background;
     await page.elementLocator(card).hover();
     expect(styleOf(card).background).toBe(before);
@@ -215,7 +243,7 @@ describe('asChild', () => {
 
   it('リンクにしても hover で1段深くなる', async () => {
     const { container } = await render(
-      onSurface(
+      withAway(
         <Card asChild interactive>
           <a href="#x">hover me</a>
         </Card>,
@@ -223,6 +251,8 @@ describe('asChild', () => {
     );
     const a = container.querySelector('a');
     if (!a) throw new Error('a が描画されていません');
+    // **先にポインタを外す。** 乗ったままだと before が既に hover 後の値になる
+    await moveAway(container);
     const before = styleOf(a).background;
     await page.elementLocator(a).hover();
     // **背景だけでなく前景も動く**ことは面の仕掛けが保証している

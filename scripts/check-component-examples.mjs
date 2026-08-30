@@ -375,11 +375,28 @@ const exportedComponents = (source) => {
   ];
 };
 
+/**
+ * 名乗りを**別の部品から導いている**もの。
+ *
+ * アイコンは図案の名前（lucide の `displayName`）から名乗りを作る。
+ * **手で書かないので、文字列としてはソースに現れない。**
+ * 代わりに `export const IconX = defineIcon(X)` の**対応**を見る——
+ * `Icon` を外した名前が図案の名前と一致していれば、名乗りは一致する。
+ */
+const DERIVED = /export\s+const\s+(\w+)\s*=\s*defineIcon\(\s*(\w+)/g;
+
+const derivedPairs = (source) =>
+  new Map([...withoutComments(source).matchAll(DERIVED)].map((m) => [m[1], m[2]]));
+
 const missingMarkers = (source) => {
   const text = withoutComments(source);
-  return exportedComponents(source).filter(
-    (name) => !text.includes(`'${markerOf(name)}'`) && !text.includes(`"${markerOf(name)}"`),
-  );
+  const derived = derivedPairs(source);
+  return exportedComponents(source).filter((name) => {
+    const from = derived.get(name);
+    // 導いているものは、名前の対応で見る
+    if (from !== undefined) return name !== `Icon${from}`;
+    return !text.includes(`'${markerOf(name)}'`) && !text.includes(`"${markerOf(name)}"`);
+  });
 };
 
 // 対照。**発火することを確かめてから 0 件と言う**（教訓2）
@@ -397,6 +414,8 @@ const markerControls = [
     false,
   ],
   ['コメントの中だけ', '// data-sg-component="button"\nexport function Button() {}', true],
+  ['図案から導いている', 'export const IconX = defineIcon(X);', false],
+  ['導いた名前がずれている', 'export const IconX = defineIcon(Plus);', true],
 ];
 for (const [label, source, shouldFire] of markerControls) {
   if (missingMarkers(source).length > 0 !== shouldFire) {
@@ -427,8 +446,8 @@ if (markerProblems.length) {
 }
 
 console.log(
-  '✓ 対照 16 件が期待どおり（欠落・既定エクスポート無し・揃っている形・' +
-    'トークン読み込み2件・asChild 6件・名乗り5件）',
+  '✓ 対照 18 件が期待どおり（欠落・既定エクスポート無し・揃っている形・' +
+    'トークン読み込み2件・asChild 6件・名乗り7件）',
 );
 console.log(
   `✓ コンポーネント ${components.length} 件（${components.join(' ')}）に ` +
