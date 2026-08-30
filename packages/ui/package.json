@@ -5,5 +5,12 @@
   "license": "MIT",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "react": "^19.2.8"
   }
 }

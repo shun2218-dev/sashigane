@@ -69,7 +69,18 @@ importers:
 
   packages/tokens: {}
 
-  packages/ui: {}
+  packages/ui:
+    dependencies:
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.18
+        version: 19.2.18
+      react:
+        specifier: ^19.2.8
+        version: 19.2.8
 
 packages:
 

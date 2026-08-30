@@ -1,10 +1,7 @@
 /**
- * コンポーネントの入口。**まだ1つも無い。**
+ * コンポーネントの入口。
  *
- * Phase 3 の順序は決定6-1 で決めてある。
+ * 作る順序は決定6-1 で決めてある。
  * Card → Button → Badge → Separator → Table の順に、1つずつここへ足す。
- *
- * 中身より先にこのパッケージを作ったのは、**コンポーネントより先に検査を入れる**ためである
- * （決定6-2）。`pnpm check:component-classes` はこのディレクトリを走査対象にしている。
  */
-export {};
+export { Card, type CardProps } from './card/index.ts';
