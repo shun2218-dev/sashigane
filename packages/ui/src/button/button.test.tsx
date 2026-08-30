@@ -405,6 +405,52 @@ describe('asChild', () => {
     expect(() => Button({ ...props, children: <a href="#x">x</a> })).toThrow(/disabled/);
   });
 
+  it('ref は自分と子の両方に配られる', async () => {
+    let own: Element | null = null;
+    let child: Element | null = null;
+    const { container } = await render(
+      onSurface(
+        <Button
+          asChild
+          ref={(node) => {
+            own = node;
+          }}
+        >
+          <a
+            href="#x"
+            ref={(node) => {
+              child = node;
+            }}
+          >
+            x
+          </a>
+        </Button>,
+      ),
+    );
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    // **片方を捨てない。** 捨てても画面は正常に見えるので、測らないと気づけない
+    expect(own).toBe(a);
+    expect(child).toBe(a);
+  });
+
+  it('片方だけに ref があっても届く', async () => {
+    let own: Element | null = null;
+    const { container } = await render(
+      onSurface(
+        <Button
+          asChild
+          ref={(node) => {
+            own = node;
+          }}
+        >
+          <a href="#x">x</a>
+        </Button>,
+      ),
+    );
+    expect(own).toBe(container.querySelector('a'));
+  });
+
   it('子が要素でないと落ちる', () => {
     /*
      * **Button ではなく Slot を直接呼ぶ。** Button を関数として呼んでも

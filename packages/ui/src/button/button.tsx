@@ -33,7 +33,7 @@
  * ─────────────────────────────────────────────
  */
 import { cva, type VariantProps } from 'class-variance-authority';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
 import { Slot } from '../internal/slot.tsx';
 
 /**
@@ -150,6 +150,8 @@ interface ButtonBase
 export type ButtonProps =
   | (ButtonBase & {
       asChild?: false;
+      /** 描いた `button` を受け取る */
+      ref?: Ref<HTMLButtonElement>;
       /**
        * 押せない状態。**不透明度では表さない**。
        * 面を `inset` に宣言して沈め、文字を `text-faint` にする。
@@ -167,6 +169,11 @@ export type ButtonProps =
       children: ReactNode;
       /** `asChild` のときは使えない。上の説明を参照 */
       disabled?: never;
+      /**
+       * **子の要素**を受け取る。器を作らないので、届くのは子である。
+       * 子の側にも `ref` があれば**両方に配られる。**
+       */
+      ref?: Ref<HTMLElement>;
     });
 
 export function Button({
@@ -213,5 +220,12 @@ export function Button({
 
   // `type` と `disabled` は**自分で button を描くときだけ**渡す。
   // 子が a のとき、どちらも意味を持たないまま黙って付く
-  return asChild ? <Slot {...shared} /> : <button type="button" disabled={disabled} {...shared} />;
+  if (asChild) return <Slot {...shared} />;
+  /*
+   * **ここだけ型を緩める。** props を分解した時点で ButtonProps の直和が潰れ、
+   * `ref` が `Ref<HTMLElement>`（`asChild` 側の型）でも通ってしまう形になる。
+   * この枝は `asChild` が false なので、実際に届くのは `button` である。
+   */
+  const own = shared as ButtonHTMLAttributes<HTMLButtonElement>;
+  return <button type="button" disabled={disabled} {...own} />;
 }

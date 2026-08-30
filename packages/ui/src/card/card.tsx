@@ -24,7 +24,7 @@
  * ─────────────────────────────────────────────
  */
 import { cva, type VariantProps } from 'class-variance-authority';
-import type { HTMLAttributes, ReactNode } from 'react';
+import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import { Slot } from '../internal/slot.tsx';
 
 /** 面の既定。**1箇所だけに書く。** 散らすと、片方だけ直したときにずれる */
@@ -103,6 +103,11 @@ export interface CardProps
    */
   asChild?: boolean;
   children?: ReactNode;
+  /**
+   * 描いた要素を受け取る。`asChild` のときは**子の要素**が届く——
+   * 器を作らないためである。子の側にも `ref` があれば**両方に配られる。**
+   */
+  ref?: Ref<HTMLElement>;
 }
 
 /**
@@ -127,5 +132,11 @@ export function Card({
     className: className ? `${classes} ${className}` : classes,
     ...props,
   };
-  return asChild ? <Slot {...shared} /> : <div {...shared} />;
+  if (asChild) return <Slot {...shared} />;
+  /*
+   * **ここだけ型を緩める。** props を分解した時点で `ref` の型が
+   * `Ref<HTMLElement>`（`asChild` 側で受ける型）に広がる。
+   * この枝は `asChild` が false なので、実際に届くのは `div` である。
+   */
+  return <div {...(shared as HTMLAttributes<HTMLDivElement>)} />;
 }

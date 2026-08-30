@@ -88,7 +88,8 @@ pnpm check:docs-refs          # 文書が挙げている名前と参照が実在
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
 pnpm check:component-examples # 3状態の例・展示ページ・テストが揃っていること（決定6-4・6-6）と
-                              # 展示がトークンを受け取れること（決定6-12）
+                              # 展示がトークンを受け取れること（決定6-12）と
+                              # asChild が共有の Slot を通っていること（決定6-14）
 pnpm check:public-language    # 利用者に届く文面に内部の参照が無いこと（決定6-8・6-11）。
                               # 生成物・サイトの画面に出る文・デモページの本文も見る
 pnpm check:docs-search        # 検索が実際に引けること（決定6-13）。
