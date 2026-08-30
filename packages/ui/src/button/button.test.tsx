@@ -599,3 +599,91 @@ describe('アイコン', () => {
     expect(() => Button({ ...props, children: <Glyph /> })).not.toThrow();
   });
 });
+
+/**
+ * 読み込み中（決定6-19）。
+ *
+ * 測るのは3つである。
+ *
+ *   **沈まないこと** — 無効と同じ見た目になると、2つの状態が区別できない
+ *   **押せないこと** — 輪が回っているだけで押せると、二重に送れる
+ *   **二重に読まれないこと** — ボタンは既に名前を持っている
+ */
+describe('読み込み中', () => {
+  const Glyph = () => (
+    <svg className="size-6" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 6l12 12" stroke="currentColor" />
+    </svg>
+  );
+
+  it('輪が出て、aria-busy が付く', async () => {
+    const { container } = await render(onSurface(<Button loading>送信中</Button>));
+    const el = buttonIn(container);
+    expect(el.querySelector('[data-sg-spinner]')).not.toBeNull();
+    expect(el.getAttribute('aria-busy')).toBe('true');
+  });
+
+  it('押せない', async () => {
+    let clicked = 0;
+    const { container } = await render(
+      onSurface(
+        <Button loading onClick={() => { clicked += 1; }}>
+          送信中
+        </Button>,
+      ),
+    );
+    const el = buttonIn(container);
+    expect(el.disabled).toBe(true);
+    el.click();
+    // **輪が回っているだけで押せると、二重に送れる**
+    expect(clicked).toBe(0);
+  });
+
+  it('沈まない。無効とは見た目が違う', async () => {
+    const loading = await render(onSurface(<Button loading>x</Button>));
+    const off = await render(onSurface(<Button disabled>x</Button>));
+    const plain = await render(onSurface(<Button>x</Button>));
+
+    const l = buttonIn(loading.container);
+    // **面を宣言しない。** 宣言すると背景と前景が同時に沈む
+    expect(l.getAttribute('data-sg-surface')).toBeNull();
+    expect(buttonIn(off.container).getAttribute('data-sg-surface')).toBe('inset');
+    // 塗りは通常のまま残る
+    expect(styleOf(l).background).toBe(styleOf(buttonIn(plain.container)).background);
+    expect(styleOf(l).background).not.toBe(styleOf(buttonIn(off.container)).background);
+  });
+
+  it('文字は残る', async () => {
+    const { container } = await render(onSurface(<Button loading>送信中</Button>));
+    // **輪だけにすると、何を待っているのか分からなくなる**
+    expect(buttonIn(container).textContent).toContain('送信中');
+  });
+
+  it('アイコンだけのボタンでは輪が置き換える', async () => {
+    const { container } = await render(
+      onSurface(
+        <Button loading iconOnly aria-label="送信中">
+          <Glyph />
+        </Button>,
+      ),
+    );
+    const el = buttonIn(container);
+    expect(el.querySelector('[data-sg-spinner]')).not.toBeNull();
+    // **並べると器が横に伸びて、正方形でなくなる**
+    expect(el.querySelector('path')).toBeNull();
+    const r = el.getBoundingClientRect();
+    expect(Math.abs(r.width - r.height)).toBeLessThan(1);
+  });
+
+  it('輪は読み上げから隠れている', async () => {
+    const { container } = await render(onSurface(<Button loading>送信中</Button>));
+    const spinner = buttonIn(container).querySelector('[data-sg-spinner]');
+    // ボタンは既に名前を持っている。**隠さないと二重に読まれる**
+    expect(spinner?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('asChild と同時に使うと落ちる', () => {
+    const props = { asChild: true, loading: true } as unknown as Parameters<typeof Button>[0];
+    expect(() => Button({ ...props, children: <a href="#x">x</a> })).toThrow(/loading/);
+  });
+});

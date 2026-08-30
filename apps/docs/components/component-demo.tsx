@@ -32,6 +32,7 @@ const STATE_LABEL: Record<string, string> = {
   'as-child': '要素の差し替え',
   parts: '中の区画',
   icon: 'アイコン',
+  loading: '読み込み中',
 };
 
 /**
