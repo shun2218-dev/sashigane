@@ -15,3 +15,13 @@ export {
 } from './card/index.ts';
 export { Separator, type SeparatorProps } from './separator/index.ts';
 export { Spinner, type SpinnerProps } from './spinner/index.ts';
+export {
+  Table,
+  type TableProps,
+  TableRow,
+  type TableRowProps,
+  TableCell,
+  type TableCellProps,
+  TableHeaderCell,
+  type TableHeaderCellProps,
+} from './table/index.ts';
