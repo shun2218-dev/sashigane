@@ -94,11 +94,11 @@ const button = cva(
       { variant: 'solid', tone: 'success', disabled: false, class: 'bg-success text-on-success hover:bg-success-strong' },
       { variant: 'solid', tone: 'info', disabled: false, class: 'bg-info text-on-info hover:bg-info-strong' },
 
-      { variant: 'subtle', tone: 'accent', disabled: false, class: 'bg-accent-subtle text-on-accent-subtle' },
-      { variant: 'subtle', tone: 'danger', disabled: false, class: 'bg-danger-subtle text-on-danger-subtle' },
-      { variant: 'subtle', tone: 'warning', disabled: false, class: 'bg-warning-subtle text-on-warning-subtle' },
-      { variant: 'subtle', tone: 'success', disabled: false, class: 'bg-success-subtle text-on-success-subtle' },
-      { variant: 'subtle', tone: 'info', disabled: false, class: 'bg-info-subtle text-on-info-subtle' },
+      { variant: 'subtle', tone: 'accent', disabled: false, class: 'bg-accent-subtle text-on-accent-subtle hover:bg-accent-subtle!' },
+      { variant: 'subtle', tone: 'danger', disabled: false, class: 'bg-danger-subtle text-on-danger-subtle hover:bg-danger-subtle!' },
+      { variant: 'subtle', tone: 'warning', disabled: false, class: 'bg-warning-subtle text-on-warning-subtle hover:bg-warning-subtle!' },
+      { variant: 'subtle', tone: 'success', disabled: false, class: 'bg-success-subtle text-on-success-subtle hover:bg-success-subtle!' },
+      { variant: 'subtle', tone: 'info', disabled: false, class: 'bg-info-subtle text-on-info-subtle hover:bg-info-subtle!' },
 
       { variant: 'outline', tone: 'accent', disabled: false, class: 'text-accent' },
       { variant: 'outline', tone: 'danger', disabled: false, class: 'text-danger' },
@@ -128,14 +128,22 @@ export interface ButtonProps
 
 export function Button({ variant, tone, disabled = false, className, ...props }: ButtonProps) {
   const classes = button({ variant, tone, disabled });
-  // 塗らない variant は面の hover で押せることを示す。無効のときは付けない
-  const paints = variant === undefined || variant === 'solid' || variant === 'subtle';
+  /*
+   * 面の hover を使うもの。**`solid` 以外はすべて使う。**
+   *
+   * `solid` は塗りを1段ずらす（`hover:bg-*-strong`）ので要らない。
+   * `outline` と `ghost` は塗りが無いので、面の hover が背景を出す。
+   * `subtle` は自前で塗っているため、面の hover の中立色に上書きされてしまう——
+   * そこで hover のときだけ自分の塗りを `!` で再主張する。
+   * 面の hover は色の変数も1段ずらすので、**再主張すると色付きのまま1段深くなる。**
+   */
+  const shiftsOwnFill = variant === undefined || variant === 'solid';
   return (
     <button
       type="button"
       // **無効のときだけ面を宣言する。** 面の仕掛けが背景と前景を同時に沈める
       data-sg-surface={disabled ? 'inset' : undefined}
-      data-sg-interactive={!disabled && !paints ? '' : undefined}
+      data-sg-interactive={!disabled && !shiftsOwnFill ? '' : undefined}
       disabled={disabled}
       className={className ? `${classes} ${className}` : classes}
       {...props}
