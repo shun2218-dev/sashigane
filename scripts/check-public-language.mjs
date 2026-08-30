@@ -10,12 +10,17 @@
  * 番号の定義はこのリポジトリの `docs/` にあり、
  * レジストリ配信でコードを受け取った利用者は持っていない。
  *
+ * **「Phase 3」も同じである。** 開発の段取りは我々の都合であって、
+ * 読む側には何段階あるのかも、いまどこなのかも分からない。
+ * しかも**進むたびに嘘になる**——実際、README は「Phase 1」のまま
+ * コンポーネントが2つある状態を指していた。
+ *
  * 設計の経緯は残す価値がある。**残す場所が違うだけである。**
  *
  * ## 何を見るか
  *
  *   1. `packages/ui/src` の **JSDoc**（`/** … *␘/`）と**例のファイル全体**
- *   2. `apps/docs/content` の MDX
+ *   2. `apps/docs/content` の MDX と **README**
  *   3. **生成物**（`packages/tokens/dist`）。レジストリ配信で利用側へ落ちる
  *   4. **画面に出る文**——ドキュメントサイトの実装（`apps/docs/app`）と
  *      デモページ（`apps/docs/src/*.html`）から**コメントを除いた残り**
@@ -61,8 +66,13 @@
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 
-/** 内部の参照。**番号だけ書かれても辿れない** */
-const INTERNAL_REF = /(?:決定|保留)\s?\d+-\d+|教訓\s?\d+|原則\s?\d+/g;
+/**
+ * 内部の参照。**番号だけ書かれても辿れない。**
+ *
+ * 開発の段取り（`Phase 3`）も入れてある。読む側には何段階あるのかも
+ * いまどこなのかも分からず、**進むたびに嘘になる。**
+ */
+const INTERNAL_REF = /(?:決定|保留)\s?\d+-\d+|教訓\s?\d+|原則\s?\d+|Phase\s?\d+|フェーズ\s?\d+/g;
 
 /**
  * 配布先で壊れるパス。**リポジトリ相対の文書参照**を落とす。
@@ -92,7 +102,11 @@ const stripComments = (text) =>
 const inspect = (path, text) => {
   const found = [];
   const isExample = /\/examples\//.test(path);
-  const whole = isExample || path.endsWith('.mdx') || path.startsWith('packages/tokens/dist/');
+  const whole =
+    isExample ||
+    path.endsWith('.mdx') ||
+    path === 'README.md' ||
+    path.startsWith('packages/tokens/dist/');
   // **コメントを落とした残りが画面に出る**もの
   const rendered = /^apps\/docs\/(app|components)\/.*\.tsx?$/.test(path) || /^apps\/docs\/src\/.*\.html$/.test(path);
 
@@ -142,6 +156,9 @@ expectFire(
   'ref',
 );
 expectFire('MDX の中の原則番号', 'apps/docs/content/docs/x.mdx', '原則5 のとおり。', 'ref');
+expectFire('MDX の中の段取り', 'apps/docs/content/docs/x.mdx', 'Phase 3 に入ったところ。', 'ref');
+expectFire('README の中の段取り', 'README.md', '現在 **Phase 1（トークン層）**。', 'ref');
+expectFire('README の中の決定番号', 'README.md', 'バージョンの規則は決定4-6 です。', 'ref');
 expectFire(
   '配布されるファイルのリポジトリ相対パス',
   'packages/ui/src/card/card.tsx',
@@ -160,6 +177,8 @@ expectPass(
   '/**\n * 面の種類。凹んだ面は別の役割なので持たない。\n */\nexport const a = 1;',
 );
 expectPass('絶対 URL', 'packages/ui/src/card/card.tsx', '/* https://example.com/docs/decisions.md */');
+// 段取りでない「Phase」は落とさない。**語そのものを禁じているのではない**
+expectPass('番号の付かない Phase', 'README.md', 'Phase という語はここでは段取りを指しません。');
 
 expectFire(
   '生成物のコメントの中の決定番号',
@@ -217,9 +236,11 @@ const TARGETS = [
   { re: /^apps\/docs\/content\/.*\.mdx$/ },
   { re: /^apps\/docs\/(app|components)\/.*\.tsx?$/ },
   { re: /^apps\/docs\/src\/.*\.html$/ },
+  // **README は利用者が最初に読むもの。** CLAUDE.md と docs/ は維持する側のもので対象外
+  { re: /^README\.md$/ },
 ];
 
-const tracked = execSync('git ls-files packages/ui apps/docs', { encoding: 'utf8' })
+const tracked = execSync('git ls-files packages/ui apps/docs README.md', { encoding: 'utf8' })
   .split('\n')
   .filter((f) => f && existsSync(f))
   .filter((f) => TARGETS.some((t) => t.re.test(f) && !(t.skip && t.skip.test(f))));
@@ -263,5 +284,5 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-console.log('✓ 対照 14 件が期待どおり（発火 7・通過 7）');
+console.log('✓ 対照 19 件が期待どおり（発火 11・通過 8）');
 console.log(`✓ 利用者に届く ${files.length} ファイルに内部の参照なし`);
