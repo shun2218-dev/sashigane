@@ -13,6 +13,7 @@ export {
   type AccordionContentProps,
 } from './accordion/index.ts';
 export { Badge, type BadgeProps } from './badge/index.ts';
+export { Checkbox, type CheckboxProps } from './checkbox/index.ts';
 export { Button, type ButtonProps } from './button/index.ts';
 export { Field, type FieldProps } from './field/index.ts';
 export { Input, type InputProps } from './input/index.ts';
@@ -28,6 +29,12 @@ export {
   type CardPartProps,
 } from './card/index.ts';
 export { List, type ListProps, ListItem, type ListItemProps } from './list/index.ts';
+export {
+  Radio,
+  type RadioProps,
+  RadioGroup,
+  type RadioGroupProps,
+} from './radio/index.ts';
 export { Separator, type SeparatorProps } from './separator/index.ts';
 export { Spinner, type SpinnerProps } from './spinner/index.ts';
 export {
