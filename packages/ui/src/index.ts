@@ -35,6 +35,7 @@ export {
   RadioGroup,
   type RadioGroupProps,
 } from './radio/index.ts';
+export { Select, type SelectProps, type SelectOption } from './select/index.ts';
 export { Separator, type SeparatorProps } from './separator/index.ts';
 export { Spinner, type SpinnerProps } from './spinner/index.ts';
 export {

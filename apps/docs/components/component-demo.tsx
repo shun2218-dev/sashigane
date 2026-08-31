@@ -99,7 +99,13 @@ export function ComponentDemo({ name }: { name: string }) {
         器は fumadocs のものを使う。**この器を自分で組む理由が無い**——
         組むと、サイトの他の場所と見た目が揃わなくなる。
       */}
-      <Tabs items={['表示', 'ソース']}>
+      {/*
+        **器の切り取りを外す。** 既定は overflow-hidden で角を丸めているが、
+        Select の一覧は箱の外へ出るので、そのままだと切れる。
+        クラスではなく style で書いているのは、**同じ特定度のクラス同士の
+        勝敗を Tailwind の出力順に委ねないため**である。
+      */}
+      <Tabs items={['表示', 'ソース']} style={{ overflow: 'visible' }}>
         <Tab value="表示">
           {/* 器は `preview.tsx` が持つ。**面の宣言と本文スタイルの遮断が要る** */}
           <div {...previewProps('flex flex-col gap-4')}>
