@@ -1,3 +1,9 @@
+'use client';
+
+/*
+  **例そのものをクライアント側にする。** Form はクライアント側の部品なので、
+  サーバ側から送信処理（関数）を渡せない。
+*/
 import { Button } from '../../button/button.tsx';
 import { Form, FormActions } from '../form.tsx';
 
