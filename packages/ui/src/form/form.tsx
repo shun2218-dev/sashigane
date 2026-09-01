@@ -12,10 +12,21 @@
  * 親は利用側の送信処理を持つのでどのみちクライアント側であり、
  * 中身は子として渡せるので、実際に失うものは無い。
  *
+ * ## 移す先は、全体の誤り → 欄の誤り の順である
+ *
+ * 全体の誤りは**なぜ送れなかったかを説明している**もので、フォームの上端にある。
+ * そこへ移せば、利用者は下へ読み進める形になる。
+ *
+ * 全体の誤りが無いときだけ、最初の誤りの欄へ移す。
+ *
  * ## 送信処理を待ってから探す
  *
  * 誤りが付くのは**利用側の検証が終わってから**である。
  * 待たずに探すと、まだ誰も誤りを名乗っていない。
+ *
+ * **約束を返さない非同期の検証には追随しない。** 待ち続ける形にはしていない——
+ * いつやめるかを決められず、**時間が経ってから焦点を奪うのは、移さないより悪い。**
+ * そのころ利用者は別の場所を触っている。
  *
  * 待ち方は2段ある——**利用側の処理（約束を返すならその解決）**と、
  * **そのあとの描画**である。片方だけでは足りない。
@@ -95,6 +106,19 @@ export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, 'ch
  * 誤りを名乗っている欄（`aria-invalid`）を探すので、
  * **どのライブラリで検証したかに依りません。**
  *
+ * 移す先は**全体の誤り → 最初の誤りの欄**の順です。全体の誤りは
+ * 「なぜ送れなかったか」を説明していて、フォームの上端にあります。
+ *
+ * ## 検証が非同期なら、約束を返してください
+ *
+ * いつ誤りが付くかは、送信処理が終わるまで分かりません。
+ * **約束（Promise）を返せば、その解決を待ちます**——`async` で書けばそうなります。
+ *
+ * 返さずに非同期の検証を始めた場合、**焦点は移りません。**
+ * 待ち続ける形にはしていません——いつやめるかを決められず、
+ * **時間が経ってから焦点を奪うのは、移さないより悪い**からです。
+ * そのころ利用者は別の場所を触っています。
+ *
  * ## ブラウザ既定の検証は切ってあります
  *
  * 既定の吹き出しは Field が出す文言と二重になり、見た目も位置も揃いません。
@@ -111,6 +135,7 @@ export function Form({
   ...props
 }: FormProps) {
   const formRef = useRef<HTMLFormElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
 
   // 送信の型は React が持っているものを借りる。**自分で書くとずれる**
   const handleSubmit: NonNullable<FormHTMLAttributes<HTMLFormElement>['onSubmit']> = async (
@@ -132,14 +157,20 @@ export function Form({
       await result;
     }
 
-    let first: Element | null = null;
+    let target: HTMLElement | null = null;
     for (let i = 0; i < FRAMES; i += 1) {
-      first = formRef.current?.querySelector(INVALID) ?? null;
-      if (first) break;
+      /*
+       * **全体の誤りが先である。** 欄1つの話ではなく、
+       * 「なぜ送れなかったか」を説明しているのはこちらで、
+       * フォームの上端にある。ここへ移せば、下へ読み進める形になる。
+       */
+      const invalid = formRef.current?.querySelector(INVALID);
+      target = errorRef.current ?? (invalid ? focusTarget(invalid) : null);
+      if (target) break;
       await nextFrame();
     }
 
-    if (first) focusTarget(first)?.focus();
+    target?.focus();
   };
 
   const classes = 'flex flex-col gap-4';
@@ -163,7 +194,20 @@ export function Form({
         `aria-describedby` では結べない。
       */}
       {error ? (
-        <p data-sg-component="form-error" role="alert" className="text-body text-danger">
+        <p
+          ref={errorRef}
+          data-sg-component="form-error"
+          role="alert"
+          /*
+            **焦点を受け取れるようにする。** 送信に失敗して、
+            欄には誤りが無く**ここだけに文言がある**とき、移す先がここになる。
+
+            `-1` は「順番には入らないが、移せる」という意味である。
+            `Tab` の順路に割り込ませない。
+          */
+          tabIndex={-1}
+          className="text-body text-danger"
+        >
           {error}
         </p>
       ) : null}

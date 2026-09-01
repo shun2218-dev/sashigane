@@ -108,6 +108,95 @@ describe('送信に失敗したとき', () => {
     await expect.poll(() => document.activeElement).toBe(inputsIn(container)[0]);
   });
 
+  it('欄に誤りが無く、全体の誤りだけのときはそこへ移る', async () => {
+    const Rejected = () => {
+      const [failed, setFailed] = useState(false);
+      return (
+        <Form
+          error={failed ? '送信できませんでした' : undefined}
+          onSubmit={(event) => {
+            event.preventDefault();
+            setFailed(true);
+          }}
+        >
+          <Field id="r-a" label="ひとつめ">
+            <Input />
+          </Field>
+          <FormActions>
+            <Button type="submit">送る</Button>
+          </FormActions>
+        </Form>
+      );
+    };
+    const { container } = await render(onSurface(<Rejected />));
+    await userEvent.click(container.querySelector('button[type="submit"]') as Element);
+    /*
+      **読み上げには届くが、目で見ている人には届かない。**
+      文言はフォームの上端、押したボタンは下端にあるので、
+      長いフォームでは画面の外になる——押しても何も起きていないように見える。
+    */
+    await expect
+      .poll(() => document.activeElement)
+      .toBe(container.querySelector('[data-sg-component="form-error"]'));
+  });
+
+  it('全体の誤りと欄の誤りが両方あるときは、全体の誤りへ移る', async () => {
+    const Both = () => {
+      const [failed, setFailed] = useState(false);
+      return (
+        <Form
+          error={failed ? '送信できませんでした' : undefined}
+          onSubmit={(event) => {
+            event.preventDefault();
+            setFailed(true);
+          }}
+        >
+          <Field id="b-a" label="ひとつめ" error={failed ? '入力してください' : undefined}>
+            <Input />
+          </Field>
+          <FormActions>
+            <Button type="submit">送る</Button>
+          </FormActions>
+        </Form>
+      );
+    };
+    const { container } = await render(onSurface(<Both />));
+    await userEvent.click(container.querySelector('button[type="submit"]') as Element);
+    // **なぜ送れなかったかを説明しているのは全体の誤りである。** 上端にあるので、
+    // そこへ移せば下へ読み進める形になる
+    await expect
+      .poll(() => document.activeElement)
+      .toBe(container.querySelector('[data-sg-component="form-error"]'));
+  });
+
+  it('async で書いた送信処理にも追随する', async () => {
+    const Async = () => {
+      const [bad, setBad] = useState(false);
+      return (
+        <Form
+          onSubmit={async (event) => {
+            event.preventDefault();
+            await new Promise((resolve) => {
+              setTimeout(resolve, 30);
+            });
+            setBad(true);
+          }}
+        >
+          <Field id="as-a" label="ひとつめ" error={bad ? '入力してください' : undefined}>
+            <Input />
+          </Field>
+          <FormActions>
+            <Button type="submit">送る</Button>
+          </FormActions>
+        </Form>
+      );
+    };
+    const { container } = await render(onSurface(<Async />));
+    await userEvent.click(container.querySelector('button[type="submit"]') as Element);
+    // **`async` の関数は約束を返す。** 待てる側である
+    await expect.poll(() => document.activeElement).toBe(inputsIn(container)[0]);
+  });
+
   it('誤りが無いときは焦点を動かさない', async () => {
     const { container } = await render(
       onSurface(
