@@ -11,6 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  colorInputNames,
   colorSemanticVars,
   fontInputNames,
   generatePalette,
@@ -112,7 +113,7 @@ describe('層の名前表', () => {
     });
 
     it('生成器が知っている口と過不足なく一致する', () => {
-      expect(layers.inputs).toEqual([...fontInputNames()].sort());
+      expect(layers.inputs).toEqual([...fontInputNames(), ...colorInputNames()].sort());
     });
 
     it('tokens.css に宣言が無く、かつ参照はされている', () => {

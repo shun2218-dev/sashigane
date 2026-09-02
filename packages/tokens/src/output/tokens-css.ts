@@ -12,6 +12,7 @@ import {
   depthOf,
   hoverMirrorVars,
   hoverRuleVars,
+  scrimDefault,
   surfaceContextVars,
   surfaceNames,
 } from './color-vars.ts';
@@ -137,6 +138,7 @@ export const toTokensCss = (palette: Palette): string =>
     '',
     '  /* 骨格の余白。密度で動くのはここだけ */',
     ...spacingSemanticVars('default'),
+
     '',
     ...colorSemanticVars('light', palette),
     ...hoverMirrorVars('light', palette, 0),
@@ -163,6 +165,14 @@ export const toTokensCss = (palette: Palette): string =>
     '   塗るだけの道は塞いである（Tailwind アダプタに bg-surface / bg-inset は無い）。 */',
     ...surfaceBlocks('light', palette, ''),
     ...fillBlocks('light', palette, ''),
+    '',
+    '/* 後ろを覆う。**塗るだけの道は作らない**——宣言した要素の ::backdrop だけを塗る。',
+    '   覆いの上には何も乗らないので、面ではなく塗りだけである。',
+    '   --sg-color-scrim は**宣言していない差し込み口**である。濃さを変えたい利用側が定義する。',
+    '     <dialog data-sg-scrim data-sg-surface="overlay"></dialog> */',
+    '[data-sg-scrim]::backdrop {',
+    `  background-color: var(--sg-color-scrim, ${scrimDefault()});`,
+    '}',
     '@media (prefers-color-scheme: dark) {',
     '  :root {',
     ...[
