@@ -6490,7 +6490,8 @@ Checkbox を素の `input` に乗せたのと同じ判断である。
 
 #### 値の解決を1箇所だけ広げた
 
-`color-mix(in oklab, var(--sg-x) N%, transparent)` を JS の値としても解けるようにした。
+中立ランプの段を透かした形（`color-mix(in oklab, ... N%, transparent)`）を、
+JS の値としても解けるようにした。
 **混ぜる相手は `transparent` に限り、混ぜられる側はプリミティブの参照に限る**ので、
 「色の直値は通さない」（教訓5 の許可リスト）は保ったままである。
 
