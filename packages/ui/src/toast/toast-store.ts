@@ -13,6 +13,11 @@
  *
  * ここに置くと、`showToast()` はただの関数になる。
  *
+ * ## 滞在時間を持っていない
+ *
+ * 既定の長さは**トークンの段から来る**が、置き場からは読まない——
+ * ここは DOM を知らない。読むのは描く側（`toast.tsx`）である。
+ *
  * ## 消えるときの動きを持っていない
  *
  * 消すと**その場で消える。** 動かすには、消す前に「消えかけ」の状態を作り、
@@ -30,8 +35,12 @@ export interface Toast {
   id: string;
   message: string;
   tone: ToastTone;
-  /** 自動で消すまでの時間（ミリ秒）。**渡さなければ消えない** */
-  duration?: number;
+  /**
+   * 自動で消すまでの時間（ミリ秒）。
+   *
+   * 渡さなければ**滞在の段のまん中**（4000ms）。`null` を渡すと消えない。
+   */
+  duration?: number | null;
 }
 
 export interface ToastInput {
@@ -40,9 +49,10 @@ export interface ToastInput {
   /**
    * 自動で消すまでの時間（ミリ秒）。
    *
-   * **既定では消えない。** 読み終わる前に消えるものは、読み直す手段が無い。
+   * 渡さなければ**滞在の段のまん中**（4000ms）を使う。
+   * 読み終わるまで残したいものは `null` を渡す。
    */
-  duration?: number;
+  duration?: number | null;
 }
 
 type Listener = () => void;
@@ -85,6 +95,42 @@ export const dismissToast = (id: string): void => {
   if (next.length === toasts.length) return;
   toasts = next;
   emit();
+};
+
+/*
+ * 描く場所は1つだけにする。**2つ置くと、同じ知らせが2回読まれる。**
+ *
+ * 重なって見えるだけなら見た目の話で済むが、読み上げの領域も2つになるので、
+ * **同じ文言が2回読まれる。** 文書に「1つだけ置く」と書いても守られない（教訓3）。
+ *
+ * 先に置かれたものが描く。**外れたら次のものへ渡す**——
+ * 渡さないと、最初のものを外した画面で知らせが出なくなる。
+ */
+let mounted: symbol[] = [];
+const ownerListeners = new Set<Listener>();
+
+const emitOwner = (): void => {
+  for (const listener of ownerListeners) listener();
+};
+
+export const subscribeToasterOwner = (listener: Listener): (() => void) => {
+  ownerListeners.add(listener);
+  return () => {
+    ownerListeners.delete(listener);
+  };
+};
+
+/** 描く番かどうか。**最初に置かれたものだけが真** */
+export const isToasterOwner = (id: symbol): boolean => mounted[0] === id;
+
+/** 置かれたことを知らせる。戻り値を呼ぶと外れる */
+export const claimToaster = (id: symbol): (() => void) => {
+  mounted = [...mounted, id];
+  emitOwner();
+  return () => {
+    mounted = mounted.filter((x) => x !== id);
+    emitOwner();
+  };
 };
 
 /** 全部消す。**画面が変わるときに使う**——前の画面の知らせが残らないように */

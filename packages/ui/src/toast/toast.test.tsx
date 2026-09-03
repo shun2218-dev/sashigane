@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
@@ -171,16 +172,130 @@ describe('描く場所', () => {
   });
 });
 
+describe('2つ置いたとき', () => {
+  it('描くのは1つだけ', async () => {
+    const { container } = await render(
+      onSurface(
+        <div>
+          <Toaster />
+          <Toaster />
+        </div>,
+      ),
+    );
+    showToast({ message: '1回だけ' });
+    await expect.poll(() => toastsIn(container)).toHaveLength(1);
+    /*
+      **重なって見えるだけの話ではない。** 領域が2つあると、
+      読み上げは同じ文言を2回読む。
+    */
+    expect(container.querySelectorAll('[aria-live]')).toHaveLength(1);
+  });
+
+  it('先に置いたものが外れたら、次のものへ渡る', async () => {
+    const Switchable = () => {
+      const [first, setFirst] = useState(true);
+      return (
+        <div>
+          {first ? <Toaster /> : null}
+          <Toaster />
+          <Button onClick={() => setFirst(false)}>外す</Button>
+        </div>
+      );
+    };
+    const { container } = await render(onSurface(<Switchable />));
+    showToast({ message: '渡る' });
+    await expect.poll(() => toastsIn(container)).toHaveLength(1);
+    await userEvent.click(
+      [...container.querySelectorAll('button')].find((b) => b.textContent === '外す') as Element,
+    );
+    /*
+      **渡さないと、最初のものを外した画面で知らせが出なくなる。**
+      見た目には何も出ないので、そこを測らないと分からない。
+    */
+    await expect.poll(() => toastsIn(container)).toHaveLength(1);
+    expect(container.querySelectorAll('[aria-live]')).toHaveLength(1);
+  });
+});
+
 describe('自動で消す', () => {
-  it('渡さなければ消えない', async () => {
+  it('既定は滞在の段から来る', async () => {
+    /*
+      **段の値を差し替えて測る。** 「4秒待って消えた」では、
+      部品が段を読んでいるのか数値を埋めているのか区別が付かない。
+
+      ここで差し替えた値どおりに消えるなら、**その変数を読んでいる**と言える。
+      読むのは CSS 側である——`packages/ui` は `packages/tokens` を
+      import しない（原則4）。
+    */
+    const root = document.documentElement;
+    const before = root.style.getPropertyValue('--sg-duration-notice');
+    root.style.setProperty('--sg-duration-notice', '60ms');
+    try {
+      const { container } = await render(onSurface(<WithAway />));
+      await moveAway(container);
+      showToast({ message: '既定で消える' });
+      await expect.poll(() => toastsIn(container)).toHaveLength(1);
+      await expect.poll(() => toastsIn(container)).toHaveLength(0);
+    } finally {
+      if (before) root.style.setProperty('--sg-duration-notice', before);
+      else root.style.removeProperty('--sg-duration-notice');
+    }
+  });
+
+  it('秒で書かれた段も読める', async () => {
+    /*
+      **ブラウザは `4000ms` を `4s` に正規化して返す。** 数だけを読むと
+      4000 のつもりで 4 を受け取り、**押した瞬間に消える。**
+
+      実際にそうなっていた。検査では `60ms` を差し込んでおり、
+      **この形を一度も通していなかった**——値の形を自分で決めていた。
+    */
+    const root = document.documentElement;
+    const before = root.style.getPropertyValue('--sg-duration-notice');
+    root.style.setProperty('--sg-duration-notice', '0.25s');
+    try {
+      const { container } = await render(onSurface(<WithAway />));
+      await moveAway(container);
+      showToast({ message: '秒で書かれている' });
+      await expect.poll(() => toastsIn(container)).toHaveLength(1);
+      // 250ms より短い待ちでは残っている（4ms と読んでいたら消えている）
+      await new Promise((resolve) => {
+        setTimeout(resolve, 120);
+      });
+      expect(toastsIn(container)).toHaveLength(1);
+      await expect.poll(() => toastsIn(container)).toHaveLength(0);
+    } finally {
+      if (before) root.style.setProperty('--sg-duration-notice', before);
+      else root.style.removeProperty('--sg-duration-notice');
+    }
+  });
+
+  it('生成した段をそのまま読んでも、まともな長さになる', async () => {
+    /*
+      **差し込んだ値ではなく、実際に配られている値を読む。**
+      差し込む形だけを測っていると、正規化のような
+      「実際の経路でしか起きないこと」を通らない。
+    */
+    const raw = getComputedStyle(document.documentElement)
+      .getPropertyValue('--sg-duration-notice')
+      .trim();
+    const m = /^(-?[\d.]+)(ms|s)$/.exec(raw);
+    expect(m, `読めない形: ${raw}`).not.toBeNull();
+    const ms = m![2] === 's' ? Number.parseFloat(m![1] as string) * 1000 : Number.parseFloat(m![1] as string);
+    // **読み終わる長さであること。** 3秒を下回ると読み切れない
+    expect(ms).toBeGreaterThanOrEqual(3000);
+    expect(ms).toBeLessThanOrEqual(10000);
+  });
+
+  it('null を渡すと消えない', async () => {
     const { container } = await render(onSurface(<WithAway />));
     await moveAway(container);
-    showToast({ message: '残る' });
+    showToast({ message: '残る', duration: null });
     await expect.poll(() => toastsIn(container)).toHaveLength(1);
     await new Promise((resolve) => {
       setTimeout(resolve, 200);
     });
-    // **読み終わる前に消えるものは、読み直す手段が無い**
+    // **読み終わるまで残したいものがある**
     expect(toastsIn(container)).toHaveLength(1);
   });
 

@@ -8,16 +8,16 @@ import { Toaster } from '../toast.tsx';
 import { showToast } from '../toast-store.ts';
 
 /**
- * エッジケース。**自動で消えるものと、長い文言と、積み重なり。**
+ * エッジケース。**消えないものと、長い文言と、積み重なり。**
  *
- * 自動で消すのは `duration` を渡したときだけである。
- * 渡したときも、**ポインタが乗っている間は消えない。**
+ * 既定は滞在の段のまん中（4000ms）である。読み終わるまで残したいものは
+ * `duration: null` を渡す。**ポインタが乗っている間は消えない。**
  */
 export default function Edge() {
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <Button onClick={() => showToast({ message: '3秒で消えます', duration: 3000 })}>
-        消えるものを出す
+      <Button onClick={() => showToast({ message: '押すまで消えません', duration: null })}>
+        消えないものを出す
       </Button>
       <Button
         variant="ghost"

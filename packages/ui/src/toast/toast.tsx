@@ -34,11 +34,49 @@
  * 長く出る側へ倒れるので、読み終わる前に消えることはない。
  * ─────────────────────────────────────────────
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Button } from '../button/button.tsx';
 import { IconX } from '../icon/icon.tsx';
-import { dismissToast } from './toast-store.ts';
+import {
+  claimToaster,
+  dismissToast,
+  isToasterOwner,
+  subscribeToasterOwner,
+} from './toast-store.ts';
 import { useToast } from './use-toast.ts';
+
+/*
+  既定の滞在時間。**CSS から読む。**
+
+  この部品はトークンのパッケージを import しない——
+  コンポーネントがトークンを受け取る道は CSS だけである。
+
+  読めないとき（トークンを入れていない配布先）は**消さない側へ倒れる。**
+  適当な数値を埋めると、段の外の値が1つ増える。
+*/
+const dwellDefault = (): number | undefined => {
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue('--sg-duration-notice')
+    .trim();
+  const ms = milliseconds(raw);
+  return ms !== undefined && ms > 0 ? ms : undefined;
+};
+
+/*
+  CSS の時間をミリ秒にする。**単位は `s` にも `ms` にもなる。**
+
+  ブラウザは `4000ms` を `4s` に正規化して返す。数だけを読むと
+  **4000 のつもりで 4 を受け取り、押した瞬間に消える。**
+  実際にそうなっていた——検査では `60ms` を差し込んでいて、
+  この形を一度も通していなかった。
+*/
+const milliseconds = (value: string): number | undefined => {
+  const m = /^(-?[\d.]+)(ms|s)$/.exec(value);
+  if (!m) return undefined;
+  const n = Number.parseFloat(m[1] as string);
+  if (!Number.isFinite(n)) return undefined;
+  return m[2] === 's' ? n * 1000 : n;
+};
 
 const TONE_CLASS = {
   default: 'outline-border',
@@ -56,12 +94,17 @@ const TONE_CLASS = {
  * 出すのは `showToast()` か `useToast().show()` です。
  * **置き場は React の外**にあるので、どこから呼んでも構いません。
  *
- * ## 既定では消えません
+ * ## 既定は滞在の段のまん中です
  *
- * `duration` を渡したときだけ自動で消えます。**読み終わる前に消えるものは、
- * 読み直す手段がありません。**
+ * 何も渡さなければ 4000ms で消えます。読み終わるまで残したいものは
+ * `duration: null` を渡してください。
  *
- * 渡したときも、**ポインタが乗っている間は消しません。**
+ * **ポインタが乗っている間は消しません。**
+ *
+ * ## 2つ置いても描くのは1つです
+ *
+ * 2つとも描くと**同じ知らせが2回読まれます。** 後から置いたものは何も描きません。
+ * 先に置いたものが外れたら、**次のものへ番が渡ります。**
  *
  * ## 最前面の層に出ます
  *
@@ -71,6 +114,21 @@ export function Toaster() {
   const { toasts } = useToast();
   const regionRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
+
+  /*
+    描く番かどうか。**2つ置かれても、描くのは先に置かれた方だけである。**
+    2つとも描くと、同じ知らせが2回読まれる。
+  */
+  const selfRef = useRef<symbol>(undefined);
+  selfRef.current ??= Symbol('toaster');
+  const self = selfRef.current;
+  const owner = useSyncExternalStore(
+    subscribeToasterOwner,
+    () => isToasterOwner(self),
+    // サーバ側では番を持っているものとして描く。中身はまだ1つも無い
+    () => true,
+  );
+  useEffect(() => claimToaster(self), [self]);
 
   /*
    * 最前面の層へ出す。**属性だけでは出ない**——`showPopover()` を呼ぶまで
@@ -83,7 +141,7 @@ export function Toaster() {
     return () => {
       if (node.isConnected && node.matches(':popover-open')) node.hidePopover();
     };
-  }, []);
+  }, [owner]);
 
   /*
    * 自動で消す。**止めている間は数えない。**
@@ -93,13 +151,23 @@ export function Toaster() {
    */
   useEffect(() => {
     if (paused) return undefined;
+    /*
+      **描くときではなく、ここで読む。** 描くときに読むとサーバ側でも走り、
+      `getComputedStyle` が無いので落ちる。ここは画面のある側でしか走らない。
+    */
+    const fallback = dwellDefault();
     const timers = toasts
-      .filter((toast) => toast.duration !== undefined)
-      .map((toast) => window.setTimeout(() => dismissToast(toast.id), toast.duration));
+      // **`null` は「消さない」である。** 渡していない（undefined）とは違う
+      .map((toast) => ({ toast, ms: toast.duration === undefined ? fallback : toast.duration }))
+      .filter((t): t is { toast: (typeof toasts)[number]; ms: number } => typeof t.ms === 'number')
+      .map(({ toast, ms }) => window.setTimeout(() => dismissToast(toast.id), ms));
     return () => {
       for (const timer of timers) window.clearTimeout(timer);
     };
   }, [toasts, paused]);
+
+  // **番でなければ何も描かない。** 描くと領域が2つになる
+  if (!owner) return null;
 
   return (
     <div

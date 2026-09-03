@@ -23,6 +23,7 @@ import {
   SPIN_ANIMATION,
   SPIN_KEYFRAMES,
   primitiveVars,
+  durationSemanticVars,
   spacingSemanticVars,
   typographySemanticVars,
 } from './primitives.ts';
@@ -138,6 +139,8 @@ export const toTokensCss = (palette: Palette): string =>
     '',
     '  /* 骨格の余白。密度で動くのはここだけ */',
     ...spacingSemanticVars('default'),
+    '',
+    ...durationSemanticVars(),
 
     '',
     ...colorSemanticVars('light', palette),

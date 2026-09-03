@@ -348,6 +348,10 @@ const EXPECTED_UNUSED = new Map([
     '同上（決定5-15）',
   ],
   [
+    '--sg-duration-notice',
+    '知らせが留まる長さ。**数えるのは JS で、CSS は読まない**。このページは CSS なので使う場所が無い（決定6-42）',
+  ],
+  [
     '--sg-elevation-front',
     '浮きは役割として raised と overlay で示している。モーダルはこのページに置けない（決定1-8 改訂）',
   ],

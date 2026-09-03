@@ -27,6 +27,7 @@ import {
   hoverMirrorNames,
 } from './color-vars.ts';
 import {
+  durationSemanticVars,
   fontInputNames,
   primitiveVars,
   spacingSemanticVars,
@@ -78,6 +79,7 @@ export const tokenLayers = (palette: Palette): TokenLayers => ({
   semantics: [
     ...declaredNames(typographySemanticVars()),
     ...declaredNames(spacingSemanticVars('default')),
+    ...declaredNames(durationSemanticVars()),
     ...declaredNames(colorSemanticVars('light', palette)),
   ].sort(),
   // 覆いの濃さも差し込み口である。**宣言していない**——宣言すると差せない

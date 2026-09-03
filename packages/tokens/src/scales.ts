@@ -133,6 +133,22 @@ const geometric = (c: {
 export const durationTransition = geometric(tokens.duration.transition);
 export const durationLoop = geometric(tokens.duration.loop);
 
+/**
+ * 滞在時間。**知らせが画面に留まる長さ**（決定6-42）。
+ *
+ * 遷移でもループでもない。**遷移は目が追える速さ、ループは待たされていると
+ * 読み取れる速さ**で決まるが、こちらは**読み終わるまでの長さ**で決まる。
+ */
+export const durationDwell = geometric(tokens.duration.dwell);
+
+/**
+ * 器の幅。**root から導けない次元なので独自のアンカーを持つ**（決定6-42）。
+ *
+ * 時間（決定1-6）と画面幅（決定1-10）に続く3つ目の例外である。
+ * 単位は rem。
+ */
+export const width = geometric(tokens.width);
+
 /** border-width: px 固定出力（決定1-7） */
 export const borderWidth: number[] = [...tokens.borderWidth.values];
 
