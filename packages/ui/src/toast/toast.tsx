@@ -1,0 +1,156 @@
+'use client';
+
+/*
+ * ── 維持する側への覚書 ───────────────────────────────
+ *
+ * トーストを描く場所。**アプリに1つだけ置く。**
+ *
+ * ## 素の popover に乗せる
+ *
+ * `showPopover()` を呼ぶと**最前面の層に出る**ので、
+ * `z-index` も `overflow` を持つ祖先も関係しなくなる。
+ * Select の一覧は箱の中に描いていて、**器に切り取られた**——同じ轍を踏まない。
+ *
+ * `manual` にしてあるのは、**`Escape` や外を押しただけで消えない**ようにするため。
+ * 消し方はトースト1つずつが持つ。
+ *
+ * ## 読み上げの領域は、文言より先に存在している必要がある
+ *
+ * 空でも `aria-live` の領域を描いておく。**後から領域ごと現れると、
+ * 読み上げは中身の追加に気づかない。**
+ *
+ * ## 急を要するものはトーストで出さない
+ *
+ * 領域は1つで、`polite` である。重みごとに領域を分けると、
+ * **重い方が上・軽い方が下**と並び順が重みで決まってしまい、
+ * 出た順に読めなくなる。
+ *
+ * 割り込んで伝えたいものは、**トーストではなくモーダル**で出す。
+ *
+ * ## 止め方は「残り時間を覚える」ではなく「入れ直す」
+ *
+ * ポインタが乗っている間は消さない。離れたら**もう一度はじめから**数える。
+ * 残り時間を持つと、**時計が2箇所（この部品と置き場）に増える。**
+ * 長く出る側へ倒れるので、読み終わる前に消えることはない。
+ * ─────────────────────────────────────────────
+ */
+import { useEffect, useRef, useState } from 'react';
+import { Button } from '../button/button.tsx';
+import { IconX } from '../icon/icon.tsx';
+import { dismissToast } from './toast-store.ts';
+import { useToast } from './use-toast.ts';
+
+const TONE_CLASS = {
+  default: 'outline-border',
+  success: 'outline-success',
+  danger: 'outline-danger',
+} as const;
+
+/**
+ * トーストを描く場所。**アプリに1つだけ置きます。**
+ *
+ * ```tsx
+ * <Toaster />
+ * ```
+ *
+ * 出すのは `showToast()` か `useToast().show()` です。
+ * **置き場は React の外**にあるので、どこから呼んでも構いません。
+ *
+ * ## 既定では消えません
+ *
+ * `duration` を渡したときだけ自動で消えます。**読み終わる前に消えるものは、
+ * 読み直す手段がありません。**
+ *
+ * 渡したときも、**ポインタが乗っている間は消しません。**
+ *
+ * ## 最前面の層に出ます
+ *
+ * `overflow` を持つ祖先があっても切り取られません。
+ */
+export function Toaster() {
+  const { toasts } = useToast();
+  const regionRef = useRef<HTMLDivElement>(null);
+  const [paused, setPaused] = useState(false);
+
+  /*
+   * 最前面の層へ出す。**属性だけでは出ない**——`showPopover()` を呼ぶまで
+   * 表示されない。空のときも出しておく必要がある（読み上げの領域のため）。
+   */
+  useEffect(() => {
+    const node = regionRef.current;
+    if (!node) return undefined;
+    if (!node.matches(':popover-open')) node.showPopover();
+    return () => {
+      if (node.isConnected && node.matches(':popover-open')) node.hidePopover();
+    };
+  }, []);
+
+  /*
+   * 自動で消す。**止めている間は数えない。**
+   *
+   * 一覧が変わるたびに入れ直すので、新しいものが出ると
+   * 前から出ているものの寿命も延びる。**長く出る側へ倒れる。**
+   */
+  useEffect(() => {
+    if (paused) return undefined;
+    const timers = toasts
+      .filter((toast) => toast.duration !== undefined)
+      .map((toast) => window.setTimeout(() => dismissToast(toast.id), toast.duration));
+    return () => {
+      for (const timer of timers) window.clearTimeout(timer);
+    };
+  }, [toasts, paused]);
+
+  return (
+    <div
+      ref={regionRef}
+      popover="manual"
+      data-sg-component="toaster"
+      /*
+        器は何も塗らず、押せない。**押せると、後ろのページが押せなくなる**——
+        最前面の層は画面いっぱいに広がる。押せるのはトースト1つずつである。
+      */
+      className="pointer-events-none inset-auto right-0 bottom-0 m-0 border-0 bg-transparent p-4"
+      onPointerEnter={() => setPaused(true)}
+      onPointerLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+    >
+      {/*
+        **空でも描いておく。** 後から領域ごと現れると、
+        読み上げは中身の追加に気づかない。
+      */}
+      <ol
+        aria-live="polite"
+        data-sg-component="toast-list"
+        className="flex flex-col items-end gap-2"
+      >
+        {toasts.map((toast) => (
+          <li
+            key={toast.id}
+            data-sg-component="toast"
+            data-sg-surface="overlay"
+            data-sg-tone={toast.tone}
+            className={
+              // **1本の線で重みを表す。** 色だけで伝えないよう、文言も一緒に出る
+              `pointer-events-auto flex max-w-full items-start gap-2 rounded-sm p-3 shadow-overlay ` +
+              `outline-solid outline-offset-0 outline-2 ${TONE_CLASS[toast.tone]} ` +
+              // 出るときだけ薄れる。**消えるときは動かない**（置き場の覚書）
+              `opacity-100 transition-opacity duration-200 starting:opacity-0`
+            }
+          >
+            <span className="text-body">{toast.message}</span>
+            <Button
+              variant="ghost"
+              iconOnly
+              aria-label="閉じる"
+              onClick={() => dismissToast(toast.id)}
+            >
+              <IconX />
+            </Button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
