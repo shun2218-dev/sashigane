@@ -14,8 +14,10 @@ import {
   spaceRoles,
   spaceStepFor,
   type DensityLevel,
+  durationDwell,
   durationLoop,
   durationTransition,
+  width,
   fontInputName,
   fontSize,
   fontSlots,
@@ -45,6 +47,9 @@ export const rem = (px: number): string => {
 };
 
 const ms = (v: number): string => `${Number.parseFloat(v.toFixed(1))}ms`;
+
+/** 幅は rem で持っている段なので、px を経由しない */
+const remValue = (v: number): string => `${Number.parseFloat(v.toFixed(6))}rem`;
 
 /** em は「サイズに対する比」なので rem に直さない。0 は単位を付けない */
 const em = (v: number): string => {
@@ -81,6 +86,14 @@ export const primitiveVars = (): string[] => [
   '  /* duration — 遷移とループは知覚上の制約が違う別スケール */',
   ...durationTransition.map((v, i) => `  --sg-duration-${i}: ${ms(v)};`),
   ...durationLoop.map((v, i) => `  --sg-duration-loop-${i}: ${ms(v)};`),
+  '  /* 滞在 — 知らせが画面に留まる長さ。遷移でもループでもない',
+  '     遷移は目が追える速さ、ループは待たされていると読み取れる速さで決まるが、',
+  '     こちらは**読み終わるまでの長さ**で決まる */',
+  ...durationDwell.map((v, i) => `  --sg-duration-dwell-${i}: ${ms(v)};`),
+  '',
+  '  /* width — root から導出できない次元。時間と画面幅に続く3つ目の例外。',
+  '     器の幅であって、画面の幅ではない（画面幅は breakpoint） */',
+  ...width.map((v, i) => `  --sg-width-${i}: ${remValue(v)};`),
   '',
   '  /* breakpoint — root から導出できない3つ目の次元。',
   '     **CSS 変数はメディアクエリの中では使えない。** ここは Tailwind アダプタと',
@@ -215,6 +228,20 @@ export { FONT_ROLES, TEXT_ROLES };
  */
 export const spacingSemanticVars = (density: DensityLevel): string[] =>
   spaceRoles.map((role) => `  --sg-space-${role}: var(--sg-space-${spaceStepFor(role, density)});`);
+
+/**
+ * 時間のセマンティック。**知らせが画面に留まる長さ。**
+ *
+ * セマンティックは**実際に使う場所が1つ以上あるものだけ**定義する（原則3）。
+ * ここに1つだけあるのは、トーストが数える値だからである。
+ *
+ * **コンポーネントはプリミティブを参照できない。** 段そのもの
+ * （`--sg-duration-dwell-*`）ではなく、この名前を読む。
+ */
+export const durationSemanticVars = (): string[] => [
+  '  /* 知らせが留まる長さ。滞在の段のまん中 */',
+  `  --sg-duration-notice: var(--sg-duration-dwell-${Math.floor(durationDwell.length / 2)});`,
+];
 
 /**
  * 骨組み表示の動き（決定1-14）。

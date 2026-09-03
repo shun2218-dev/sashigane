@@ -82,10 +82,11 @@ export interface ModalProps
  * </Modal>
  * ```
  *
- * ## 幅は決めていません
+ * ## 幅は段のまん中です
  *
- * 素の `dialog` は**中身に合わせて広がり、画面幅で止まります。**
- * 幅を決めたいときは `className` か `style` で渡してください。
+ * 素の `dialog` は中身に合わせて広がるので、何も決めないと
+ * **長い文が画面幅いっぱいまで伸びます。**
+ * 変えたいときは `className` で別の段を渡してください。
  *
  * ## 見出しは必須です
  *
@@ -136,15 +137,13 @@ export function Modal({
   }, [open]);
 
   /*
-   * **幅を決めていない。** このシステムには幅の段が無い——
-   * コンテナの写像を持っていないので、`max-w-*` はどれも生成されない。
+   * 幅は**段のまん中**を既定にする。素の `dialog` は中身に合わせて広がるので、
+   * 何も決めないと**長い文が画面幅いっぱいまで伸びる。**
    *
-   * 素の `dialog` は中身に合わせて広がり、画面幅で止まる。
-   * **決め打ちの数値をここに書くと、段の外の値が1つ増える**ので書いていない。
-   * 幅を決めたい利用側は `className` か `style` で渡す。
+   * 変えたい利用側は `className` で別の段を渡す。
    */
   const classes =
-    'm-auto rounded-lg p-6 shadow-overlay ' +
+    'm-auto w-full max-w-32rem rounded-lg p-6 shadow-overlay ' +
     // `dialog` の既定の境界を消す。**preflight は配布先にあるとは限らない**
     'border-0';
 

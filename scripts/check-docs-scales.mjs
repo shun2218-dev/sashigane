@@ -14,6 +14,7 @@
  */
 import { readFileSync } from 'node:fs';
 import {
+  durationDwell,
   durationLoop,
   durationTransition,
   fontSize,
@@ -32,6 +33,7 @@ import {
   radius,
   root,
   spacing,
+  width,
 } from '../packages/tokens/src/index.ts';
 
 const doc = readFileSync('docs/decisions.md', 'utf8');
@@ -49,8 +51,67 @@ const rows = (valueColumns) => {
   return [...doc.matchAll(re)].map((m) => m.slice(1).map(Number));
 };
 
+/**
+ * 節に閉じて表を読む。**文書全体から拾うと、列数の同じ表を取り違える。**
+ *
+ * 実際、幅の表（| 段 | rem | px |）を足したとき、
+ * font-size の表（| index | px | rem |）と同じ列数だったので、
+ * 全体から拾う形のままだと font-size の行数が合わなくなる。
+ */
+const rowsIn = (heading, valueColumns) => {
+  const at = doc.indexOf(heading);
+  if (at < 0) {
+    errors.push(`decisions.md に「${heading}」が見つかりません`);
+    return [];
+  }
+  const end = doc.indexOf('\n### ', at + heading.length);
+  const section = doc.slice(at, end < 0 ? doc.length : end);
+  const cell = '\\s*\\*{0,2}([\\d.]+)\\*{0,2}\\s*\\|';
+  const re = new RegExp(`^\\|\\s*\\*{0,2}(\\d+)\\*{0,2}\\s*\\|${cell.repeat(valueColumns)}\\s*$`, 'gm');
+  return [...section.matchAll(re)].map((m) => m.slice(1).map(Number));
+};
+
+/* ---------- 幅の表: | 段 | rem | px | ---------- */
+
+const widthRows = rowsIn('### 決定 6-42', 2);
+if (widthRows.length !== width.length) {
+  errors.push(
+    `幅の表が ${widthRows.length} 行しか見つかりません（期待 ${width.length} 行）`,
+  );
+} else {
+  widthRows.forEach(([i, remValue, px], index) => {
+    if (i !== index) errors.push(`幅の表の段が飛んでいます: ${i}`);
+    const want = width[index];
+    if (remValue !== Number(want.toFixed(4))) {
+      errors.push(`width[${index}] の rem: 表 ${remValue} / 生成器 ${want.toFixed(4)}`);
+    }
+    if (px !== Math.round(want * root)) {
+      errors.push(`width[${index}] の px: 表 ${px} / 生成器 ${Math.round(want * root)}`);
+    }
+  });
+}
+
+/* ---------- 滞在の表: | 段 | ms | ---------- */
+
+const dwellRows = rowsIn('### 決定 6-42', 1);
+if (dwellRows.length !== durationDwell.length) {
+  errors.push(
+    `滞在の表が ${dwellRows.length} 行しか見つかりません（期待 ${durationDwell.length} 行）`,
+  );
+} else {
+  dwellRows.forEach(([i, ms], index) => {
+    if (i !== index) errors.push(`滞在の表の段が飛んでいます: ${i}`);
+    const want = Number(durationDwell[index].toFixed(1));
+    if (ms !== want) errors.push(`durationDwell[${index}]: 表 ${ms} / 生成器 ${want}`);
+  });
+}
+
 /* ---------- font-size 表: | index | px | rem | ---------- */
-const fsRows = rows(2).filter((r) => r[0] < fontSize.length && r[1] > 5 && r[1] < 200);
+/*
+  **自分の節に閉じて読む。** 幅の表（決定6-42）が同じ列数なので、
+  文書全体から拾うと取り違える。実際、閉じる前は 16 行拾って落ちた。
+*/
+const fsRows = rowsIn('### 決定 1-3', 2).filter((r) => r[0] < fontSize.length);
 if (fsRows.length !== fontSize.length) {
   errors.push(
     `font-size の表が ${fsRows.length} 行しか見つかりません（期待 ${fontSize.length} 行）。\n` +
@@ -180,6 +241,8 @@ if (errors.length) {
   process.exit(1);
 }
 
+console.log(`✓ 幅の表 ${widthRows.length} 行が生成器と一致`);
+console.log(`✓ 滞在の表 ${dwellRows.length} 行が生成器と一致`);
 console.log(`✓ font-size 表 ${fsRows.length} 行が生成器と一致`);
 console.log(`✓ line-height 表 ${lhRows.length} 行 × ${Object.keys(leadingFamilies).length} 系統が生成器と一致`);
 console.log(`✓ letter-spacing 表 ${lsRows.length} 行が生成器と一致`);

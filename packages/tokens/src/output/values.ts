@@ -41,6 +41,7 @@ import { hexToOklch, oklchContrast, toHex, type Oklch } from '../color/oklch.ts'
 import { colorPrimitiveVars, colorRequirements, colorSemanticVars } from './color-vars.ts';
 import { outputHeader } from './header.ts';
 import {
+  durationSemanticVars,
   primitiveVars,
   spacingSemanticVars,
   typographySemanticVars,
@@ -256,15 +257,19 @@ export const tokenValues = (palette: Palette): TokenValues => {
    * 密度の切り替えは無い。テーマと違い、明色/暗色で値は変わらない。
    */
   const spacing = resolve(spacingSemanticVars('default'), primitives);
+  // 明暗で変わらない。知らせが留まる長さはテーマの事情ではない
+  const duration = resolve(durationSemanticVars(), primitives);
   return {
     light: {
       ...typography,
       ...spacing,
+      ...duration,
       ...enforceContrast(resolve(colorSemanticVars('light', palette), primitives), 'light', palette),
     },
     dark: {
       ...typography,
       ...spacing,
+      ...duration,
       ...enforceContrast(resolve(colorSemanticVars('dark', palette), primitives), 'dark', palette),
     },
   };

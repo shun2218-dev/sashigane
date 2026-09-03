@@ -172,15 +172,39 @@ describe('描く場所', () => {
 });
 
 describe('自動で消す', () => {
-  it('渡さなければ消えない', async () => {
+  it('既定は滞在の段から来る', async () => {
+    /*
+      **段の値を差し替えて測る。** 「4秒待って消えた」では、
+      部品が段を読んでいるのか数値を埋めているのか区別が付かない。
+
+      ここで差し替えた値どおりに消えるなら、**その変数を読んでいる**と言える。
+      読むのは CSS 側である——`packages/ui` は `packages/tokens` を
+      import しない（原則4）。
+    */
+    const root = document.documentElement;
+    const before = root.style.getPropertyValue('--sg-duration-notice');
+    root.style.setProperty('--sg-duration-notice', '60ms');
+    try {
+      const { container } = await render(onSurface(<WithAway />));
+      await moveAway(container);
+      showToast({ message: '既定で消える' });
+      await expect.poll(() => toastsIn(container)).toHaveLength(1);
+      await expect.poll(() => toastsIn(container)).toHaveLength(0);
+    } finally {
+      if (before) root.style.setProperty('--sg-duration-notice', before);
+      else root.style.removeProperty('--sg-duration-notice');
+    }
+  });
+
+  it('null を渡すと消えない', async () => {
     const { container } = await render(onSurface(<WithAway />));
     await moveAway(container);
-    showToast({ message: '残る' });
+    showToast({ message: '残る', duration: null });
     await expect.poll(() => toastsIn(container)).toHaveLength(1);
     await new Promise((resolve) => {
       setTimeout(resolve, 200);
     });
-    // **読み終わる前に消えるものは、読み直す手段が無い**
+    // **読み終わるまで残したいものがある**
     expect(toastsIn(container)).toHaveLength(1);
   });
 

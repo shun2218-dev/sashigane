@@ -40,6 +40,23 @@ import { IconX } from '../icon/icon.tsx';
 import { dismissToast } from './toast-store.ts';
 import { useToast } from './use-toast.ts';
 
+/*
+  既定の滞在時間。**CSS から読む。**
+
+  この部品はトークンのパッケージを import しない——
+  コンポーネントがトークンを受け取る道は CSS だけである。
+
+  読めないとき（トークンを入れていない配布先）は**消さない側へ倒れる。**
+  適当な数値を埋めると、段の外の値が1つ増える。
+*/
+const dwellDefault = (): number | undefined => {
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue('--sg-duration-notice')
+    .trim();
+  const ms = Number.parseFloat(raw);
+  return Number.isFinite(ms) && ms > 0 ? ms : undefined;
+};
+
 const TONE_CLASS = {
   default: 'outline-border',
   success: 'outline-success',
@@ -56,12 +73,12 @@ const TONE_CLASS = {
  * 出すのは `showToast()` か `useToast().show()` です。
  * **置き場は React の外**にあるので、どこから呼んでも構いません。
  *
- * ## 既定では消えません
+ * ## 既定は滞在の段のまん中です
  *
- * `duration` を渡したときだけ自動で消えます。**読み終わる前に消えるものは、
- * 読み直す手段がありません。**
+ * 何も渡さなければ 4000ms で消えます。読み終わるまで残したいものは
+ * `duration: null` を渡してください。
  *
- * 渡したときも、**ポインタが乗っている間は消しません。**
+ * **ポインタが乗っている間は消しません。**
  *
  * ## 最前面の層に出ます
  *
@@ -93,9 +110,16 @@ export function Toaster() {
    */
   useEffect(() => {
     if (paused) return undefined;
+    /*
+      **描くときではなく、ここで読む。** 描くときに読むとサーバ側でも走り、
+      `getComputedStyle` が無いので落ちる。ここは画面のある側でしか走らない。
+    */
+    const fallback = dwellDefault();
     const timers = toasts
-      .filter((toast) => toast.duration !== undefined)
-      .map((toast) => window.setTimeout(() => dismissToast(toast.id), toast.duration));
+      // **`null` は「消さない」である。** 渡していない（undefined）とは違う
+      .map((toast) => ({ toast, ms: toast.duration === undefined ? fallback : toast.duration }))
+      .filter((t): t is { toast: (typeof toasts)[number]; ms: number } => typeof t.ms === 'number')
+      .map(({ toast, ms }) => window.setTimeout(() => dismissToast(toast.id), ms));
     return () => {
       for (const timer of timers) window.clearTimeout(timer);
     };

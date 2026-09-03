@@ -13,6 +13,11 @@
  *
  * ここに置くと、`showToast()` はただの関数になる。
  *
+ * ## 滞在時間を持っていない
+ *
+ * 既定の長さは**トークンの段から来る**が、置き場からは読まない——
+ * ここは DOM を知らない。読むのは描く側（`toast.tsx`）である。
+ *
  * ## 消えるときの動きを持っていない
  *
  * 消すと**その場で消える。** 動かすには、消す前に「消えかけ」の状態を作り、
@@ -30,8 +35,12 @@ export interface Toast {
   id: string;
   message: string;
   tone: ToastTone;
-  /** 自動で消すまでの時間（ミリ秒）。**渡さなければ消えない** */
-  duration?: number;
+  /**
+   * 自動で消すまでの時間（ミリ秒）。
+   *
+   * 渡さなければ**滞在の段のまん中**（4000ms）。`null` を渡すと消えない。
+   */
+  duration?: number | null;
 }
 
 export interface ToastInput {
@@ -40,9 +49,10 @@ export interface ToastInput {
   /**
    * 自動で消すまでの時間（ミリ秒）。
    *
-   * **既定では消えない。** 読み終わる前に消えるものは、読み直す手段が無い。
+   * 渡さなければ**滞在の段のまん中**（4000ms）を使う。
+   * 読み終わるまで残したいものは `null` を渡す。
    */
-  duration?: number;
+  duration?: number | null;
 }
 
 type Listener = () => void;
