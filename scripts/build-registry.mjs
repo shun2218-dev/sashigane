@@ -23,13 +23,30 @@
  * 相対パスは**設定ゼロでどこでも解決する**（テスト・Next・tsc の3つ）。
  * 書き換えはここ1箇所で済むので、ソースの側は触っていない。
  */
-import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const UI = 'packages/ui/src';
-const OUT = 'apps/docs/public/r';
-const TOKENS = 'packages/tokens/dist';
+/*
+  **どこから呼ばれても同じ場所を読む。** ドキュメントサイトのビルドは
+  `apps/docs` を作業場にして呼ぶので、作業場からの相対パスでは外す。
+*/
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+/*
+  依存の書き方。**素の名前は shadcn 自身のレジストリを指す。**
+
+  `registryDependencies: ['slot']` と書くと、CLI は
+  `ui.shadcn.com/r/.../slot.json` を探して落ちる（実際に落ちた）。
+
+  自分のレジストリを指すには名前空間を付ける。利用側は `components.json` の
+  `registries` に `@sashigane` の在り処を1度書く。**絶対 URL を JSON に
+  焼き込まない**ので、配信先が変わっても配る中身は変わらない。
+*/
+const NAMESPACE = '@sashigane';
+
+const UI = join(ROOT, 'packages/ui/src');
+const OUT = join(ROOT, 'apps/docs/public/r');
+const TOKENS = join(ROOT, 'packages/tokens/dist');
 
 /** 落ちた先の置き場所。**型ごとに決まる** */
 const TARGET_DIR = {
@@ -49,23 +66,47 @@ const LIB_ITEMS = {
 /** 落ちた先が持っていないもの。**react は利用側が既に持っている** */
 const SKIP_DEPENDENCIES = new Set(['react', 'react-dom']);
 
-const tracked = execSync(`git ls-files ${UI}`, { encoding: 'utf8' })
-  .split('\n')
-  .filter(Boolean);
+/*
+  ファイルは**git に聞かずに歩いて集める。**
+
+  この生成器はドキュメントサイトのビルドからも呼ぶ。配信先のビルド環境に
+  `.git` があるとは限らないので、`git ls-files` に頼ると**そこだけで落ちる。**
+
+  追跡外のものが混ざらないことは `check:registry` が git と突き合わせて見る——
+  検査は git のある場所（手元と CI）でしか走らない。
+*/
+const walk = (dir) =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)],
+  );
+
+const tracked = walk(UI).map((f) => relative(ROOT, f));
 
 const isSource = (f) =>
   (f.endsWith('.ts') || f.endsWith('.tsx')) &&
   !f.includes('/examples/') &&
   !f.endsWith('.test.tsx') &&
-  !f.endsWith('/index.ts') &&
-  f !== `${UI}/index.ts`;
+  !f.endsWith('/index.ts');
 
-const sources = tracked.filter(isSource);
+// git は根からの相対で返すので、読む用の絶対パスに直す
+const sources = tracked.filter(isSource).map((f) => join(ROOT, f));
 
 /** ソースの相対パス（`button/button.tsx`）→ 属する item 名 */
 const itemOf = new Map();
 for (const file of sources) {
   const rel = relative(UI, file);
+  /*
+    **`internal/` の中は1つずつ並べる。** 並べ忘れると `internal` という
+    名前の部品が黙ってできて、`components/ui/` に落ちる。
+    共有物は `lib/` に落ちるものなので、置き場所が変わってしまう。
+  */
+  if (rel.startsWith('internal/') && !LIB_ITEMS[rel]) {
+    console.error(
+      `${rel} が LIB_ITEMS に並んでいません。\n` +
+        '共有物は1つずつ item にします。並べないと components/ui へ落ちます。',
+    );
+    process.exit(1);
+  }
   itemOf.set(rel, LIB_ITEMS[rel] ?? rel.split('/')[0]);
 }
 
@@ -187,7 +228,11 @@ const asJson = (item) => ({
   type: item.type,
   ...(item.dependencies.size ? { dependencies: [...item.dependencies].sort() } : {}),
   ...(item.registryDependencies.size
-    ? { registryDependencies: [...item.registryDependencies].sort() }
+    ? {
+        registryDependencies: [...item.registryDependencies]
+          .sort()
+          .map((d) => `${NAMESPACE}/${d}`),
+      }
     : {}),
   files: item.files,
 });

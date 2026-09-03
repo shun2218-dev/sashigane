@@ -20,11 +20,13 @@
  * 0 件という結果を、検査が壊れている状態と区別できるようにするため、
  * 毎回まず意図的に壊した item へ当てて、発火することを確かめる。
  */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const OUT = 'apps/docs/public/r';
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const OUT = join(ROOT, 'apps/docs/public/r');
 /*
   作業場は **packages/ui の下**に置く。依存（react の型・cva・lucide）を
   解決できる場所である必要があり、pnpm では根の node_modules に無い。
@@ -32,12 +34,15 @@ const OUT = 'apps/docs/public/r';
   落ちた先も同じ状態である——`shadcn add` は item の dependencies を
   入れてから置くので、**同じ依存が揃った場所でコンパイルできるか**を見ている。
 */
-const WORK = 'packages/ui/.registry-check';
+const WORK = join(ROOT, 'packages/ui/.registry-check');
 
 if (!existsSync(OUT)) {
   console.error(`${OUT} がありません。先に pnpm build:registry を実行してください。`);
   process.exit(1);
 }
+
+/** `@sashigane/slot` → `slot`。**素の名前は shadcn 自身のレジストリを指す** */
+const localName = (dep) => dep.replace(/^@[^/]+\//, '');
 
 const items = new Map();
 for (const file of readdirSync(OUT).filter((f) => f.endsWith('.json') && f !== 'registry.json')) {
@@ -57,7 +62,38 @@ for (const [name, item] of items) {
     if (f.content === '') errors.push(`${name}: ${f.path} が空です`);
   }
   for (const dep of item.registryDependencies ?? []) {
-    if (!items.has(dep)) errors.push(`${name}: 知らない item を参照しています: ${dep}`);
+    if (!dep.startsWith('@')) {
+      errors.push(
+        `${name}: 依存に名前空間がありません: ${dep}` +
+          '（素の名前は shadcn 自身のレジストリを指すので、CLI が別物を探しに行く）',
+      );
+    }
+    if (!items.has(localName(dep))) {
+      errors.push(`${name}: 知らない item を参照しています: ${dep}`);
+    }
+  }
+}
+
+/* ---------- 追跡外のものが混ざっていないこと ---------- */
+
+/*
+  生成器は git に聞かずにファイルを歩く（配信先に `.git` が無いことがある）。
+  **追跡外のものが混ざらないこと**は、git のあるここで見る。
+*/
+const trackedNames = new Set(
+  execSync('git ls-files packages/ui/src', { cwd: ROOT, encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean)
+    .map((f) => f.split('/').pop()),
+);
+
+for (const [name, item] of items) {
+  if (item.type !== 'registry:ui' && item.type !== 'registry:lib') continue;
+  for (const f of item.files ?? []) {
+    const base = f.path.split('/').pop();
+    if (!trackedNames.has(base)) {
+      errors.push(`${name}: 追跡外のファイルを配ろうとしています: ${f.path}`);
+    }
   }
 }
 
@@ -71,7 +107,7 @@ const closureOf = (name, seen = new Set()) => {
   const files = new Map();
   for (const f of item.files ?? []) files.set(f.target ?? f.path, f.content);
   for (const dep of item.registryDependencies ?? []) {
-    for (const [p, c] of closureOf(dep, seen)) files.set(p, c);
+    for (const [p, c] of closureOf(localName(dep), seen)) files.set(p, c);
   }
   return files;
 };

@@ -6742,14 +6742,42 @@ React の外（読み込みの失敗処理など）からは出せない。
 **pnpm では根の `node_modules` に無い。** 落ちた先も同じ状態である——
 `shadcn add` は item の `dependencies` を入れてから置く。
 
+#### 依存には名前空間が要る — **CLI で走らせて分かった**
+
+`registryDependencies: ['slot']` と素の名前で書いていた。**CLI は
+shadcn 自身のレジストリを探しに行く。**
+
+```
+The item at https://ui.shadcn.com/r/styles/new-york-v4/slot.json was not found.
+```
+
+自分のレジストリを指すには `@sashigane/slot` と書き、利用側が
+`components.json` の `registries` に在り処を1度書く。
+**絶対 URL を JSON に焼き込まない**ので、配信先が変わっても配る中身は変わらない。
+
+**offline の検査では捕まらなかった。** 参照先の閉じは自分の item だけを見ており、
+「CLI がその名前をどう解釈するか」は見ていない。
+検査に「名前空間が付いていること」を足した。
+
+#### CLI で3つの深さを通した
+
+手元で配信して、実際に落とした。
+
+| 落としたもの | 結果 |
+|---|---|
+| `@sashigane/tokens` | `styles/` に CSS 2件 |
+| `@sashigane/field` | `components/ui/field.tsx` `components/ui/icon.tsx` `lib/slot.tsx` |
+| `@sashigane/base` | 27 件。同じ中身の5件は飛ばされた |
+
+依存（`class-variance-authority` / `lucide-react`）も CLI が入れた。
+**置かれた木は型エラー 0 でコンパイルできた。**
+
+`registry:base` と `registry:file` は CLI が受け取った。
+
 #### まだ確かめていないこと
 
-**`shadcn` の CLI を実際には走らせていない。** 走らせるには配信先の URL と、
-CLI が依存を入れるためのネットワークが要る（CI では動かせない）。
-
-ここで確かめているのは**配る中身が成立していること**であって、
-**CLI がそれを正しく置くこと**ではない。`registry:base` という型名も、
-CLI が受け取るかどうかは確かめていない。
+**CI では走らせていない。** 配信先の URL と、CLI が依存を入れるための
+ネットワークが要る。手元で通すもので、**回帰は検査していない。**
 
 
 ## 参照
