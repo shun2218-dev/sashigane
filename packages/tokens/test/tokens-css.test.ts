@@ -223,17 +223,14 @@ describe('tokens.css の動き（決定1-14）', () => {
   });
 
   it('動きを減らす設定で止まる', () => {
-    const at = css.indexOf('@media (prefers-reduced-motion: reduce)');
-    expect(at, 'prefers-reduced-motion のブロックが無い').toBeGreaterThan(-1);
-    const block = css.slice(at, css.indexOf('\n}', at));
-    expect(block).toContain('[data-sg-skeleton]');
-    expect(block).toMatch(/animation:\s*none/);
+    const found = reducedMotionFor('[data-sg-skeleton]');
+    expect(found, '骨組み表示を止めるブロックが無い').not.toBeNull();
+    expect(found!.block).toMatch(/animation:\s*none/);
   });
 
   it('止める規則は、動かす規則より後にある（同じ詳細度なので順序で勝つ）', () => {
     const on = css.indexOf('[data-sg-skeleton] {');
-    const off = css.indexOf('@media (prefers-reduced-motion: reduce)');
-    expect(off).toBeGreaterThan(on);
+    expect(reducedMotionFor('[data-sg-skeleton]')!.at).toBeGreaterThan(on);
   });
 });
 
@@ -244,6 +241,75 @@ describe('tokens.css の動き（決定1-14）', () => {
  * コンポーネントはプリミティブを参照できない（原則3）ので、
  * 「周期がスケールから来ていること」を測れるのはここだけである。
  */
+/**
+ * 覆いと、その出入りの動き（決定6-40）。
+ *
+ * ここで測るのは**規則の側**である。コンポーネントはプリミティブを参照できない
+ * （原則3）ので、「時間がスケールから来ていること」を測れるのはここだけである。
+ */
+/**
+ * 「動きを減らす」の塊を、**中に入っているセレクタで探す。**
+ *
+ * 塊は1つとは限らない。以前は最初の1つを見ていたが、
+ * **別の塊が先に増えた瞬間に、別のものを見て緑になる**形だった。
+ */
+const reducedMotionFor = (selector: string): { at: number; block: string } | null => {
+  const re = /@media \(prefers-reduced-motion: reduce\)/g;
+  for (let m = re.exec(css); m; m = re.exec(css)) {
+    const block = css.slice(m.index, css.indexOf('\n}', m.index));
+    if (block.includes(selector)) return { at: m.index, block };
+  }
+  return null;
+};
+
+describe('tokens.css の覆い（決定6-40）', () => {
+  it('宣言した要素の覆いだけを塗る', () => {
+    const rule = blockOf('[data-sg-scrim]::backdrop');
+    expect(rule, '[data-sg-scrim]::backdrop が無い').not.toBeNull();
+    expect(rule!.body).toContain('--sg-color-scrim');
+  });
+
+  it('覆いの濃さは宣言していない差し込み口である', () => {
+    // 宣言すると var() のフォールバックが効かず、差していない口が空で解決される
+    expect(/^\s*--sg-color-scrim\s*:/m.test(css)).toBe(false);
+    expect(css).toContain('var(--sg-color-scrim,');
+  });
+
+  it('閉じるときも動けるように、display と overlay を遷移させる', () => {
+    // **`close()` は表示を即座に消す。** allow-discrete が無いと、
+    // 消えてから動くことになり、動きが見えない
+    const at = css.indexOf('[data-sg-scrim],');
+    expect(at, '出入りの規則が無い').toBeGreaterThan(-1);
+    const block = css.slice(at, css.indexOf('\n}', at));
+    expect(block).toMatch(/display[^;]*allow-discrete/);
+    expect(block).toMatch(/overlay[^;]*allow-discrete/);
+  });
+
+  it('時間はスケールから引いている（素の秒数を書いていない）', () => {
+    const at = css.indexOf('[data-sg-scrim],');
+    const block = css.slice(at, css.indexOf('\n}', at));
+    expect(block).toMatch(/var\(--sg-duration-\d+\)/);
+    expect(block).not.toMatch(/\d+ms/);
+  });
+
+  it('開くときの始点がある', () => {
+    // **無いと、開くときだけ動かない**——表示され始めた要素には遷移の始点が無い
+    expect(css).toMatch(/@starting-style\s*\{[\s\S]*?\[data-sg-scrim\]\[open\]/);
+  });
+
+  it('動きを減らす設定で止まる', () => {
+    const found = reducedMotionFor('[data-sg-scrim]');
+    expect(found, '覆いを止めるブロックが無い').not.toBeNull();
+    expect(found!.block).toMatch(/transition:\s*none/);
+  });
+
+  it('止める規則は、動かす規則より後にある（同じ詳細度なので順序で勝つ）', () => {
+    expect(reducedMotionFor('[data-sg-scrim]')!.at).toBeGreaterThan(
+      css.indexOf('[data-sg-scrim],'),
+    );
+  });
+});
+
 describe('tokens.css の回転（決定6-18）', () => {
   it('keyframes と、それを使う規則が対で出ている', () => {
     expect(css).toMatch(/@keyframes\s+sg-spin\s*\{/);

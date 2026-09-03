@@ -105,6 +105,50 @@ describe('開くとき', () => {
   });
 });
 
+describe('出入りの動き', () => {
+  it('窓と覆いが一緒に動き、閉じるときも動ける', async () => {
+    const { container } = await render(onSurface(<Harness />));
+    await openIt(container);
+    const dialog = dialogIn(container);
+
+    /*
+      **補間の途中の値を読まない**——読む時点の状態を自分で決められないので、
+      速さが違えば別の値になる。このリポジトリで3度踏んでいる形である。
+
+      代わりに**動きの根拠になっている宣言**を読む。
+    */
+    const cs = getComputedStyle(dialog);
+    expect(cs.transitionProperty).toContain('opacity');
+    expect(Number.parseFloat(cs.transitionDuration)).toBeGreaterThan(0);
+    /*
+      **閉じるときが本題である。** `close()` は表示を即座に消すので、
+      `display` と `overlay` を遷移させないと**消えてから動く**ことになり、
+      動きが見えない。
+    */
+    expect(cs.transitionProperty).toContain('display');
+    expect(cs.transitionProperty).toContain('overlay');
+    expect(cs.transitionBehavior).toContain('allow-discrete');
+
+    // 覆いも一緒に動く。**窓だけ動くと、覆いが先に消えてちらつく**
+    const back = getComputedStyle(dialog, '::backdrop');
+    expect(back.transitionProperty).toContain('opacity');
+    expect(Number.parseFloat(back.transitionDuration)).toBeGreaterThan(0);
+
+    /*
+      **本当に動いているか**は、ブラウザが持っている遷移の一覧から見る。
+      補間の途中の値そのものは読まない——読む時点を自分で決められない。
+
+      一覧に出るかどうかは「動き終わる前に見たか」に依るが、
+      **遅い側へ倒れても消えない**（遅いほど残っている）。
+    */
+    const running = dialog.getAnimations().map((a) => a.constructor.name);
+    expect(running.length, '遷移が1つも走っていない').toBeGreaterThan(0);
+
+    // 落ち着いた先は見えている状態である
+    await expect.poll(() => getComputedStyle(dialog).opacity).toBe('1');
+  });
+});
+
 describe('閉じるとき', () => {
   it('Escape で閉じ、閉じたことが親へ返る', async () => {
     const { container } = await render(onSurface(<Harness />));
