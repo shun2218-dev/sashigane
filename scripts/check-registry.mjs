@@ -20,7 +20,7 @@
  * 0 件という結果を、検査が壊れている状態と区別できるようにするため、
  * 毎回まず意図的に壊した item へ当てて、発火することを確かめる。
  */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -70,6 +70,29 @@ for (const [name, item] of items) {
     }
     if (!items.has(localName(dep))) {
       errors.push(`${name}: 知らない item を参照しています: ${dep}`);
+    }
+  }
+}
+
+/* ---------- 追跡外のものが混ざっていないこと ---------- */
+
+/*
+  生成器は git に聞かずにファイルを歩く（配信先に `.git` が無いことがある）。
+  **追跡外のものが混ざらないこと**は、git のあるここで見る。
+*/
+const trackedNames = new Set(
+  execSync('git ls-files packages/ui/src', { cwd: ROOT, encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean)
+    .map((f) => f.split('/').pop()),
+);
+
+for (const [name, item] of items) {
+  if (item.type !== 'registry:ui' && item.type !== 'registry:lib') continue;
+  for (const f of item.files ?? []) {
+    const base = f.path.split('/').pop();
+    if (!trackedNames.has(base)) {
+      errors.push(`${name}: 追跡外のファイルを配ろうとしています: ${f.path}`);
     }
   }
 }

@@ -23,8 +23,7 @@
  * 相対パスは**設定ゼロでどこでも解決する**（テスト・Next・tsc の3つ）。
  * 書き換えはここ1箇所で済むので、ソースの側は触っていない。
  */
-import { execSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -67,9 +66,21 @@ const LIB_ITEMS = {
 /** 落ちた先が持っていないもの。**react は利用側が既に持っている** */
 const SKIP_DEPENDENCIES = new Set(['react', 'react-dom']);
 
-const tracked = execSync('git ls-files packages/ui/src', { cwd: ROOT, encoding: 'utf8' })
-  .split('\n')
-  .filter(Boolean);
+/*
+  ファイルは**git に聞かずに歩いて集める。**
+
+  この生成器はドキュメントサイトのビルドからも呼ぶ。配信先のビルド環境に
+  `.git` があるとは限らないので、`git ls-files` に頼ると**そこだけで落ちる。**
+
+  追跡外のものが混ざらないことは `check:registry` が git と突き合わせて見る——
+  検査は git のある場所（手元と CI）でしか走らない。
+*/
+const walk = (dir) =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)],
+  );
+
+const tracked = walk(UI).map((f) => relative(ROOT, f));
 
 const isSource = (f) =>
   (f.endsWith('.ts') || f.endsWith('.tsx')) &&
@@ -84,6 +95,18 @@ const sources = tracked.filter(isSource).map((f) => join(ROOT, f));
 const itemOf = new Map();
 for (const file of sources) {
   const rel = relative(UI, file);
+  /*
+    **`internal/` の中は1つずつ並べる。** 並べ忘れると `internal` という
+    名前の部品が黙ってできて、`components/ui/` に落ちる。
+    共有物は `lib/` に落ちるものなので、置き場所が変わってしまう。
+  */
+  if (rel.startsWith('internal/') && !LIB_ITEMS[rel]) {
+    console.error(
+      `${rel} が LIB_ITEMS に並んでいません。\n` +
+        '共有物は1つずつ item にします。並べないと components/ui へ落ちます。',
+    );
+    process.exit(1);
+  }
   itemOf.set(rel, LIB_ITEMS[rel] ?? rel.split('/')[0]);
 }
 
