@@ -30,6 +30,7 @@ export {
   type CardPartProps,
 } from './card/index.ts';
 export { List, type ListProps, ListItem, type ListItemProps } from './list/index.ts';
+export { Modal, type ModalProps, useModal, type ModalController } from './modal/index.ts';
 export {
   Radio,
   type RadioProps,

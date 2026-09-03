@@ -137,12 +137,39 @@ const primitiveValues = (palette: Palette): Map<string, string> => {
  */
 const ITEM = /^(0|-?[\d.]+(px|rem|em|ms|s)|var\(--sg-[a-z0-9-]+\))$/;
 
+/**
+ * プリミティブを透かした値。**覆い（スクリム）だけがこの形を使う。**
+ *
+ * 透ける値は `var()` の参照では作れない——参照した先の不透明度は変えられない。
+ * **色の直値は通さないまま**である。混ぜる相手は `transparent` に限り、
+ * 混ぜられる側はプリミティブの参照に限る。
+ */
+const MIX = /^color-mix\(in oklab, var\((--sg-[a-z0-9-]+)\) ([\d.]+)%, transparent\)$/;
+
+/** 16進に不透明度を足す。`#rrggbb` → `#rrggbbaa` */
+const withAlpha = (hex: string, alpha: number): string => {
+  const a = Math.round(Math.min(1, Math.max(0, alpha)) * 255)
+    .toString(16)
+    .padStart(2, '0');
+  return `${hex}${a}`;
+};
+
 /** セマンティックの `var(--sg-x)` を1段だけ解決する */
 const resolve = (lines: string[], primitives: Map<string, string>): Record<string, string> => {
   const out: Record<string, string> = {};
   for (const line of lines) {
     const m = DECLARATION.exec(line);
     if (!m) continue;
+    const mix = MIX.exec(m[2]!.trim());
+    if (mix) {
+      const base = primitives.get(mix[1]!);
+      if (base === undefined) {
+        throw new Error(`未定義のプリミティブを参照しています: ${mix[1]}`);
+      }
+      out[m[1]!] = withAlpha(base, Number(mix[2]) / 100);
+      continue;
+    }
+
     const items = m[2]!.trim().split(/\s+/);
     if (!items.every((item) => ITEM.test(item))) {
       // セマンティックはプリミティブへの参照と長さでしか組み立てていない。

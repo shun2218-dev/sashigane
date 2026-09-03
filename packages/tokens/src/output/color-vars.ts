@@ -254,6 +254,28 @@ export const depthOf = (name: SurfaceName): number => surfaceDepth[name];
  * hover の規則が読む内部の値であり、tokens.js にも tokens.d.ts にも出さない（決定5-13）。
  * 必要とするのは tokens.css だけなので、そちらで足す。
  */
+/**
+ * 後ろを覆う色（スクリム）の**既定値**。
+ *
+ * ## セマンティックではない
+ *
+ * 色のセマンティックは3つの不変条件を持つ。**覆いはどれも満たさない。**
+ *
+ *   16進6桁で出る       — 透けることが役目なので、不透明度を持つ
+ *   明暗で必ず変わる     — 覆いの上に来る面が段で分かれるので、覆い自身は変わらない
+ *   対比の要件に分類される — **上に何も乗らない**ので、対比を測る相手がいない
+ *
+ * 3つとも外れるのは、**この仕組みが色をどう捉えているかから外れている**という
+ * ことである。宣言せず、**差し込み口**として読む（`--sg-font-brand-*` と同じ形）。
+ *
+ * 濃さを変えたい利用側は `--sg-color-scrim` を自分で定義する。
+ */
+/** 色の差し込み口。**生成器が知っている口はここが唯一の出どころ** */
+export const colorInputNames = (): string[] => ['--sg-color-scrim'];
+
+export const scrimDefault = (): string =>
+  'color-mix(in oklab, var(--sg-neutral-950) 50%, transparent)';
+
 export const colorSemanticVars = (mode: 'light' | 'dark', palette: Palette): string[] =>
   semanticFor(mode, surfaceRolesFor(palette, mode)[0]!, 0);
 

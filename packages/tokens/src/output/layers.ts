@@ -20,7 +20,12 @@
  * 手書きの一覧は作らない（決定2-6）。各 `*Vars()` が出した CSS 行から名前を取り出す。
  */
 import type { Palette } from '../color/palette.ts';
-import { colorPrimitiveVars, colorSemanticVars, hoverMirrorNames } from './color-vars.ts';
+import {
+  colorInputNames,
+  colorPrimitiveVars,
+  colorSemanticVars,
+  hoverMirrorNames,
+} from './color-vars.ts';
 import {
   fontInputNames,
   primitiveVars,
@@ -75,5 +80,6 @@ export const tokenLayers = (palette: Palette): TokenLayers => ({
     ...declaredNames(spacingSemanticVars('default')),
     ...declaredNames(colorSemanticVars('light', palette)),
   ].sort(),
-  inputs: [...fontInputNames()].sort(),
+  // 覆いの濃さも差し込み口である。**宣言していない**——宣言すると差せない
+  inputs: [...fontInputNames(), ...colorInputNames()].sort(),
 });
