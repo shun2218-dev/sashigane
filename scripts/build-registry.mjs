@@ -26,10 +26,28 @@
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const UI = 'packages/ui/src';
-const OUT = 'apps/docs/public/r';
-const TOKENS = 'packages/tokens/dist';
+/*
+  **どこから呼ばれても同じ場所を読む。** ドキュメントサイトのビルドは
+  `apps/docs` を作業場にして呼ぶので、作業場からの相対パスでは外す。
+*/
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+/*
+  依存の書き方。**素の名前は shadcn 自身のレジストリを指す。**
+
+  `registryDependencies: ['slot']` と書くと、CLI は
+  `ui.shadcn.com/r/.../slot.json` を探して落ちる（実際に落ちた）。
+
+  自分のレジストリを指すには名前空間を付ける。利用側は `components.json` の
+  `registries` に `@sashigane` の在り処を1度書く。**絶対 URL を JSON に
+  焼き込まない**ので、配信先が変わっても配る中身は変わらない。
+*/
+const NAMESPACE = '@sashigane';
+
+const UI = join(ROOT, 'packages/ui/src');
+const OUT = join(ROOT, 'apps/docs/public/r');
+const TOKENS = join(ROOT, 'packages/tokens/dist');
 
 /** 落ちた先の置き場所。**型ごとに決まる** */
 const TARGET_DIR = {
@@ -49,7 +67,7 @@ const LIB_ITEMS = {
 /** 落ちた先が持っていないもの。**react は利用側が既に持っている** */
 const SKIP_DEPENDENCIES = new Set(['react', 'react-dom']);
 
-const tracked = execSync(`git ls-files ${UI}`, { encoding: 'utf8' })
+const tracked = execSync('git ls-files packages/ui/src', { cwd: ROOT, encoding: 'utf8' })
   .split('\n')
   .filter(Boolean);
 
@@ -57,10 +75,10 @@ const isSource = (f) =>
   (f.endsWith('.ts') || f.endsWith('.tsx')) &&
   !f.includes('/examples/') &&
   !f.endsWith('.test.tsx') &&
-  !f.endsWith('/index.ts') &&
-  f !== `${UI}/index.ts`;
+  !f.endsWith('/index.ts');
 
-const sources = tracked.filter(isSource);
+// git は根からの相対で返すので、読む用の絶対パスに直す
+const sources = tracked.filter(isSource).map((f) => join(ROOT, f));
 
 /** ソースの相対パス（`button/button.tsx`）→ 属する item 名 */
 const itemOf = new Map();
@@ -187,7 +205,11 @@ const asJson = (item) => ({
   type: item.type,
   ...(item.dependencies.size ? { dependencies: [...item.dependencies].sort() } : {}),
   ...(item.registryDependencies.size
-    ? { registryDependencies: [...item.registryDependencies].sort() }
+    ? {
+        registryDependencies: [...item.registryDependencies]
+          .sort()
+          .map((d) => `${NAMESPACE}/${d}`),
+      }
     : {}),
   files: item.files,
 });

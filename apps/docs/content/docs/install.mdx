@@ -6,6 +6,21 @@ description: 3つの深さから選ぶ。トークンだけでも動く
 npm のパッケージではなく、**コードが手元のリポジトリに落ちます。**
 落ちたものは自分のコードなので、好きに変えられます。
 
+## まず配信元を1度書きます
+
+`components.json` に `@sashigane` の在り処を書いてください。
+
+```json
+{
+  "registries": {
+    "@sashigane": "https://<配信先>/r/{name}.json"
+  }
+}
+```
+
+**これが無いと動きません。** 名前空間を付けずに `slot` などと書くと、
+CLI は**shadcn 自身のレジストリ**を探しに行きます。
+
 ## 3つの深さ
 
 | 深さ | 入るもの |
@@ -16,13 +31,13 @@ npm のパッケージではなく、**コードが手元のリポジトリに�
 
 ```bash
 # トークンだけ
-npx shadcn@latest add https://<配信先>/r/tokens.json
+npx shadcn@latest add @sashigane/tokens
 
 # 部品ひとつ（必要な共有物は一緒に来ます）
-npx shadcn@latest add https://<配信先>/r/button.json
+npx shadcn@latest add @sashigane/button
 
 # 全部
-npx shadcn@latest add https://<配信先>/r/base.json
+npx shadcn@latest add @sashigane/base
 ```
 
 ## 落ちる場所
@@ -34,6 +49,9 @@ npx shadcn@latest add https://<配信先>/r/base.json
 | トークンの CSS | `styles/` |
 
 部品の中の参照は `@/components/ui/...` と `@/lib/...` に書き換わって落ちます。
+
+必要な npm の依存（`class-variance-authority` / `lucide-react`）は、
+CLI が一緒に入れます。
 
 ## トークンだけでも動きます
 
@@ -61,3 +79,6 @@ Tailwind から役割名（`text-body` `bg-accent-subtle` `max-w-32rem` など�
 
 前者が要ります——全部まとめて確かめるだけだと、
 **必要な共有物の書き漏れが、他の部品が持ってきたファイルで隠れます。**
+
+CLI で実際に落として確かめるのは、**配信先の URL が要るので手元で行います。**
+3つの深さすべてを落とし、置かれた木がコンパイルできることを確認しています。
