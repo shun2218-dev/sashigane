@@ -97,6 +97,42 @@ export const dismissToast = (id: string): void => {
   emit();
 };
 
+/*
+ * 描く場所は1つだけにする。**2つ置くと、同じ知らせが2回読まれる。**
+ *
+ * 重なって見えるだけなら見た目の話で済むが、読み上げの領域も2つになるので、
+ * **同じ文言が2回読まれる。** 文書に「1つだけ置く」と書いても守られない（教訓3）。
+ *
+ * 先に置かれたものが描く。**外れたら次のものへ渡す**——
+ * 渡さないと、最初のものを外した画面で知らせが出なくなる。
+ */
+let mounted: symbol[] = [];
+const ownerListeners = new Set<Listener>();
+
+const emitOwner = (): void => {
+  for (const listener of ownerListeners) listener();
+};
+
+export const subscribeToasterOwner = (listener: Listener): (() => void) => {
+  ownerListeners.add(listener);
+  return () => {
+    ownerListeners.delete(listener);
+  };
+};
+
+/** 描く番かどうか。**最初に置かれたものだけが真** */
+export const isToasterOwner = (id: symbol): boolean => mounted[0] === id;
+
+/** 置かれたことを知らせる。戻り値を呼ぶと外れる */
+export const claimToaster = (id: symbol): (() => void) => {
+  mounted = [...mounted, id];
+  emitOwner();
+  return () => {
+    mounted = mounted.filter((x) => x !== id);
+    emitOwner();
+  };
+};
+
 /** 全部消す。**画面が変わるときに使う**——前の画面の知らせが残らないように */
 export const dismissAllToasts = (): void => {
   if (toasts.length === 0) return;

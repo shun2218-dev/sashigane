@@ -34,10 +34,15 @@
  * 長く出る側へ倒れるので、読み終わる前に消えることはない。
  * ─────────────────────────────────────────────
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Button } from '../button/button.tsx';
 import { IconX } from '../icon/icon.tsx';
-import { dismissToast } from './toast-store.ts';
+import {
+  claimToaster,
+  dismissToast,
+  isToasterOwner,
+  subscribeToasterOwner,
+} from './toast-store.ts';
 import { useToast } from './use-toast.ts';
 
 /*
@@ -53,8 +58,24 @@ const dwellDefault = (): number | undefined => {
   const raw = getComputedStyle(document.documentElement)
     .getPropertyValue('--sg-duration-notice')
     .trim();
-  const ms = Number.parseFloat(raw);
-  return Number.isFinite(ms) && ms > 0 ? ms : undefined;
+  const ms = milliseconds(raw);
+  return ms !== undefined && ms > 0 ? ms : undefined;
+};
+
+/*
+  CSS の時間をミリ秒にする。**単位は `s` にも `ms` にもなる。**
+
+  ブラウザは `4000ms` を `4s` に正規化して返す。数だけを読むと
+  **4000 のつもりで 4 を受け取り、押した瞬間に消える。**
+  実際にそうなっていた——検査では `60ms` を差し込んでいて、
+  この形を一度も通していなかった。
+*/
+const milliseconds = (value: string): number | undefined => {
+  const m = /^(-?[\d.]+)(ms|s)$/.exec(value);
+  if (!m) return undefined;
+  const n = Number.parseFloat(m[1] as string);
+  if (!Number.isFinite(n)) return undefined;
+  return m[2] === 's' ? n * 1000 : n;
 };
 
 const TONE_CLASS = {
@@ -80,6 +101,11 @@ const TONE_CLASS = {
  *
  * **ポインタが乗っている間は消しません。**
  *
+ * ## 2つ置いても描くのは1つです
+ *
+ * 2つとも描くと**同じ知らせが2回読まれます。** 後から置いたものは何も描きません。
+ * 先に置いたものが外れたら、**次のものへ番が渡ります。**
+ *
  * ## 最前面の層に出ます
  *
  * `overflow` を持つ祖先があっても切り取られません。
@@ -88,6 +114,21 @@ export function Toaster() {
   const { toasts } = useToast();
   const regionRef = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
+
+  /*
+    描く番かどうか。**2つ置かれても、描くのは先に置かれた方だけである。**
+    2つとも描くと、同じ知らせが2回読まれる。
+  */
+  const selfRef = useRef<symbol>(undefined);
+  selfRef.current ??= Symbol('toaster');
+  const self = selfRef.current;
+  const owner = useSyncExternalStore(
+    subscribeToasterOwner,
+    () => isToasterOwner(self),
+    // サーバ側では番を持っているものとして描く。中身はまだ1つも無い
+    () => true,
+  );
+  useEffect(() => claimToaster(self), [self]);
 
   /*
    * 最前面の層へ出す。**属性だけでは出ない**——`showPopover()` を呼ぶまで
@@ -100,7 +141,7 @@ export function Toaster() {
     return () => {
       if (node.isConnected && node.matches(':popover-open')) node.hidePopover();
     };
-  }, []);
+  }, [owner]);
 
   /*
    * 自動で消す。**止めている間は数えない。**
@@ -124,6 +165,9 @@ export function Toaster() {
       for (const timer of timers) window.clearTimeout(timer);
     };
   }, [toasts, paused]);
+
+  // **番でなければ何も描かない。** 描くと領域が2つになる
+  if (!owner) return null;
 
   return (
     <div
