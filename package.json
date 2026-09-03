@@ -32,7 +32,9 @@
     "check:component-examples": "node scripts/check-component-examples.mjs",
     "check:public-language": "node scripts/check-public-language.mjs",
     "check:docs-search": "node scripts/check-docs-search.mjs",
-    "check:docs-llms": "node scripts/check-docs-llms.mjs"
+    "check:docs-llms": "node scripts/check-docs-llms.mjs",
+    "build:registry": "node scripts/build-registry.mjs",
+    "check:registry": "node scripts/check-registry.mjs"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.3.3",

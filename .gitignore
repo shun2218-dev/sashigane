@@ -27,3 +27,5 @@ apps/*/next-env.d.ts
 # 案内で、消しても next dev が書き直す。読む必要があるときは node_modules から読む。
 apps/*/AGENTS.md
 apps/*/CLAUDE.md
+apps/docs/public/r/
+packages/ui/.registry-check/
