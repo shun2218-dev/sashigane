@@ -12,6 +12,7 @@ import '../../test/tokens.css';
  *   **末尾だけが「いま居る場所」を名乗ること** — 組み替えても付け替え忘れが起きない
  *   **`ol` の中に `li` 以外が出ないこと** — 区切りも `li` で包む必要がある
  *   **面の宣言が背景と前景を同時に変えること** — 塗るだけの道が残っていないこと
+ *   **要素だけを数えること** — 混ざったものに区切りが付くと、道筋が増えて見える
  */
 
 const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}</div>;
@@ -171,5 +172,26 @@ describe('面', () => {
     expect(getComputedStyle(first as HTMLElement).color).not.toBe(
       getComputedStyle(last as HTMLElement).color,
     );
+  });
+});
+
+describe('数え方', () => {
+  it('要素でない子は数えない', async () => {
+    const { container } = await render(
+      onSurface(
+        <Breadcrumb>
+          <BreadcrumbItem href="/">ホーム</BreadcrumbItem>
+          {' / '}
+          <BreadcrumbItem>ここ</BreadcrumbItem>
+        </Breadcrumb>,
+      ),
+    );
+    await expect.poll(() => items(container).length).toBe(2);
+    /*
+      **他所から移ってきた人は、自分で区切りを書く。**
+      文字を数えると区切りが2つ付き、**末尾が「いま居る場所」でなくなる。**
+    */
+    expect(separators(container).length).toBe(1);
+    expect(items(container)[1]?.getAttribute('aria-current')).toBe('page');
   });
 });

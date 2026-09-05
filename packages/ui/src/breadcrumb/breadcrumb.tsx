@@ -42,7 +42,7 @@
  * 畳んだ先を開く仕掛けまで要る。畳む必要が実際に出てから考える。
  * ─────────────────────────────────────────────
  */
-import { Children, createContext, useContext } from 'react';
+import { Children, createContext, isValidElement, useContext } from 'react';
 import type { AnchorHTMLAttributes, HTMLAttributes, ReactNode, Ref } from 'react';
 import { Slot } from '../internal/slot.tsx';
 
@@ -96,8 +96,12 @@ export function Breadcrumb({
   children,
   ...props
 }: BreadcrumbProps) {
-  // 文字列や null を落とし、**項目だけを数える**
-  const items = Children.toArray(children).filter((c) => c !== null && c !== undefined);
+  /*
+    **要素だけを数える。** `Children.toArray` は null と真偽値を落とすが、
+    **文字列と数は残す。** 残したまま数えると、書き間違えて混ざった文字に
+    区切りが付き、**道筋が1つ増えたように見える。**
+  */
+  const items = Children.toArray(children).filter(isValidElement);
   const last = items.length - 1;
 
   const classes = 'text-body';
@@ -132,25 +136,46 @@ export function Breadcrumb({
   );
 }
 
-export interface BreadcrumbItemProps
-  extends Omit<AnchorHTMLAttributes<HTMLElement>, 'aria-current'> {
-  /**
-   * 行き先。**渡さなければ文字だけになる。**
-   *
-   * 末尾（いま居る場所）は渡さないのが普通だが、渡してもよい——
-   * その場合もリンクのまま `aria-current="page"` が付く。
-   */
-  href?: string;
-  /**
-   * 枠を作らず、子をそのまま使う。
-   *
-   * `Link` のような**自前のリンク**に差し替えるときに使う。
-   * `aria-current` と名乗りは子へ移る。
-   */
-  asChild?: boolean;
-  children?: ReactNode;
-  ref?: Ref<HTMLElement>;
-}
+/**
+ * `aria-current` は受け取らない。**末尾かどうかは器が決める。**
+ */
+type ItemBase = Omit<AnchorHTMLAttributes<HTMLElement>, 'aria-current' | 'href'>;
+
+/**
+ * `asChild` と `href` は同時に使えない。**型で塞いである。**
+ *
+ * 枠を作らないので、`href` を渡しても**置く先が無い。** 黙って落ちると、
+ * 押しても何も起きないリンクができる——見た目には出ない。
+ * 行き先は子の側（`<Link href>`）に書く。
+ */
+export type BreadcrumbItemProps =
+  | (ItemBase & {
+      asChild?: false;
+      /**
+       * 行き先。**渡さなければ文字だけになる。**
+       *
+       * 末尾（いま居る場所）は渡さないのが普通だが、渡してもよい——
+       * その場合もリンクのまま `aria-current="page"` が付く。
+       */
+      href?: string;
+      children?: ReactNode;
+      /** 描いた `a` か `span` を受け取る */
+      ref?: Ref<HTMLElement>;
+    })
+  | (ItemBase & {
+      /**
+       * 枠を作らず、子をそのまま使う。
+       *
+       * `Link` のような**自前のリンク**に差し替えるときに使う。
+       * 名乗りと現在地の申告は子へ移る。
+       */
+      asChild: true;
+      /** `asChild` のときは使えない。行き先は子の側に書く */
+      href?: never;
+      children: ReactNode;
+      /** **子の要素**を受け取る。枠を作らないので、届くのは子である */
+      ref?: Ref<HTMLElement>;
+    });
 
 /**
  * 道筋の1つ。
