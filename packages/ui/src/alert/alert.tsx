@@ -42,7 +42,7 @@
  * 本文より薄い字が並ぶ。** ランプを揃えても下がるだけである。
  *
  * だから**色を1つも書かない釦**を自分で持ち、枠の前景を継ぐ。
- * 線（focus-visible）は Button と同じものを書き下している。
+ * 線は Button と同じもので、`internal/focus.ts` に1つだけ置いてある。
  *
  * **hover で色を変えない。** 変えるとまた保証の外の段を指すことになる。
  * 押せることは形（cursor）と線で伝える。
@@ -61,6 +61,7 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import { useId } from 'react';
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
+import { FOCUS_RING } from '../internal/focus.ts';
 import { IconX } from '../icon/icon.tsx';
 
 /** 中立のときに宣言する面。**1箇所だけに書く** */
@@ -69,12 +70,10 @@ const NEUTRAL_SURFACE = 'inset';
 /**
  * 閉じる釦。**色を1つも書かない。**
  *
- * 枠の前景を継ぐ。線は Button と同じものである——写しだが、
- * **色を持たない釦**が Button に無いので、ここだけ書き下している。
+ * 枠の前景を継ぐ。線は共有のものを使う（`internal/focus.ts`）。
+ * **色を持たない釦**が Button に無いので、箱だけここで書いている。
  */
-const dismiss =
-  'shrink-0 cursor-pointer rounded-sm p-1 focus-visible:outline-solid ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus';
+const dismiss = `shrink-0 cursor-pointer rounded-sm p-1 ${FOCUS_RING}`;
 
 /**
  * その場に残る知らせ。

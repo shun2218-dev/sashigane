@@ -1,0 +1,74 @@
+---
+title: Calendar
+description: 日付を選ぶ。単一・範囲・複数日
+---
+
+```tsx
+<Calendar mode="single" selected={date} onSelect={setDate} />
+```
+
+## 言語は渡してください
+
+月名・曜日名・週の開始は言語で変わります。**既定を持っていません**——
+書体名と同じで、**ブランドの選択**だからです。
+
+```tsx
+import { ja } from 'react-day-picker/locale';
+
+<Calendar locale={ja} />
+```
+
+渡さなければ英語になります。
+
+## 向こうの CSS は読み込みません
+
+この部品は `react-day-picker` に乗っていますが、**そちらの CSS は読み込みません。**
+持っている値がこのスケールの外にあるためです。
+
+**あなたも読み込まないでください。** 読み込むと寸法と色が二重になります。
+
+```tsx
+import 'react-day-picker/style.css';  {/* 要りません */}
+```
+
+## 選び方は `mode` で決まります
+
+| `mode` | 選べるもの |
+|---|---|
+| `single` | 1日 |
+| `range` | 範囲 |
+| `multiple` | 飛び飛びの複数日 |
+
+`selected` と `onSelect` の型は `mode` に連動します。
+**範囲のつもりで1日を渡すと型で落ちます。**
+
+```tsx
+<Calendar mode="range" selected={range} onSelect={setRange} />
+```
+
+## 範囲は端と中で濃さが違います
+
+端は濃く、あいだは淡く塗ります。**同じ濃さにすると、端がどこか読めません。**
+
+端は外側だけ丸めるので、**中と繋がって1本に見えます。**
+
+## 選べない日は沈みます
+
+`disabled` に渡した日は押せなくなります。
+
+```tsx
+<Calendar mode="single" disabled={{ dayOfWeek: [0, 6] }} />
+```
+
+**押せるように見えて何も起きないものを作りません。**
+
+## 依存が3つ入ります
+
+この部品を入れると、`react-day-picker` と `date-fns` と `@date-fns/tz` が
+あなたのリポジトリに入ります。**この部品を入れた場合だけ**です。
+
+単一の日付だけなら自分で書ける規模ですが、**範囲まで持つと
+升目の中の焦点移動・選択の申告・月を移ったときの読み上げ**が一気に増えます。
+そこを引き受けてもらうための依存です。
+
+<ComponentDemo name="calendar" />

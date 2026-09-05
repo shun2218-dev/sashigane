@@ -14,6 +14,7 @@ export {
 } from './accordion/index.ts';
 export { Alert, type AlertProps } from './alert/index.ts';
 export { Badge, type BadgeProps } from './badge/index.ts';
+export { Calendar, type CalendarProps } from './calendar/index.ts';
 export {
   Breadcrumb,
   type BreadcrumbProps,

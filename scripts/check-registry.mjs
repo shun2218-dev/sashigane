@@ -199,6 +199,45 @@ try {
   );
 }
 
+/* ============================================================
+   npm の依存が、そのまま入れられる名前であること
+   ============================================================ */
+
+/**
+ * `dependencies` は落ちた先で **`npm install` に渡る。**
+ * 副経路（`react-day-picker/locale`）を書くと**そこで落ちる。**
+ *
+ * 実際に一度載った。生成器が**説明の中の import まで数えていた**ためで、
+ * 自作の検査も CLI も通したあとの配信物に入っていた。
+ *
+ * 見るのは形だけである。**実在するかは見ない**——ネットワークが要る。
+ */
+const PACKAGE_NAME = /^(?:@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
+
+// 対照。**発火することを確かめてから 0 件と言う**（教訓2）
+const nameControls = [
+  ['副経路', 'react-day-picker/locale', false],
+  ['スコープつきの副経路', '@date-fns/tz/utc', false],
+  ['素の名前', 'react-day-picker', true],
+  ['スコープつき', '@date-fns/tz', true],
+];
+for (const [label, spec, shouldPass] of nameControls) {
+  if (PACKAGE_NAME.test(spec) !== shouldPass) {
+    console.error(`対照が期待どおりでない: ${label}`);
+    process.exit(1);
+  }
+}
+
+const badNames = [];
+for (const [name, item] of items) {
+  for (const dep of item.dependencies ?? []) {
+    if (!PACKAGE_NAME.test(dep)) badNames.push(`${name}: ${dep}`);
+  }
+}
+for (const bad of badNames) {
+  errors.push(`npm に渡せない依存の名前: ${bad}`);
+}
+
 /* ---------- 結果 ---------- */
 
 if (errors.length) {
@@ -211,7 +250,8 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('✓ 対照 2 件が期待どおり（参照先の欠け・揃っている閉じ）');
+console.log('✓ 対照 6 件が期待どおり（参照先の欠け・揃っている閉じ・依存の名前 4 件）');
+console.log('✓ npm の依存がすべて、そのまま入れられる名前である（副経路が混ざっていない）');
 console.log(`✓ ${items.size} 件それぞれについて、単体で落としたときの参照先が揃っている`);
 console.log(
   typeOk ? `✓ 全部落とした木（${files.size} ファイル）がそのままコンパイルできる` : '',
