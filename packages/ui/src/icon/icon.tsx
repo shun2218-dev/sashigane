@@ -32,6 +32,8 @@ import type { LucideIcon, LucideProps } from 'lucide-react';
 const icon = cva('shrink-0', {
   variants: {
     size: {
+      /** **器の中に収める。** チェックボックスの印のように、16px の箱へ入れる */
+      xs: 'size-3',
       /** 小さい方。札や表の行の中で使う */
       sm: 'size-4',
       /** 行の高さと同じ。文字やボタンと並べたときに揃う */

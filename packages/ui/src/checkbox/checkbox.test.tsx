@@ -164,3 +164,28 @@ describe('札との結びつけ', () => {
     await expect.poll(() => boxIn(container).checked).toBe(true);
   });
 });
+
+describe('大きさ', () => {
+  /**
+   * **印が器に収まっていることを測る。**
+   *
+   * 器を 24 から 16 に縮めたとき、印は `Icon` の `sm`（16px）のままだった。
+   * **器と同じ大きさなので、縁まで埋まる。**
+   *
+   * 「収まっている」を測るのであって、特定の px を測るのではない——
+   * `Icon` の段を変えても、収まっていれば通る。
+   */
+  it('入った印が器の中に収まる', async () => {
+    const { container } = await render(
+      onSurface(<Checkbox aria-label="x" defaultChecked />),
+    );
+    const frame = container.querySelector('[data-sg-component="checkbox-frame"]');
+    if (!frame) throw new Error('器が描画されていません');
+    const icon = frame.querySelector('svg');
+    if (!icon) throw new Error('印が描画されていません');
+    const box = frame.getBoundingClientRect().width;
+    const mark = icon.getBoundingClientRect().width;
+    expect(box, '器の大きさ').toBe(16);
+    expect(mark, '印の大きさ').toBeLessThan(box);
+  });
+});
