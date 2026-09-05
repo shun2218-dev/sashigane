@@ -367,6 +367,13 @@ const withAsChild = components.filter((name) =>
  * ここではソースの側から見る。**弱い検査である**——
  * 解く関数の中身が間違っていても通る。捕まえるのは「解くのをやめた」形だけである。
  */
+const PROPS_JSON = 'apps/docs/generated/props.json';
+if (!existsSync(PROPS_JSON)) {
+  console.error(`${PROPS_JSON} がありません。先に pnpm docs:data を実行してください。`);
+  process.exit(1);
+}
+const propsData = JSON.parse(readFileSync(PROPS_JSON, 'utf8'));
+
 const DEMO = 'apps/docs/components/component-demo.tsx';
 const demoSource = existsSync(DEMO) ? readFileSync(DEMO, 'utf8') : '';
 
@@ -374,6 +381,46 @@ if (!demoSource) {
   console.error(`${DEMO} がありません。展示の組み立てが動いています。`);
   process.exit(1);
 }
+/**
+ * **解く相手が2つしか無いことを、説明の側からも見る。**
+ *
+ * `inline` が解くのは強調（`**`）と組（`` ` ``）だけである。
+ * それ以上を解くと Markdown の実装を持つことになるので、**増やさない。**
+ *
+ * 代わりに、**説明の側にそれ以外の印を書かせない。**
+ * コードの塊（``` ```）を prop の説明に書くと、**記号がそのまま画面に並ぶ**——
+ * 実際に書いて、利用者に指摘されるまで気づかなかった。
+ *
+ * 部品そのものの説明（`displayName` の側）は Markdown として描かれるので対象外である。
+ */
+const FENCE = /```/;
+const fenced = [];
+for (const [component, doc] of Object.entries(propsData)) {
+  for (const prop of doc.props ?? []) {
+    if (FENCE.test(prop.description ?? '')) fenced.push(`${component} の ${prop.name}`);
+  }
+}
+
+// 対照。**わざと書いたものが落ちなければ、検査が機能していない**（教訓2）
+if (!FENCE.test('前\n```tsx\nx\n```\n後')) {
+  console.error('✗ 型表の説明の対照が発火しない');
+  process.exit(1);
+}
+if (FENCE.test('**強調**と `組` だけの説明')) {
+  console.error('✗ 通すはずの説明が落ちる');
+  process.exit(1);
+}
+
+if (fenced.length > 0) {
+  console.error('prop の説明にコードの塊が入っています（決定6-4）。\n');
+  for (const f of fenced) console.error(`  ✗ ${f}`);
+  console.error(
+    '\n型表は強調と組しか解きません。**記号がそのまま画面に並びます。**' +
+      '\nコードの例は展示ページか、部品そのものの説明に置いてください。',
+  );
+  process.exit(1);
+}
+
 if (!/description:\s*inline\(/.test(withoutComments(demoSource))) {
   console.error('型表の説明が、印を解かずに渡されています（決定6-4）。\n');
   console.error('  ✗ `description: inline(...)` の形になっていません');
@@ -566,6 +613,7 @@ const marked = components.flatMap((name) =>
 );
 console.log(`✓ export した ${marked.length} 個の部品が、すべて自分の名前を名乗っている`);
 console.log('✓ 型表の説明が印を解いてから渡されている');
+console.log('✓ prop の説明にコードの塊が無い（対照 2 件が期待どおり）');
 console.log(
   withAsChild.length
     ? `✓ asChild を持つ ${withAsChild.length} 件（${withAsChild.join(' ')}）は共有の Slot を通している`
