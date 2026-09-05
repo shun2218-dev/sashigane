@@ -2,13 +2,13 @@ import { Card } from '../card.tsx';
 import { CardDescription, CardFooter, CardHeader, CardTitle } from '../card-parts.tsx';
 
 /**
- * **区画の使い分け。**
+ * **セクションの使い分け。**
  *
  * 見出しは既定で `h3` になる。カードがページのどこに置かれるかで
  * 正しい深さは変わるので、`asChild` で差し替えられる。
  *
- * 区画は必須ではない。**要る区画だけを置く。**
- * 操作の区画は下端に寄るので、高さの揃った並びでは位置が揃う。
+ * セクションは必須ではない。**要るセクションだけを置く。**
+ * 操作のセクションは下端に寄るので、高さの揃った並びでは位置が揃う。
  */
 export default function Parts() {
   return (

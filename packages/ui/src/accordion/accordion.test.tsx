@@ -154,7 +154,7 @@ describe('見た目', () => {
     expect(getComputedStyle(arrow).transitionProperty).toContain('rotate');
   });
 
-  it('升が下辺に線を持つ', async () => {
+  it('項目が下辺に線を持つ', async () => {
     const { container } = await render(one('中身'));
     const s = getComputedStyle(detailsIn(container));
     // **幅を見る。** 色だけを見ると、線を消しても通る

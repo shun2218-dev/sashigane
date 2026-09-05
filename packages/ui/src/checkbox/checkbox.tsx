@@ -40,10 +40,10 @@ export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement
 /**
  * チェックボックス。
  *
- * ## 札は Field が付ける
+ * ## ラベルは Field が付ける
  *
- * **札を自分では持たない。** 持つと結びつけの経路が2つになり、
- * 片方だけ直したときにずれる。札が右に来る配置は Field が持っている。
+ * **ラベルを自分では持たない。** 持つと結びつけの経路が2つになり、
+ * 片方だけ直したときにずれる。ラベルが右に来る配置は Field が持っている。
  *
  * ```tsx
  * <Field layout="inline" id="terms" label="利用規約に同意する">
@@ -89,7 +89,7 @@ export function Checkbox({ valid, className, ...props }: CheckboxProps) {
             : 'pointer-events-none absolute inset-0 hidden items-center justify-center rounded-sm peer-checked:flex'
         }
       >
-        {/* **`sm`（16px）は器と同じ大きさで収まらない。** 器に入る段を使う */}
+        {/* **`sm`（16px）は枠と同じ大きさで収まらない。** 枠に入る段を使う */}
         <IconCheck size="xs" />
       </span>
     </span>

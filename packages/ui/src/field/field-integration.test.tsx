@@ -130,21 +130,21 @@ describe('配線を上書きされたとき', () => {
     /*
      * **移し方は子を勝たせる**（`asChild` と同じ仕組み）。
      * つまり入力の側で `id` を書くと、**Field が渡した `id` が消える。**
-     * 札は Field の `id` を指したままなので、**結びつきだけが静かに切れる。**
+     * ラベルは Field の `id` を指したままなので、**結びつきだけが静かに切れる。**
      *
      * 見た目は正常で、読み上げだけが黙る。**黙って通さない。**
      */
     expect(() =>
-      Field({ id: 'a', label: '札', children: <Input id="b" /> }),
+      Field({ id: 'a', label: 'ラベル', children: <Input id="b" /> }),
     ).toThrow(/id/);
   });
 
   it('入力の側で読み上げの配線を書くと落ちる', () => {
     expect(() =>
-      Field({ id: 'a', label: '札', children: <Input aria-describedby="x" /> }),
+      Field({ id: 'a', label: 'ラベル', children: <Input aria-describedby="x" /> }),
     ).toThrow(/aria-describedby/);
     expect(() =>
-      Field({ id: 'a', label: '札', children: <Input aria-invalid /> }),
+      Field({ id: 'a', label: 'ラベル', children: <Input aria-invalid /> }),
     ).toThrow(/aria-invalid/);
   });
 
@@ -153,7 +153,7 @@ describe('配線を上書きされたとき', () => {
     expect(() =>
       Field({
         id: 'a',
-        label: '札',
+        label: 'ラベル',
         children: <Input name="mail" onChange={() => {}} onBlur={() => {}} />,
       }),
     ).not.toThrow();

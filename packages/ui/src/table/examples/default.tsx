@@ -6,7 +6,7 @@ import { Table, TableCell, TableHeaderCell, TableRow } from '../table.tsx';
  * 揃えないと、上下の行で桁の位置がずれて読み比べられない。
  *
  * `thead` と `tbody` は素のまま書く。どちらにも当てるものが無いので、
- * **器だけの部品を置いていない。**
+ * **枠だけの部品を置いていない。**
  */
 const rows = [
   { name: '5km', pace: '4:52', count: 128 },

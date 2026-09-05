@@ -5,7 +5,7 @@
  *
  * **このリポジトリで唯一、クライアント側でしか描けない部品である。**
  * 素の `select` は一覧の見た目を OS が描くため、揃えられない。
- * 揃える代わりに、キーボード・焦点・位置決めを全部こちらで持つことになった。
+ * 揃える代わりに、キーボード・フォーカス・位置決めを全部こちらで持つことになった。
  *
  * ## 値の出どころは隠した `select` 1つだけ
  *
@@ -15,14 +15,14 @@
  *
  * こうしないと、素のフォーム（`FormData`）と `register()` のどちらも動かない。
  *
- * ## 焦点は引き金から動かさない
+ * ## フォーカスは引き金から動かさない
  *
- * 選択肢に焦点を移すと、開閉のたびに焦点の行き先を管理することになる。
- * 焦点は `button` に置いたまま、**いまどれを指しているかは
+ * 選択肢にフォーカスを移すと、開閉のたびにフォーカスの行き先を管理することになる。
+ * フォーカスは `button` に置いたまま、**いまどれを指しているかは
  * `aria-activedescendant`** で伝える。
  *
- * 選択肢を押したときに焦点が飛ばないよう、`onMouseDown` で既定を止めている。
- * 止めないと `button` から焦点が外れ、**押す前に一覧が閉じる。**
+ * 選択肢を押したときにフォーカスが飛ばないよう、`onMouseDown` で既定を止めている。
+ * 止めないと `button` からフォーカスが外れ、**押す前に一覧が閉じる。**
  *
  * ## 一覧は箱の中に置いている
  *
@@ -30,7 +30,7 @@
  * 展示のプレビュー用 CSS（`[data-sg-preview]` の中だけに効く）からも外れる。
  *
  * 代償は、**`overflow` を持つ祖先があると切り取られる**ことである。
- * 実際、展示の器（fumadocs の Tabs）が切っていた。
+ * 実際、展示の枠（fumadocs の Tabs）が切っていた。
  *
  * ## 隠した `select` は読み上げから隠す
  *
@@ -43,7 +43,7 @@ import type { FocusEventHandler, ChangeEventHandler, Ref } from 'react';
 import { IconChevronDown } from '../icon/icon.tsx';
 import { ring, stateOf } from '../internal/ring.ts';
 
-/** 選択肢1つ。**値と札は別**——値は送る文字列で、札は人が読む文字列である */
+/** 選択肢1つ。**値とラベルは別**——値は送る文字列で、ラベルは人が読む文字列である */
 export interface SelectOption {
   value: string;
   label: string;
@@ -66,7 +66,7 @@ export interface SelectProps {
    */
   onChange?: ChangeEventHandler<HTMLSelectElement>;
   /**
-   * 焦点が外れたとき。**隠した `select` の focusout として投げる。**
+   * フォーカスが外れたとき。**隠した `select` の focusout として投げる。**
    *
    * `register()` が返す `onBlur` をそのまま渡せる。
    */
@@ -103,7 +103,7 @@ const TYPE_AHEAD_MS = 500;
  * ## 素の `select` ではありません
  *
  * 素のものは**一覧の見た目を OS が描く**ので揃いません。
- * 代わりにキーボード・焦点・位置決めをこちらで持っています。
+ * 代わりにキーボード・フォーカス・位置決めをこちらで持っています。
  *
  * ## 値はフォームにそのまま載ります
  *
@@ -111,7 +111,7 @@ const TYPE_AHEAD_MS = 500;
  * 選んだときは本物の change を投げるので、
  * `FormData` でも `react-hook-form` の `register()` でもそのまま動きます。
  *
- * ## 札は Field が付けます
+ * ## ラベルは Field が付けます
  *
  * ```tsx
  * <Field id="plan" label="プラン">
@@ -268,7 +268,7 @@ export function Select({
 
   /*
    * 外を押したら閉じる。**引き金の {blur} では足りない**——
-   * 選択肢を押すときは焦点を動かさないようにしてあるので、{blur} が来ない。
+   * 選択肢を押すときはフォーカスを動かさないようにしてあるので、{blur} が来ない。
    */
   useEffect(() => {
     if (!open) return undefined;
@@ -352,7 +352,7 @@ export function Select({
               aria-selected={option.value === selected}
               aria-disabled={option.disabled || undefined}
               /*
-                **いま指しているものを地の色で示す。** 焦点は引き金にあるので、
+                **いま指しているものを地の色で示す。** フォーカスは引き金にあるので、
                 ブラウザは何も描いてくれない——印が無いと、
                 矢印キーで動かしても画面上は何も起きていないように見える。
 
@@ -366,7 +366,7 @@ export function Select({
                     ? 'cursor-pointer bg-accent-subtle px-3 py-2 text-body text-on-accent-subtle'
                     : 'cursor-pointer px-3 py-2 text-body'
               }
-              // **焦点を動かさない。** 動くと引き金から外れ、押す前に閉じる
+              // **フォーカスを動かさない。** 動くと引き金から外れ、押す前に閉じる
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => pick(index)}
               onMouseEnter={() => !option.disabled && setActive(index)}

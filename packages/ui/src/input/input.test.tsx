@@ -50,9 +50,9 @@ describe('面', () => {
 });
 
 /**
- * 線の測り方。**器の側から読む。**
+ * 線の測り方。**枠の側から読む。**
  *
- * 線を描くのは入力そのものではなく、**外側の器**である——
+ * 線を描くのは入力そのものではなく、**外側の枠**である——
  * 面を宣言した要素の中では色がその面の段で解決され、
  * 誤りの文言と別の赤になるため。
  *
@@ -61,7 +61,7 @@ describe('面', () => {
  */
 const frameIn = (container: HTMLElement) => {
   const el = container.querySelector('[data-sg-component="input-frame"]');
-  if (!el) throw new Error('器が描画されていません');
+  if (!el) throw new Error('枠が描画されていません');
   return el;
 };
 
@@ -72,7 +72,7 @@ const line = (container: HTMLElement) => {
     width: Number.parseFloat(f.outlineWidth),
     color: f.outlineColor,
     style: f.outlineStyle,
-    // **器にも中身にも境界を持たない。** 中身の輪郭も持たない
+    // **枠にも中身にも境界を持たない。** 中身の輪郭も持たない
     others:
       Number.parseFloat(f.borderTopWidth) +
       Number.parseFloat(i.borderTopWidth) +

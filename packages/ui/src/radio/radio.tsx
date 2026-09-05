@@ -8,14 +8,14 @@
  * ## 印は「宣言した塗り」の点で出す
  *
  * チェックボックスと違い、**塗るのは箱全体ではなく中の点**である。
- * 外側の輪は線のままにしておかないと、選ばれていない側と形が変わって見える。
+ * 外側の丸は線のままにしておかないと、選ばれていない側と形が変わって見える。
  *
- * ## 輪 16 に対して点 8
+ * ## 丸 16 に対して点 8
  *
- * **輪と点の比は 0.5 である。** 24 の輪に 8 の点を置いていた時期があり、
- * 比 0.33 で**輪の中が空いて見えた。**
+ * **丸と点の比は 0.5 である。** 24 の丸に 8 の点を置いていた時期があり、
+ * 比 0.33 で**丸の中が空いて見えた。**
  *
- * 中間の大きさは無い——`spacing` に 20px の段が無いので、輪は 16 か 24 しか取れない。
+ * 中間の大きさは無い——`spacing` に 20px の段が無いので、丸は 16 か 24 しか取れない。
  * チェックボックスと揃えて 16 にしている。
  *
  * 出し入れは `peer-checked:` で、**状態を持たない**（checkbox.tsx の覚書）。
@@ -28,7 +28,7 @@ export interface RadioProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   /**
    * 満たしていることを示す。**誤りとは別の仕組みで受け取る。**
    *
-   * 群れに対して付けるものなので、**普通は RadioGroup 側に書く。**
+   * グループに対して付けるものなので、**普通は RadioGroup 側に書く。**
    */
   valid?: boolean;
   ref?: Ref<HTMLInputElement>;
@@ -37,10 +37,10 @@ export interface RadioProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
 /**
  * ラジオ。**同じ `name` を渡したものの中で1つだけ選べる。**
  *
- * ## 群れの札は RadioGroup が持つ
+ * ## グループのラベルは RadioGroup が持つ
  *
- * 1つずつの札は Field が付け、**群れ全体の札は RadioGroup** が付ける。
- * 群れの札が無いと、読み上げは「何についての選択なのか」を言えない。
+ * 1つずつのラベルは Field が付け、**グループ全体のラベルは RadioGroup** が付ける。
+ * グループのラベルが無いと、読み上げは「何についての選択なのか」を言えない。
  *
  * ```tsx
  * <RadioGroup id="plan" label="プラン">
@@ -52,7 +52,7 @@ export interface RadioProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
  *
  * ## `name` は利用側が渡す
  *
- * 群れから配っていない。**配るには文脈（context）が要り、
+ * グループから配っていない。**配るには文脈（context）が要り、
  * この部品がクライアント側になる。** いまはどの部品もサーバ側で描ける。
  */
 export function Radio({ valid, className, ...props }: RadioProps) {

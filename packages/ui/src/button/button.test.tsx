@@ -31,11 +31,11 @@ const buttonIn = (container: HTMLElement) => {
   return el;
 };
 
-/** 面の文脈を作る器。塗りが面から独立していることを見るために要る */
+/** 面の文脈を作る枠。塗りが面から独立していることを見るために要る */
 const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}</div>;
 
 /**
- * hover を測るための器。**ポインタを外す先を一緒に描く。**
+ * hover を測るための枠。**ポインタを外す先を一緒に描く。**
  *
  * 描いた要素は前のテストと同じ位置に出ることがあり、
  * **ポインタが乗ったままだと `before` が既に hover 後の値になる。**
@@ -136,10 +136,10 @@ describe('props の写像', () => {
 
 describe('設計の不変条件', () => {
   /**
-   * **押下は表現しない**（決定6-7）。観測が4本とも0件だったため。
+   * **押している最中の見た目は持たない**（決定6-7）。観測が4本とも0件だったため。
    * `:active` の規則を持っていないことを、**クラスの一覧で固定する。**
    */
-  it('押下のための variant を持たない', async () => {
+  it('押している最中のための variant を持たない', async () => {
     const { container } = await render(onSurface(<Button>x</Button>));
     const classes = [...buttonIn(container).classList];
     expect(classes.filter((c) => c.startsWith('active'))).toEqual([]);
@@ -342,7 +342,7 @@ describe('トークンの保証（実ブラウザでしか測れない）', () =
 });
 
 /**
- * `asChild`（決定6-14）。**器を作らず、子だけを描く。**
+ * `asChild`（決定6-14）。**枠を作らず、子だけを描く。**
  *
  * ここで測るのは props の写像ではなく **DOM の形**である——
  * 「button の中に a が入る」形になっていないことは、計算値では見えない。
@@ -529,7 +529,7 @@ describe('自分の名前を名乗る', () => {
         </Button>,
       ),
     );
-    // **器を差し替えても、何であるかは変わらない**
+    // **枠を差し替えても、何であるかは変わらない**
     expect(container.querySelector('a')?.getAttribute('data-sg-component')).toBe('button');
   });
 });
@@ -699,10 +699,10 @@ describe('読み込み中', () => {
     /*
      * **別々に描いた2つの計算値を突き合わせない。**
      *
-     * この器は `transition-colors` を持つので、読む時点によって
+     * この枠は `transition-colors` を持つので、読む時点によって
      * 補間の途中の値が返る。同じ色でも書き方が変わる
      * （`oklch(...)` が `oklab(...)` になる）ので文字列の比較が落ちる。
-     * 両側を待つ形にしてもなお CI で落ちた——**2つの木が別々に落ち着く**ためである。
+     * 両側を待つ形にしてもなお CI で落ちた——**2つのツリーが別々に落ち着く**ためである。
      *
      * 代わりに**宣言そのもの**を比べる。同じ塗りを宣言していれば、
      * 背景も前景も同じ規則から来る。これは時点に依らない。
@@ -745,7 +745,7 @@ describe('読み込み中', () => {
     );
     const el = buttonIn(container);
     expect(el.querySelector('[data-sg-spinner]')).not.toBeNull();
-    // **並べると器が横に伸びて、正方形でなくなる**
+    // **並べると枠が横に伸びて、正方形でなくなる**
     expect(el.querySelector('path')).toBeNull();
     const r = el.getBoundingClientRect();
     expect(Math.abs(r.width - r.height)).toBeLessThan(1);
@@ -781,7 +781,7 @@ describe('読み込み中', () => {
     /*
      * **仕様として測っておく。** 押した瞬間に隣が動くので、
      * 知らずに踏むのと承知で選ぶのを分けるためである。
-     * ずれてほしくない場所では器の幅を先に決める。
+     * ずれてほしくない場所では枠の幅を先に決める。
      */
     expect(w(after)).toBeGreaterThan(w(before));
   });

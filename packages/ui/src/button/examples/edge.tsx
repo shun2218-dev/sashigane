@@ -24,7 +24,7 @@ export default function Edge() {
           ghost
         </Button>
       </div>
-      <Button>Supercalifragilisticexpialidocious/長いラベルでも器は破れません</Button>
+      <Button>Supercalifragilisticexpialidocious/長いラベルでも枠は破れません</Button>
     </div>
   );
 }
