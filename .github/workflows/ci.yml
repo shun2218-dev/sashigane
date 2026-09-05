@@ -6,22 +6,26 @@ on:
   pull_request:
 
 jobs:
-  # リリース線への PR は develop からのみ許す。
+  # リリース線への PR は release/vX.Y.Z からのみ許す（決定4-7）。
   # branch protection は「PR を経由すること」しか要求せず、head を制約しない。
-  # 作業ブランチから直接 main へ PR を出せてしまうため、ここで塞ぐ（docs/branching.md）。
+  # 作業ブランチや develop から直接 main へ PR を出せてしまうため、ここで塞ぐ。
+  #
+  # **形も見る。** release ブランチはバージョンを上げる場所であり、
+  # 名前がそのバージョンを名乗る。release/foo のような名前を通すと、
+  # どの番号を切るのかがブランチ名から読めなくなる（docs/branching.md）。
   branch-flow:
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
     runs-on: ubuntu-latest
     steps:
-      - name: main への PR は develop からのみ
+      - name: main への PR は release/vX.Y.Z からのみ
         run: |
-          if [ "$HEAD_REF" != "develop" ]; then
-            echo "main への PR は develop からのみ許可されています。" >&2
+          if ! printf '%s' "$HEAD_REF" | grep -Eq '^release/v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "main への PR は release/vX.Y.Z からのみ許可されています。" >&2
             echo "  この PR の head: $HEAD_REF" >&2
-            echo "  作業ブランチはまず develop へマージしてください（docs/branching.md）。" >&2
+            echo "  develop から release/vX.Y.Z を切ってください（docs/branching.md）。" >&2
             exit 1
           fi
-          echo "✓ head は develop"
+          echo "✓ head は $HEAD_REF"
         env:
           HEAD_REF: ${{ github.head_ref }}
 
