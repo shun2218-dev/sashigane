@@ -1,6 +1,7 @@
 export {
   Carousel,
   type CarouselProps,
+  type CarouselOptions,
   CarouselSlides,
   type CarouselSlidesProps,
   CarouselSlide,

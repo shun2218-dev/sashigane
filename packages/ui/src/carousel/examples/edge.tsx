@@ -39,7 +39,7 @@ export default function Edge() {
         </div>
       </Carousel>
 
-      <Carousel label="自動で送るもの" loop autoplay>
+      <Carousel label="自動で送るもの" autoplay options={{ loop: true }}>
         <CarouselSlides>
           {['一', '二', '三'].map((n) => (
             <CarouselSlide key={n}>
@@ -64,7 +64,7 @@ export default function Edge() {
         </div>
       </Carousel>
 
-      <Carousel label="折り返すもの" loop>
+      <Carousel label="折り返すもの" options={{ loop: true }}>
         <CarouselSlides>
           {['一', '二', '三'].map((n) => (
             <CarouselSlide key={n}>

@@ -16,6 +16,7 @@ export { Badge, type BadgeProps } from './badge/index.ts';
 export {
   Carousel,
   type CarouselProps,
+  type CarouselOptions,
   CarouselSlides,
   type CarouselSlidesProps,
   CarouselSlide,
