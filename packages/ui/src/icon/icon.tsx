@@ -17,7 +17,7 @@
  * ─────────────────────────────────────────────
  */
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Check, ChevronDown, Eye, EyeOff, Plus, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, X } from 'lucide-react';
 import type { LucideIcon, LucideProps } from 'lucide-react';
 
 /**
@@ -115,3 +115,9 @@ export const IconEye = defineIcon(Eye);
 
 /** 閉じた目。**見せているものを隠す** */
 export const IconEyeOff = defineIcon(EyeOff);
+
+/** 左向きの矢印。**前へ送る**（Carousel が使う） */
+export const IconChevronLeft = defineIcon(ChevronLeft);
+
+/** 右向きの矢印。**次へ送る** */
+export const IconChevronRight = defineIcon(ChevronRight);

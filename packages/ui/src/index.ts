@@ -13,6 +13,19 @@ export {
   type AccordionContentProps,
 } from './accordion/index.ts';
 export { Badge, type BadgeProps } from './badge/index.ts';
+export {
+  Carousel,
+  type CarouselProps,
+  CarouselSlides,
+  type CarouselSlidesProps,
+  CarouselSlide,
+  type CarouselSlideProps,
+  CarouselPrevious,
+  CarouselNext,
+  type CarouselButtonProps,
+  CarouselMarkers,
+  type CarouselMarkersProps,
+} from './carousel/index.ts';
 export { Checkbox, type CheckboxProps } from './checkbox/index.ts';
 export { Button, type ButtonProps } from './button/index.ts';
 export { Field, type FieldProps } from './field/index.ts';
