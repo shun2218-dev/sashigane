@@ -18,6 +18,13 @@ export const metadata = {
   metadataBase: new URL(siteUrl),
   title: 'sashigane',
   description: 'トークンが唯一の正であるデザインシステム',
+  /**
+   * favicon は生成物なので `public/` に出る（原則1）。
+   * **`app/icon.svg` の置き場は使えない**——あそこは追跡下のファイルを前提にしている。
+   *
+   * apple icon は `app/apple-icon.tsx` が受け持つので、ここには書かない。
+   */
+  icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }] },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
