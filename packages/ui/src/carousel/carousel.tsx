@@ -112,11 +112,7 @@ export interface CarouselProps extends HTMLAttributes<HTMLDivElement> {
    */
   autoplay?: boolean | { delay?: number };
   /**
-   * 送りの設定。**Embla のものをそのまま渡す。**
-   *
-   * ```tsx
-   * <Carousel label="…" options={{ loop: true, align: 'start', slidesToScroll: 2 }} />
-   * ```
+   * 送りの設定。**Embla のものをそのまま渡す**（`loop` `align` `slidesToScroll` など）。
    *
    * よく使うのは `loop`（端で折り返す）である。
    * **折り返すと「最後まで来た」が分からなくなる**ので、見せ物のときだけ入れる。
