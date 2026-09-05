@@ -11,7 +11,7 @@ import '../../test/tokens.css';
  *
  * 測るのは1つに尽きる——**結びつけが実際にできていること。**
  *
- * 札と入力、説明と入力、誤りと入力。**どれも忘れると読み上げだけが黙る。**
+ * ラベルと入力、説明と入力、誤りと入力。**どれも忘れると読み上げだけが黙る。**
  * 見た目は正常なので、ここで測らないと誰も気づかない。
  */
 
@@ -24,13 +24,13 @@ const inputIn = (container: HTMLElement) => {
 };
 
 /**
- * 線を描くのは入力そのものではなく、**外側の器**である。
+ * 線を描くのは入力そのものではなく、**外側の枠**である。
  * 面を宣言した要素の中では色がその面の段で解決され、
  * **誤りの文言と別の赤**になるため（決定6-34）。
  */
 const frameIn = (container: HTMLElement) => {
   const el = container.querySelector('[data-sg-component="input-frame"]');
-  if (!el) throw new Error('器が描画されていません');
+  if (!el) throw new Error('枠が描画されていません');
   return el;
 };
 
@@ -43,10 +43,10 @@ describe('前提', () => {
 });
 
 describe('結びつけ', () => {
-  it('札が入力を指す', async () => {
+  it('ラベルが入力を指す', async () => {
     const { container } = await render(
       onSurface(
-        <Field id="a" label="札">
+        <Field id="a" label="ラベル">
           <Input />
         </Field>,
       ),
@@ -61,7 +61,7 @@ describe('結びつけ', () => {
   it('説明が入力に届く', async () => {
     const { container } = await render(
       onSurface(
-        <Field id="b" label="札" description="説明の文">
+        <Field id="b" label="ラベル" description="説明の文">
           <Input />
         </Field>,
       ),
@@ -74,7 +74,7 @@ describe('結びつけ', () => {
   it('誤りが入力に届き、入力が誤りを名乗る', async () => {
     const { container } = await render(
       onSurface(
-        <Field id="c" label="札" error="誤りの文">
+        <Field id="c" label="ラベル" error="誤りの文">
           <Input />
         </Field>,
       ),
@@ -88,7 +88,7 @@ describe('結びつけ', () => {
   it('説明と誤りが両方あるときは、両方届く', async () => {
     const { container } = await render(
       onSurface(
-        <Field id="d" label="札" description="説明" error="誤り">
+        <Field id="d" label="ラベル" description="説明" error="誤り">
           <Input />
         </Field>,
       ),
@@ -100,7 +100,7 @@ describe('結びつけ', () => {
   it('誤りが無いときは誤りを名乗らない', async () => {
     const { container } = await render(
       onSurface(
-        <Field id="e" label="札">
+        <Field id="e" label="ラベル">
           <Input />
         </Field>,
       ),
@@ -111,10 +111,10 @@ describe('結びつけ', () => {
     expect(input.hasAttribute('aria-describedby')).toBe(false);
   });
 
-  it('必須は札にも入力にも届く', async () => {
+  it('必須はラベルにも入力にも届く', async () => {
     const { container } = await render(
       onSurface(
-        <Field id="f" label="札" required>
+        <Field id="f" label="ラベル" required>
           <Input />
         </Field>,
       ),
@@ -127,7 +127,7 @@ describe('結びつけ', () => {
   it('説明も誤りも無いときは、空の段落を置かない', async () => {
     const { container } = await render(
       onSurface(
-        <Field id="g" label="札">
+        <Field id="g" label="ラベル">
           <Input />
         </Field>,
       ),
@@ -141,14 +141,14 @@ describe('誤りの見た目', () => {
   it('誤りのときだけ境界が変わる', async () => {
     const plain = await render(
       onSurface(
-        <Field id="h" label="札">
+        <Field id="h" label="ラベル">
           <Input />
         </Field>,
       ),
     );
     const bad = await render(
       onSurface(
-        <Field id="i" label="札" error="誤り">
+        <Field id="i" label="ラベル" error="誤り">
           <Input />
         </Field>,
       ),
@@ -171,21 +171,21 @@ describe('満たしていること', () => {
   it('線が誤りとも通常とも違う', async () => {
     const plain = await render(
       onSurface(
-        <Field id="v1" label="札">
+        <Field id="v1" label="ラベル">
           <Input />
         </Field>,
       ),
     );
     const ok = await render(
       onSurface(
-        <Field id="v2" label="札" valid>
+        <Field id="v2" label="ラベル" valid>
           <Input />
         </Field>,
       ),
     );
     const bad = await render(
       onSurface(
-        <Field id="v3" label="札" error="誤り">
+        <Field id="v3" label="ラベル" error="誤り">
           <Input />
         </Field>,
       ),
@@ -203,21 +203,21 @@ describe('満たしていること', () => {
   it('状態の線は通常より太い', async () => {
     const plain = await render(
       onSurface(
-        <Field id="w1" label="札">
+        <Field id="w1" label="ラベル">
           <Input />
         </Field>,
       ),
     );
     const ok = await render(
       onSurface(
-        <Field id="w2" label="札" valid>
+        <Field id="w2" label="ラベル" valid>
           <Input />
         </Field>,
       ),
     );
     const bad = await render(
       onSurface(
-        <Field id="w3" label="札" error="誤り">
+        <Field id="w3" label="ラベル" error="誤り">
           <Input />
         </Field>,
       ),
@@ -231,7 +231,7 @@ describe('満たしていること', () => {
   it('印が出て、読み上げには出ない', async () => {
     const { container } = await render(
       onSurface(
-        <Field id="v4" label="札" valid>
+        <Field id="v4" label="ラベル" valid>
           <Input />
         </Field>,
       ),
@@ -245,7 +245,7 @@ describe('満たしていること', () => {
   it('印が文字に重ならない', async () => {
     const { container } = await render(
       onSurface(
-        <Field id="v5" label="札" valid>
+        <Field id="v5" label="ラベル" valid>
           <Input />
         </Field>,
       ),
@@ -254,7 +254,7 @@ describe('満たしていること', () => {
     const check = container.querySelector('[data-sg-component="icon-check"]');
     if (!check) throw new Error('印が描画されていません');
     const gap = input.getBoundingClientRect().right - check.getBoundingClientRect().right;
-    // 器の中に収まっていること
+    // 枠の中に収まっていること
     expect(gap).toBeGreaterThan(0);
     // **文字の入る幅を空けていること。** 空けないと長い文字が印の下へ潜る
     expect(Number.parseFloat(getComputedStyle(input).paddingInlineEnd)).toBeGreaterThan(
@@ -265,7 +265,7 @@ describe('満たしていること', () => {
   it('誤りと同時に渡すと、誤りが勝つ', async () => {
     const { container } = await render(
       onSurface(
-        <Field id="v6" label="札" valid error="誤り">
+        <Field id="v6" label="ラベル" valid error="誤り">
           <Input />
         </Field>,
       ),
@@ -290,7 +290,7 @@ const Toggling = () => {
   return (
     <Field
       id="tg"
-      label="札"
+      label="ラベル"
       valid={value.length >= 3}
       error={short ? '短い' : undefined}
     >
@@ -323,7 +323,7 @@ describe('入力中に状態が変わるとき', () => {
 
     await userEvent.keyboard('c');
     /*
-     * **フォーカスが残ることだけを測っていた。** 器を常に置くように変えたとき、
+     * **フォーカスが残ることだけを測っていた。** 枠を常に置くように変えたとき、
      * 見た目が追従することは1件も測っていなかった——
      * 印が出なくなっても、線が変わらなくなっても、落ちない状態だった。
      *
@@ -333,7 +333,7 @@ describe('入力中に状態が変わるとき', () => {
      */
     const reference = await render(
       onSurface(
-        <Field id="ref" label="札" valid>
+        <Field id="ref" label="ラベル" valid>
           <Input />
         </Field>,
       ),

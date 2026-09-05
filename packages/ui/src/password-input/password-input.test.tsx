@@ -11,9 +11,9 @@ import '../../test/tokens.css';
  * 測るのは4つである。
  *
  *   **既定で隠れていること** — 見えたまま描かれると、肩越しに読まれる
- *   **打っている最中に切り替えてもフォーカスが外れないこと** — 器を差し替えると
+ *   **打っている最中に切り替えてもフォーカスが外れないこと** — 枠を差し替えると
  *     React が中身を作り直し、**文字が入らなくなる。**見た目には何も出ない
- *   **札が状態を伝えること** — 目の図案だけでは、いまどちらなのかが読み上げに出ない
+ *   **ラベルが状態を伝えること** — 目の絵柄だけでは、いまどちらなのかが読み上げに出ない
  *   **切り替えがフォームを送らないこと** — 既定の `type` は `submit` である
  */
 
@@ -38,7 +38,7 @@ describe('隠すことと見せること', () => {
     await expect.poll(() => inputIn(container).type).toBe('password');
   });
 
-  it('札が状態を伝える', async () => {
+  it('ラベルが状態を伝える', async () => {
     const { container } = await render(onSurface(<PasswordInput aria-label="パスワード" />));
     const toggle = toggleIn(container);
     expect(toggle.getAttribute('aria-label')).toBe('パスワードを表示');
@@ -51,7 +51,7 @@ describe('打っている最中に切り替える', () => {
   /**
    * **静止した状態を並べても、この壊れ方は写らない。**
    *
-   * 器の有無を状態で変えると React が中身を作り直し、
+   * 枠の有無を状態で変えると React が中身を作り直し、
    * **フォーカスが外れて、以降の文字が入らなくなる。**
    * 見た目には何も出ないので、打ち続けて初めて分かる。
    *
@@ -69,7 +69,7 @@ describe('打っている最中に切り替える', () => {
     await userEvent.type(input, 'あと');
 
     await expect.poll(() => inputIn(container).value).toBe('まえあと');
-    // **要素が作り直されていない**——同じ節点のままである
+    // **要素が作り直されていない**——同じノードのままである
     expect(inputIn(container)).toBe(input);
   });
 });
@@ -104,12 +104,12 @@ describe('フォームと押せないとき', () => {
 });
 
 describe('面と線', () => {
-  it('凹んだ面を宣言し、線は器が描く', async () => {
+  it('凹んだ面を宣言し、線は枠が描く', async () => {
     const { container } = await render(onSurface(<PasswordInput aria-label="パスワード" />));
     const input = inputIn(container);
     expect(input.getAttribute('data-sg-surface')).toBe('inset');
     const frame = container.querySelector('[data-sg-component="password-input-frame"]');
-    if (!frame) throw new Error('器が描画されていません');
+    if (!frame) throw new Error('枠が描画されていません');
     const f = getComputedStyle(frame);
     expect(f.outlineStyle).toBe('solid');
     expect(Number.parseFloat(f.outlineWidth)).toBeGreaterThan(0);

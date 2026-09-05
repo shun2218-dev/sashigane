@@ -98,7 +98,7 @@ describe('面の上での見え方', () => {
      * **面の段は凹んだところで底に着く。**
      * その上に凹んだ面を宣言しても深くならないので、背景が親と同じになる。
      *
-     * 境界を持たせていなかったとき、**札は背景に溶けて消えていた。**
+     * 境界を持たせていなかったとき、**バッジは背景に溶けて消えていた。**
      * 仕様として測っておく——直したことを、次に境界を外す人が知る手がかりになる。
      */
     const { container } = await render(
@@ -119,13 +119,13 @@ describe('面の上での見え方', () => {
 });
 
 describe('中身が無いとき', () => {
-  it('器が潰れない', async () => {
+  it('枠が潰れない', async () => {
     const { container } = await render(onSurface(<Badge />));
     const r = badgeIn(container).getBoundingClientRect();
     /*
      * 左右の余白が残るので点として見える。
      * **例に書いた主張は、テストで裏を取る。**
-     * 幅が 0 になっても、展示は「空の札」に見えてしまう。
+     * 幅が 0 になっても、展示は「空のバッジ」に見えてしまう。
      */
     expect(r.width).toBeGreaterThan(0);
     expect(r.height).toBeGreaterThan(0);

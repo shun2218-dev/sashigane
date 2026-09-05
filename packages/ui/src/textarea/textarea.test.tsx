@@ -18,10 +18,10 @@ const look = (el: Element) => {
   return {
     background: s.backgroundColor,
     color: s.color,
-    // 線を描くのは器である。**中身の側は線を持たないこと**も一緒に見る
+    // 線を描くのは枠である。**中身の側は線を持たないこと**も一緒に見る
     line: (() => {
       const f = el.closest('[data-sg-component$="-frame"]');
-      if (!f) throw new Error('器が描画されていません');
+      if (!f) throw new Error('枠が描画されていません');
       const fs = getComputedStyle(f);
       return `${fs.outlineWidth} ${fs.outlineColor} ${fs.outlineStyle} / ${fs.borderTopWidth}`;
     })(),

@@ -17,7 +17,7 @@ import '../../test/tokens.css';
  *     読み上げは中身の追加に気づかない。**見た目には何も出ない誤り**である
  *   **最前面の層に出ること** — 属性だけでは出ない。切り取られる場所に描くと、
  *     `overflow` を持つ祖先の中で消える
- *   **器が後ろの操作を奪わないこと** — 最前面の層は画面いっぱいに広がる
+ *   **枠が後ろの操作を奪わないこと** — 最前面の層は画面いっぱいに広がる
  *   **止めている間は消えないこと**
  */
 
@@ -39,7 +39,7 @@ const regionIn = (container: HTMLElement) => {
 
 const toasterIn = (container: HTMLElement) => {
   const el = container.querySelector('[data-sg-component="toaster"]');
-  if (!el) throw new Error('器が描画されていません');
+  if (!el) throw new Error('枠が描画されていません');
   return el as HTMLElement;
 };
 
@@ -47,10 +47,10 @@ const toastsIn = (container: HTMLElement) =>
   [...container.querySelectorAll('[data-sg-component="toast"]')] as HTMLElement[];
 
 /**
- * ポインタの逃げ先を持つ器。
+ * ポインタの逃げ先を持つ枠。
  *
  * **テストは1つの文書に描き続ける。** 前のテストで閉じる印を押した位置に
- * ポインタが残っており、次のテストで器が同じ場所に出ると**乗ったまま**になる。
+ * ポインタが残っており、次のテストで枠が同じ場所に出ると**乗ったまま**になる。
  * 止まったまま数えないので、消える検査が落ちる。
  *
  * 逃げ先には**実体が要る。** Toaster は最前面の層に出るので、
@@ -151,11 +151,11 @@ describe('描く場所', () => {
     await expect.poll(() => toasterIn(container).matches(':popover-open')).toBe(true);
   });
 
-  it('器は後ろの操作を奪わない', async () => {
+  it('枠は後ろの操作を奪わない', async () => {
     const { container } = await render(onSurface(<Toaster />));
     showToast({ message: '出ている' });
     await expect.poll(() => toastsIn(container)).toHaveLength(1);
-    // **最前面の層は画面いっぱいに広がる。** 器が押せると後ろが押せなくなる
+    // **最前面の層は画面いっぱいに広がる。** 枠が押せると後ろが押せなくなる
     expect(getComputedStyle(toasterIn(container)).pointerEvents).toBe('none');
     // 押せるのはトースト1つずつである
     expect(getComputedStyle(toastsIn(container)[0] as Element).pointerEvents).toBe('auto');
@@ -209,7 +209,7 @@ describe('2つ置いたとき', () => {
       [...container.querySelectorAll('button')].find((b) => b.textContent === '外す') as Element,
     );
     /*
-      **渡さないと、最初のものを外した画面で知らせが出なくなる。**
+      **渡さないと、最初のものを外した画面で通知が出なくなる。**
       見た目には何も出ないので、そこを測らないと分からない。
     */
     await expect.poll(() => toastsIn(container)).toHaveLength(1);

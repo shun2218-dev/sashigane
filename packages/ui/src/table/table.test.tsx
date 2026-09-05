@@ -10,7 +10,7 @@ import '../../test/tokens.css';
  *
  *   **溢れたときに表の中だけが動くこと** — ページが動くと、表以外まで巻き込む
  *   **数字の桁が揃うこと** — 揃わないと上下の行を読み比べられない
- *   **見出しが申告されること** — 申告しないと、どの升がどの見出しに属するか言えない
+ *   **見出しが申告されること** — 申告しないと、どの項目がどの見出しに属するか言えない
  */
 
 const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}</div>;
@@ -92,7 +92,7 @@ describe('横に溢れたとき', () => {
             <tbody>
               <TableRow>
                 {Array.from({ length: 12 }, (_, i) => (
-                  <TableCell key={i}>とても長い見出しの升</TableCell>
+                  <TableCell key={i}>とても長い見出しの項目</TableCell>
                 ))}
               </TableRow>
             </tbody>
@@ -115,7 +115,7 @@ describe('数字の列', () => {
   it('右に寄り、等幅になる', async () => {
     const { container } = await render(onSurface(sample));
     const [name, count] = [...container.querySelectorAll('tbody td')];
-    if (!name || !count) throw new Error('升が描画されていません');
+    if (!name || !count) throw new Error('項目が描画されていません');
     expect(getComputedStyle(name).textAlign).toBe('left');
     expect(getComputedStyle(count).textAlign).toBe('right');
     // **桁の幅を揃える指定が当たっていること**
@@ -123,7 +123,7 @@ describe('数字の列', () => {
     expect(getComputedStyle(name).fontFamily).not.toBe(getComputedStyle(count).fontFamily);
   });
 
-  it('見出しの升も同じ側へ寄る', async () => {
+  it('見出しの項目も同じ側へ寄る', async () => {
     const { container } = await render(onSurface(sample));
     const [, count] = [...container.querySelectorAll('thead th')];
     expect(getComputedStyle(count as Element).textAlign).toBe('right');
@@ -142,10 +142,10 @@ describe('行の線', () => {
     expect(s.borderBottomColor).not.toBe(s.color);
   });
 
-  it('升が枠に潰れない余白を持つ', async () => {
+  it('項目が枠に潰れない余白を持つ', async () => {
     const { container } = await render(onSurface(sample));
     const cell = container.querySelector('tbody td');
-    if (!cell) throw new Error('升が描画されていません');
+    if (!cell) throw new Error('項目が描画されていません');
     const s = getComputedStyle(cell);
     expect(Number.parseFloat(s.paddingLeft)).toBeGreaterThan(0);
     expect(Number.parseFloat(s.paddingTop)).toBeGreaterThan(0);
@@ -163,7 +163,7 @@ describe('見出しの文字', () => {
      */
     const { container } = await render(onSurface(sample));
     const th = container.querySelector('thead th');
-    if (!th) throw new Error('見出しの升が描画されていません');
+    if (!th) throw new Error('見出しの項目が描画されていません');
     const declared = getComputedStyle(document.documentElement)
       .getPropertyValue('--sg-text-label-tracking')
       .trim();
@@ -174,7 +174,7 @@ describe('見出しの文字', () => {
 });
 
 describe('読み上げへの申告', () => {
-  it('見出しの升は既定で列の見出しになる', async () => {
+  it('見出しの項目は既定で列の見出しになる', async () => {
     const { container } = await render(onSurface(sample));
     for (const th of container.querySelectorAll('thead th')) {
       expect(th.getAttribute('scope')).toBe('col');

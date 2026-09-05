@@ -15,20 +15,20 @@ import '../../test/tokens.css';
  * **見た目は出る**ので、そこを測らないと気づけない。
  *
  *   **最前面の層に出ていること** — 属性だけで出すと層に入らず、
- *     焦点の閉じ込めも後ろの遮断も効かない
+ *     フォーカスの閉じ込めも後ろの遮断も効かない
  *   **閉じたことが親へ返ること** — `Escape` で閉じても状態が残ると、次に開かない
- *   **見出しがこの窓の名前になること** — 無いと「ダイアログ」としか言わない
+ *   **見出しがこのダイアログの名前になること** — 無いと「ダイアログ」としか言わない
  */
 
 const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}</div>;
 
 const dialogIn = (container: HTMLElement) => {
   const el = container.querySelector('dialog');
-  if (!el) throw new Error('窓が描画されていません');
+  if (!el) throw new Error('ダイアログが描画されていません');
   return el;
 };
 
-/** 開け閉めを持つ器。**利用側と同じ書き方で組む** */
+/** 開け閉めを持つ枠。**利用側と同じ書き方で組む** */
 const Harness = ({ backdrop = false }: { backdrop?: boolean }) => {
   const modal = useModal();
   return (
@@ -70,10 +70,10 @@ describe('開くとき', () => {
     const { container } = await render(onSurface(<Harness />));
     await openIt(container);
     /*
-      **属性だけで出すと、この層に入らない。** 入らないと焦点の閉じ込めも
+      **属性だけで出すと、この層に入らない。** 入らないとフォーカスの閉じ込めも
       後ろの遮断も効かないが、**見た目は出る**ので気づけない。
 
-      `:modal` は「最前面の層に出ている窓」だけに当たる。
+      `:modal` は「最前面の層に出ているダイアログ」だけに当たる。
     */
     expect(dialogIn(container).matches(':modal')).toBe(true);
   });
@@ -85,11 +85,11 @@ describe('開くとき', () => {
       (b) => b.textContent === 'よそ',
     ) as HTMLElement;
     outside.focus();
-    // **後ろは触れない。** 焦点も移らない
+    // **後ろは触れない。** フォーカスも移らない
     expect(document.activeElement).not.toBe(outside);
   });
 
-  it('焦点が窓の中へ入る', async () => {
+  it('フォーカスがダイアログの中へ入る', async () => {
     const { container } = await render(onSurface(<Harness />));
     await openIt(container);
     await expect
@@ -106,7 +106,7 @@ describe('開くとき', () => {
 });
 
 describe('出入りの動き', () => {
-  it('窓と覆いが一緒に動き、閉じるときも動ける', async () => {
+  it('ダイアログと覆いが一緒に動き、閉じるときも動ける', async () => {
     const { container } = await render(onSurface(<Harness />));
     await openIt(container);
     const dialog = dialogIn(container);
@@ -129,7 +129,7 @@ describe('出入りの動き', () => {
     expect(cs.transitionProperty).toContain('overlay');
     expect(cs.transitionBehavior).toContain('allow-discrete');
 
-    // 覆いも一緒に動く。**窓だけ動くと、覆いが先に消えてちらつく**
+    // 覆いも一緒に動く。**ダイアログだけ動くと、覆いが先に消えてちらつく**
     const back = getComputedStyle(dialog, '::backdrop');
     expect(back.transitionProperty).toContain('opacity');
     expect(Number.parseFloat(back.transitionDuration)).toBeGreaterThan(0);
@@ -166,7 +166,7 @@ describe('閉じるとき', () => {
     await expect.poll(() => dialogIn(container).open).toBe(true);
   });
 
-  it('閉じると、開く前の場所へ焦点が戻る', async () => {
+  it('閉じると、開く前の場所へフォーカスが戻る', async () => {
     const { container } = await render(onSurface(<Harness />));
     const trigger = await openIt(container);
     await userEvent.keyboard('{Escape}');
@@ -198,7 +198,7 @@ describe('覆いを押したとき', () => {
     await openIt(container);
     const dialog = dialogIn(container);
     const box = dialog.getBoundingClientRect();
-    // 窓の外（覆いの上）を押す
+    // ダイアログの外（覆いの上）を押す
     await userEvent.click(document.documentElement, {
       position: { x: Math.max(2, box.left / 2), y: Math.max(2, box.top / 2) },
     });
@@ -208,7 +208,7 @@ describe('覆いを押したとき', () => {
 });
 
 describe('読み上げに渡すもの', () => {
-  it('見出しがこの窓の名前になる', async () => {
+  it('見出しがこのダイアログの名前になる', async () => {
     const { container } = await render(onSurface(<Harness />));
     await openIt(container);
     const dialog = dialogIn(container);

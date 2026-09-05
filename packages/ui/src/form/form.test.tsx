@@ -15,7 +15,7 @@ import '../../test/tokens.css';
  *
  * 測るのは3つである。
  *
- *   **送信に失敗したら最初の誤りへ焦点が移ること** — 誤りが画面の外にあると、
+ *   **送信に失敗したら最初の誤りへフォーカスが移ること** — 誤りが画面の外にあると、
  *     押しても何も起きていないように見える
  *   **利用側の検証が終わってから探すこと** — 待たずに探すと、まだ誰も誤りを名乗っていない
  *   **ブラウザ既定の検証を切ってあること** — Field の文言と二重になる
@@ -68,7 +68,7 @@ describe('前提', () => {
 });
 
 describe('送信に失敗したとき', () => {
-  it('最初の誤りへ焦点が移る', async () => {
+  it('最初の誤りへフォーカスが移る', async () => {
     const { container } = await render(onSurface(<Late />));
     const submit = container.querySelector('button[type="submit"]');
     await userEvent.click(submit as Element);
@@ -83,7 +83,7 @@ describe('送信に失敗したとき', () => {
     await expect.poll(() => document.activeElement).toBe(inputsIn(container)[1]);
   });
 
-  it('焦点を持てないものが名乗っているときは、中の入力へ移る', async () => {
+  it('フォーカスを持てないものが名乗っているときは、中の入力へ移る', async () => {
     const { container } = await render(
       onSurface(
         <Form onSubmit={(event) => event.preventDefault()}>
@@ -101,7 +101,7 @@ describe('送信に失敗したとき', () => {
     const submit = container.querySelector('button[type="submit"]');
     await userEvent.click(submit as Element);
     /*
-      **`fieldset` が名乗るが、`fieldset` に焦点は乗らない。**
+      **`fieldset` が名乗るが、`fieldset` にフォーカスは乗らない。**
       名乗っているものに `focus()` を呼ぶだけだと何も起きず、
       利用者から見ると「押しても何も起きない」ままになる。
     */
@@ -197,7 +197,7 @@ describe('送信に失敗したとき', () => {
     await expect.poll(() => document.activeElement).toBe(inputsIn(container)[0]);
   });
 
-  it('誤りが無いときは焦点を動かさない', async () => {
+  it('誤りが無いときはフォーカスを動かさない', async () => {
     const { container } = await render(
       onSurface(
         <Form onSubmit={(event) => event.preventDefault()}>
@@ -212,7 +212,7 @@ describe('送信に失敗したとき', () => {
     );
     const submit = container.querySelector('button[type="submit"]') as HTMLElement;
     await userEvent.click(submit);
-    // **押したボタンに焦点が残る。** 勝手に動かすと、次に何を押すか見失う
+    // **押したボタンにフォーカスが残る。** 勝手に動かすと、次に何を押すか見失う
     await expect.poll(() => document.activeElement).toBe(submit);
   });
 

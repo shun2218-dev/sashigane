@@ -6,8 +6,8 @@ import { CardDescription, CardFooter, CardHeader, CardTitle } from '../card-part
  * 通常。**面を宣言しているだけで、色は1つも書いていない。**
  * 背景・文字色・境界色は `data-sg-surface="surface"` から来る。
  *
- * 中の区画は見出し・補足・本文・操作に分かれる。
- * **区画は面も色も持たない**——面を宣言するのは器だけである。
+ * 中のセクションは見出し・補足・本文・操作に分かれる。
+ * **セクションは面も色も持たない**——面を宣言するのは枠だけである。
  *
  * 浮きの既定は `none`。影を使わない設計でもそのまま使えるようにしてある。
  */
@@ -19,7 +19,7 @@ export default function Default() {
           <CardTitle>面は宣言する</CardTitle>
           <CardDescription>背景も文字色も境界色も、面の宣言から来ます。</CardDescription>
         </CardHeader>
-        <p>この器は背景色を1つも書いていません。</p>
+        <p>この枠は背景色を1つも書いていません。</p>
         <CardFooter>
           <Button variant="ghost">あとで</Button>
           <Button>進む</Button>

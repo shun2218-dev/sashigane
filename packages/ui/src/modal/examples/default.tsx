@@ -11,8 +11,8 @@ import { useModal } from '../use-modal.ts';
 /**
  * 通常。**開け閉めは `useModal` が持つ。**
  *
- * 焦点の閉じ込め・後ろを触れなくすること・`Escape` で閉じること・
- * 閉じたときに元の場所へ焦点が戻ることは、**すべてブラウザが持っている。**
+ * フォーカスの閉じ込め・後ろを触れなくすること・`Escape` で閉じること・
+ * 閉じたときに元の場所へフォーカスが戻ることは、**すべてブラウザが持っている。**
  */
 export default function Default() {
   const modal = useModal();

@@ -10,7 +10,7 @@ import '../../test/tokens.css';
  *
  *   **順序が意味として出ること** — 見た目だけ数字にしても読み上げは順序を知らない
  *   **線が幅を持つこと** — 色だけを見ると、線を消しても通る（Badge と Spinner で踏んだ形）
- *   **最初の升に線が無いこと** — 上端に線が残ると器の枠に見える
+ *   **最初の項目に線が無いこと** — 上端に線が残ると枠の枠に見える
  */
 
 const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}</div>;
@@ -62,7 +62,7 @@ describe('意味', () => {
     expect(listIn(container).tagName).toBe('OL');
   });
 
-  it('升は li である', async () => {
+  it('項目は li である', async () => {
     const { container } = await render(
       onSurface(
         <List>
@@ -74,7 +74,7 @@ describe('意味', () => {
   });
 });
 
-describe('印', () => {
+describe('行頭の記号', () => {
   it('既定は出さない', async () => {
     const { container } = await render(
       onSurface(
@@ -117,13 +117,13 @@ describe('印', () => {
       ),
     );
     const pad = (el: Element) => Number.parseFloat(getComputedStyle(el).paddingInlineStart);
-    // **付けないと印が器の外へ出る**
+    // **付けないと印が枠の外へ出る**
     expect(pad(listIn(bullet.container))).toBeGreaterThan(pad(listIn(none.container)));
   });
 });
 
 describe('区切り線', () => {
-  it('線は升が持ち、最初の升は持たない', async () => {
+  it('線は項目が持ち、最初の項目は持たない', async () => {
     const { container } = await render(
       onSurface(
         <List separated>
@@ -133,8 +133,8 @@ describe('区切り線', () => {
       ),
     );
     const [first, second] = [...container.querySelectorAll('[data-sg-component="list-item"]')];
-    if (!first || !second) throw new Error('升が2つ描画されていません');
-    // **上端に線が残ると器の枠に見える**
+    if (!first || !second) throw new Error('項目が2つ描画されていません');
+    // **上端に線が残ると枠の枠に見える**
     expect(edges(first).top).toBe(0);
     // **幅を見る。** 色だけを見ると、線を消しても通る
     expect(edges(second).top).toBeGreaterThan(0);
@@ -142,7 +142,7 @@ describe('区切り線', () => {
     expect(edges(second).topColor).not.toBe(edges(second).color);
   });
 
-  it('線を選ぶと升の間隔は詰まる', async () => {
+  it('線を選ぶと項目の間隔は詰まる', async () => {
     const plain = await render(
       onSurface(
         <List>
@@ -163,7 +163,7 @@ describe('区切り線', () => {
     expect(gap(listIn(plain.container))).toBeGreaterThan(0);
   });
 
-  it('升が線を持つかは、器から自動では降りない', async () => {
+  it('項目が線を持つかは、枠から自動では降りない', async () => {
     const { container } = await render(
       onSurface(
         <List separated>
@@ -174,7 +174,7 @@ describe('区切り線', () => {
     );
     const items = [...container.querySelectorAll('[data-sg-component="list-item"]')];
     /*
-     * **仕様として測っておく。** `li` は器の直下とは限らず、
+     * **仕様として測っておく。** `li` は枠の直下とは限らず、
      * 間に何かを挟んだときに静かにずれる。
      * 降ろす形にするなら、この検査が落ちる。
      */

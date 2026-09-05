@@ -2,10 +2,10 @@ import { Field } from '../../field/field.tsx';
 import { Checkbox } from '../checkbox.tsx';
 
 /**
- * 通常。**札は Field が付ける。**
+ * 通常。**ラベルは Field が付ける。**
  *
- * `layout="inline"` で札が右に来る。上に置くと、
- * 札がどの選択肢のものか目で辿れない。
+ * `layout="inline"` でラベルが右に来る。上に置くと、
+ * ラベルがどの選択肢のものか目で辿れない。
  */
 export default function Default() {
   return (
@@ -16,7 +16,7 @@ export default function Default() {
       <Field
         layout="inline"
         id="checkbox-news"
-        label="お知らせを受け取る"
+        label="お通知を受け取る"
         description="いつでも止められます"
       >
         <Checkbox defaultChecked />

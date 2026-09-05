@@ -10,7 +10,7 @@ const many = [
 ];
 
 /**
- * エッジケース。**押せない選択肢・押せない本体・誤り・とても長い札。**
+ * エッジケース。**押せない選択肢・押せない本体・誤り・とても長いラベル。**
  *
  * 押せない選択肢は矢印キーで飛ばされる。**止まれてしまうと、
  * 選べないものを選ぼうとして何も起きない。**
@@ -27,12 +27,12 @@ export default function Edge() {
       <Field id="select-bad" label="プラン" error="選んでください" required>
         <Select options={many} />
       </Field>
-      <Field id="select-long" label="とても長い札">
+      <Field id="select-long" label="とても長いラベル">
         <Select
           options={[
             {
               value: 'x',
-              label: '折り返さずに収まりきらないほど長い選択肢の札がここに入る場合',
+              label: '折り返さずに収まりきらないほど長い選択肢のラベルがここに入る場合',
             },
           ]}
           defaultValue="x"
