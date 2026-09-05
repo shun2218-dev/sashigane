@@ -26,6 +26,7 @@
     "check:token-usage": "node scripts/check-token-usage.mjs",
     "check:sample-page": "node scripts/check-sample-page.mjs",
     "check:token-values": "node scripts/check-token-values.mjs",
+    "check:brand": "node scripts/check-brand.mjs",
     "check:token-types": "node scripts/check-token-types.mjs",
     "check:output-header": "node scripts/check-output-header.mjs",
     "check:component-classes": "node scripts/check-component-classes.mjs",
