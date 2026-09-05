@@ -38,6 +38,16 @@ export {
   PasswordInput,
   type PasswordInputProps,
 } from './password-input/index.ts';
+export {
+  Tabs,
+  type TabsProps,
+  TabsList,
+  type TabsListProps,
+  TabsTrigger,
+  type TabsTriggerProps,
+  TabsPanel,
+  type TabsPanelProps,
+} from './tabs/index.ts';
 export { Textarea, type TextareaProps } from './textarea/index.ts';
 export {
   Toaster,
