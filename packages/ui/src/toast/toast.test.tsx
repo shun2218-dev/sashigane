@@ -333,3 +333,85 @@ describe('自動で消す', () => {
     expect(toastsIn(container)).toHaveLength(1);
   });
 });
+
+describe('残り時間のゲージ（決定6-46）', () => {
+  const gaugesIn = (c: HTMLElement) =>
+    [...c.querySelectorAll('[data-sg-component="toast-gauge"]')] as HTMLElement[];
+
+  it('消えるものにはゲージが出て、消えないものには出ない', async () => {
+    const { container } = await render(<Toaster />);
+    showToast({ message: '消える' });
+    showToast({ message: '消えない', duration: null });
+    await expect.poll(() => container.querySelectorAll('[data-sg-component="toast"]').length).toBe(2);
+    // **消えないものに残り時間は無い。** 出すと、止まった帯が嘘をつく
+    expect(gaugesIn(container).length).toBe(1);
+  });
+
+  it('読み上げには出ない', async () => {
+    const { container } = await render(<Toaster />);
+    showToast({ message: 'あ' });
+    await expect.poll(() => gaugesIn(container).length).toBe(1);
+    expect(gaugesIn(container)[0]?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('実際に縮む', async () => {
+    const { container } = await render(<Toaster />);
+    showToast({ message: 'あ', duration: 800 });
+    await expect.poll(() => gaugesIn(container).length).toBe(1);
+    const gauge = gaugesIn(container)[0] as HTMLElement;
+
+    /*
+     * **静止した状態を見比べても、減っていることは分からない。**
+     * 幅そのものではなく `transform` を見る——ゲージは `scaleX` で縮む。
+     *
+     * 描くたびに測って、**3種類以上の値を通る**ことを見る。
+     * 瞬間で消えるなら2種類しか出ない（アコーディオンで踏んだのと同じ形）。
+     */
+    const seen = new Set<string>();
+    const until = performance.now() + 600;
+    while (performance.now() < until) {
+      seen.add(getComputedStyle(gauge).transform);
+      await new Promise((r) => requestAnimationFrame(() => r(undefined)));
+    }
+    expect(seen.size, `見えた値: ${[...seen].join(' / ')}`).toBeGreaterThan(2);
+  });
+
+  it('ポインタが乗っているあいだ止まる', async () => {
+    const { container } = await render(<Toaster />);
+    showToast({ message: 'あ', duration: 4000 });
+    await expect.poll(() => gaugesIn(container).length).toBe(1);
+    const gauge = gaugesIn(container)[0] as HTMLElement;
+    const region = container.querySelector('[data-sg-component="toaster"]');
+    if (!region) throw new Error('置き場が描画されていません');
+
+    await userEvent.hover(region);
+    await expect.poll(() => gauge.hasAttribute('data-sg-gauge-paused')).toBe(true);
+
+    /*
+     * **属性だけでなく、実際に止まっていることを測る。**
+     * 属性が付いていても、規則が当たっていなければ動き続ける。
+     *
+     * **属性が付いた直後に読むと、まだ1フレーム進む**——動きは合成側で走っており、
+     * 止まるまでに一拍ある。実際、16ms ぶん進んだ値を掴んで落ちた。
+     *
+     * **止まったことを先に確かめる。** 描画を1つ跨いで同じ値になるまで待つ。
+     *
+     * **同じフレームの中で2回読んでも必ず同じ値になる**——走っていても等しい。
+     * はじめそれで「止まった」と判定し、**3回とも同じだけ進んだ値を掴んで落ちた。**
+     */
+    await expect
+      .poll(
+        async () => {
+          const a = getComputedStyle(gauge).transform;
+          await new Promise((r) => requestAnimationFrame(() => r(undefined)));
+          return getComputedStyle(gauge).transform === a;
+        },
+        { timeout: 1000 },
+      )
+      .toBe(true);
+
+    const before = getComputedStyle(gauge).transform;
+    await new Promise((r) => setTimeout(r, 250));
+    expect(getComputedStyle(gauge).transform, '止まっていない').toBe(before);
+  });
+});
