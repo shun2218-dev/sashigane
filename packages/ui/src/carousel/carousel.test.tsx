@@ -136,7 +136,7 @@ describe('組み立て', () => {
 
 describe('自動で送る', () => {
   const auto = (props: Record<string, unknown> = {}) => (
-    <Carousel label="見せ物" autoplay {...props}>
+    <Carousel label="おすすめの写真" autoplay {...props}>
       <CarouselSlides>
         {['一', '二', '三'].map((n) => (
           <CarouselSlide key={n}>{n}枚目</CarouselSlide>
