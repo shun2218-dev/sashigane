@@ -99,6 +99,7 @@ pnpm check:docs-refs          # 文書が挙げている名前と参照が実在
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
 pnpm check:brand              # ブランドの色がトークンの段とずれていないことと、
                               # 追跡下の SVG がマークの形と一致すること（決定6-44）
+pnpm check:readme-freshness   # README がリリースに追いついていること（決定4-8）
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
 pnpm check:component-examples # 3状態の例・展示ページ・テストが揃っていること（決定6-4・6-6）と
                               # 展示がトークンを受け取れること（決定6-12）と
