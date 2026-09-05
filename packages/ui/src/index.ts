@@ -38,6 +38,7 @@ export {
   PasswordInput,
   type PasswordInputProps,
 } from './password-input/index.ts';
+export { Switch, type SwitchProps } from './switch/index.ts';
 export {
   Tabs,
   type TabsProps,

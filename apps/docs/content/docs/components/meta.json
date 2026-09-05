@@ -20,6 +20,7 @@
     "password-input",
     "textarea",
     "checkbox",
+    "switch",
     "radio",
     "select"
   ]
