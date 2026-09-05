@@ -20,7 +20,7 @@ export default function Edge() {
   const modal = useModal();
   return (
     <div>
-      <Button onClick={modal.show}>長い窓を開く</Button>
+      <Button onClick={modal.show}>長いダイアログを開く</Button>
       <Modal
         open={modal.open}
         onClose={modal.hide}
@@ -31,7 +31,7 @@ export default function Edge() {
       >
         <div style={{ display: 'grid', gap: 12 }}>
           <p>
-            覆いを押しても閉じます。中身が画面より高いときは、この窓の中だけが巻き取られます——
+            覆いを押しても閉じます。中身が画面より高いときは、このダイアログの中だけが巻き取られます——
             後ろは動きません。
           </p>
           <Field id="modal-to" label="送り先" required>

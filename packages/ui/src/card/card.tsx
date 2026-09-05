@@ -31,7 +31,7 @@ import { Slot } from '../internal/slot.tsx';
 const DEFAULT_SURFACE = 'surface';
 
 /**
- * 面を1つ作る器。
+ * 面を1つ作る枠。
  *
  * ## 面は塗らずに宣言する
  *
@@ -46,17 +46,17 @@ const DEFAULT_SURFACE = 'surface';
  * `interactive` は面の文脈を1段深くするだけで、背景を直接塗らない。
  * 背景だけを深くすると前景が置き去りになるので、塗る道は用意していない。
  *
- * ## 中の区画は別に持つ
+ * ## 中のセクションは別に持つ
  *
- * 見出し・補足・本文・操作は `CardHeader` などの区画で分ける。
- * **区画は面も色も持たない**——面を宣言するのはこの器だけである。
+ * 見出し・補足・本文・操作は `CardHeader` などのセクションで分ける。
+ * **セクションは面も色も持たない**——面を宣言するのはこの枠だけである。
  *
- * 区画を使わずに中身を直接置いてもよい。器は縦に並べて間を空けるだけである。
+ * セクションを使わずに中身を直接置いてもよい。枠は縦に並べて間を空けるだけである。
  *
- * ## 器が div とは限らない
+ * ## 枠が div とは限らない
  *
- * 記事なら `article`、区画なら `section`、カード全体がリンクなら `a` になる。
- * `asChild` を付けると**この器は要素を1つも作らず**、
+ * 記事なら `article`、セクションなら `section`、カード全体がリンクなら `a` になる。
+ * `asChild` を付けると**この枠は要素を1つも作らず**、
  * クラスと属性を子へ移して**子だけを描く。**
  */
 const card = cva('flex flex-col gap-surface p-surface rounded-sm border-1 border-border', {
@@ -64,7 +64,7 @@ const card = cva('flex flex-col gap-surface p-surface rounded-sm border-1 border
     /**
      * 面の種類。
      *
-     * `surface` は通常の器、`overlay` は他の要素に重なるもの。
+     * `surface` は通常の枠、`overlay` は他の要素に重なるもの。
      * 入力欄やコードブロックの地に使う「凹んだ面」は別の役割なので、ここには無い。
      */
     surface: {
@@ -104,7 +104,7 @@ export interface CardProps
    */
   interactive?: boolean;
   /**
-   * 器を作らず、クラスと属性を子へ移す。**子は要素1つだけ。**
+   * 枠を作らず、クラスと属性を子へ移す。**子は要素1つだけ。**
    *
    * `article` や `section` にしたいとき、カード全体をリンクにしたいときに使う。
    */
@@ -112,13 +112,13 @@ export interface CardProps
   children?: ReactNode;
   /**
    * 描いた要素を受け取る。`asChild` のときは**子の要素**が届く——
-   * 器を作らないためである。子の側にも `ref` があれば**両方に配られる。**
+   * 枠を作らないためである。子の側にも `ref` があれば**両方に配られる。**
    */
   ref?: Ref<HTMLElement>;
 }
 
 /**
- * 面を1つ作る器。**色は1つも書かない。**
+ * 面を1つ作る枠。**色は1つも書かない。**
  *
  * 背景も文字色も境界色も、`data-sg-surface` の宣言から来る。hover も塗らずに宣言する。
  */

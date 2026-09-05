@@ -19,13 +19,13 @@ import '../../test/tokens.css';
  * 「クラスが付いている」ことしか言えず、「色が変わった」ことは言えない。
  */
 
-/** 面の文脈を作る器。**テストの中で `data-sg-surface` を宣言する** */
+/** 面の文脈を作る枠。**テストの中で `data-sg-surface` を宣言する** */
 const onSurface = (node: React.ReactNode, surface = 'page') => (
   <div data-sg-surface={surface}>{node}</div>
 );
 
 /**
- * hover を測るための器。**ポインタを外す先を一緒に描く。**
+ * hover を測るための枠。**ポインタを外す先を一緒に描く。**
  *
  * 描いた要素は前のテストと同じ位置に出ることがあり、
  * **ポインタが乗ったままだと `before` が既に hover 後の値になる。**
@@ -116,7 +116,7 @@ describe('設計の不変条件', () => {
     const { container } = await render(onSurface(<Card>x</Card>));
     expect([...cardIn(container).classList].sort()).toEqual(
       // 並べ方（flex / flex-col / gap-surface）は色ではない。
-      // **区画を縦に並べて間を空けるのは器の責務**である（決定6-15）
+      // **セクションを縦に並べて間を空けるのは枠の責務**である（決定6-15）
       ['flex', 'flex-col', 'gap-surface', 'border-1', 'border-border', 'p-surface', 'rounded-sm'].sort(),
     );
   });
@@ -204,7 +204,7 @@ describe('トークンの保証（実ブラウザでしか測れない）', () =
 });
 
 /**
- * `asChild`（決定6-14）。**器を作らず、子だけを描く。**
+ * `asChild`（決定6-14）。**枠を作らず、子だけを描く。**
  *
  * Card では「面の宣言が子へ移ること」が要点である——
  * 移らないと、リンクにした瞬間に背景と前景の保証が消える。
@@ -220,7 +220,7 @@ describe('asChild', () => {
     );
     const article = container.querySelector('article');
     expect(article).not.toBeNull();
-    // 面の器（onSurface）の div 以外に div が増えていないこと
+    // 面の枠（onSurface）の div 以外に div が増えていないこと
     expect(container.querySelectorAll('div').length).toBe(1);
   });
 
@@ -261,17 +261,17 @@ describe('asChild', () => {
 });
 
 /**
- * 中の区画（決定6-15）。**区画は面も色も持たない。**
+ * 中のセクション（決定6-15）。**セクションは面も色も持たない。**
  *
  * 測るのは2つである。
  *
- *   **面が器だけのものであること** — 区画が面を宣言すると、
+ *   **面が枠だけのものであること** — セクションが面を宣言すると、
  *   宣言が入れ子になって段が意図せず深くなる
  *   **文字の役割が届いていること** — 見出しと補足が同じ見た目なら、
- *   区画を分けた意味が無い
+ *   セクションを分けた意味が無い
  */
 describe('自分の名前を名乗る', () => {
-  it('器と区画が、それぞれ別の名前を名乗る', async () => {
+  it('枠とセクションが、それぞれ別の名前を名乗る', async () => {
     const { container } = await render(
       onSurface(
         <Card>
@@ -289,7 +289,7 @@ describe('自分の名前を名乗る', () => {
     expect(names).toEqual(['card', 'card-header', 'card-title', 'card-description', 'card-footer']);
   });
 
-  it('区画も asChild で名乗りが子へ移る', async () => {
+  it('セクションも asChild で名乗りが子へ移る', async () => {
     const { container } = await render(
       onSurface(
         <CardTitle asChild>
@@ -301,8 +301,8 @@ describe('自分の名前を名乗る', () => {
   });
 });
 
-describe('中の区画', () => {
-  it('区画は面を宣言しない', async () => {
+describe('中のセクション', () => {
+  it('セクションは面を宣言しない', async () => {
     const { container } = await render(
       onSurface(
         <Card>
@@ -316,7 +316,7 @@ describe('中の区画', () => {
       ),
     );
     const declared = container.querySelectorAll('[data-sg-surface]');
-    // 面の器（onSurface）と Card の2つだけ。**区画は1つも宣言しない**
+    // 面の枠（onSurface）と Card の2つだけ。**セクションは1つも宣言しない**
     expect(declared.length).toBe(2);
   });
 
@@ -332,7 +332,7 @@ describe('中の区画', () => {
       ),
     );
     expect(b.container.querySelector('h2')).not.toBeNull();
-    // **h3 が残っていないこと。** 器を作っていたら両方出る
+    // **h3 が残っていないこと。** 枠を作っていたら両方出る
     expect(b.container.querySelector('h3')).toBeNull();
   });
 
@@ -349,16 +349,16 @@ describe('中の区画', () => {
     );
     const title = container.querySelector('h3');
     const desc = container.querySelector('p');
-    if (!title || !desc) throw new Error('区画が描画されていません');
+    if (!title || !desc) throw new Error('セクションが描画されていません');
     const t = getComputedStyle(title);
     const d = getComputedStyle(desc);
-    // **潰れていないこと。** 同じなら区画を分けた意味が無い
+    // **潰れていないこと。** 同じならセクションを分けた意味が無い
     expect(Number.parseFloat(t.fontSize)).toBeGreaterThan(Number.parseFloat(d.fontSize));
     expect(t.color).not.toBe(d.color);
     expect(Number.parseFloat(t.fontWeight)).toBeGreaterThan(Number.parseFloat(d.fontWeight));
   });
 
-  it('区画の間に余白が入る', async () => {
+  it('セクションの間に余白が入る', async () => {
     const { container } = await render(
       onSurface(
         <Card>
@@ -374,7 +374,7 @@ describe('中の区画', () => {
     expect(Number.parseFloat(getComputedStyle(card).rowGap)).toBeGreaterThan(0);
   });
 
-  it('操作の区画は下端に寄る', async () => {
+  it('操作のセクションは下端に寄る', async () => {
     const { container } = await render(
       onSurface(
         <Card style={{ height: 300 }}>
@@ -385,7 +385,7 @@ describe('中の区画', () => {
     );
     const card = cardIn(container);
     const footer = container.querySelector('[data-testid], .mt-auto') ?? card.lastElementChild;
-    if (!footer) throw new Error('操作の区画が描画されていません');
+    if (!footer) throw new Error('操作のセクションが描画されていません');
     const cardBottom = card.getBoundingClientRect().bottom;
     const footerBottom = footer.getBoundingClientRect().bottom;
     // 余白ぶんだけ内側にいるが、**上に取り残されていないこと**

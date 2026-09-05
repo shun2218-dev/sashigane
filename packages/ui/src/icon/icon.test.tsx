@@ -12,7 +12,7 @@ import '../../test/tokens.css';
  *
  *   **寸法がクラスから来ること** — 属性で渡すとクラスに負け、**何も起きないまま消える**
  *   **既定で読み上げから隠れること** — 文字の隣で同じことを言うので二重に読まれる
- *   **包む形が公開されていること** — ここに無い図案を利用側が同じ形で足せる
+ *   **包む形が公開されていること** — ここに無い絵柄を利用側が同じ形で足せる
  */
 
 const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}</div>;
@@ -94,8 +94,8 @@ describe('名乗りと包む形', () => {
     expect(svgIn(container).getAttribute('data-sg-component')).toBe('icon-x');
   });
 
-  it('ここに無い図案も同じ形で包める', async () => {
-    // **包む形を公開している。** 図案を全部持たない代わりに、足す道を配る
+  it('ここに無い絵柄も同じ形で包める', async () => {
+    // **包む形を公開している。** 絵柄を全部持たない代わりに、足す道を配る
     const IconSearch = defineIcon(Search);
     const { container } = await render(onSurface(<IconSearch />));
     const el = svgIn(container);
@@ -104,7 +104,7 @@ describe('名乗りと包む形', () => {
     expect(el.getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('2語の図案も正しく名乗る', async () => {
+  it('2語の絵柄も正しく名乗る', async () => {
     // `ChevronDown` → `icon-chevron-down`。**手で書かないので、ずれようがない**
     const IconChevronDown = defineIcon(ChevronDown);
     const { container } = await render(onSurface(<IconChevronDown />));

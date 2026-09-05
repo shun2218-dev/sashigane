@@ -1,14 +1,14 @@
 /*
  * ── 維持する側への覚書 ───────────────────────────────
  *
- * **図案は lucide から来る。** ここが持つのは寸法・読み上げの既定・名乗りだけである。
+ * **絵柄は lucide から来る。** ここが持つのは寸法・読み上げの既定・名乗りだけである。
  *
  * `size` を通していない。lucide は `width` / `height` の**属性**で書くが、
  * こちらは `size-6` の**クラス**で書く。CSS は属性に勝つので、
  * **`size` を渡しても何も起きないまま消える**（測ってある）。
  * スケールの外の寸法を書かせないためでもある。
  *
- * **名乗りは図案の名前から導く。** lucide が `displayName` を持っている
+ * **名乗りは絵柄の名前から導く。** lucide が `displayName` を持っている
  * （`X` / `ChevronDown`）ので、そこから `icon-x` / `icon-chevron-down` を作る。
  * **手で書かない**——書くと `IconX` と `'icon-x'` の2箇所に同じことが並び、
  * 片方だけ直したときに静かにずれる。
@@ -17,7 +17,18 @@
  * ─────────────────────────────────────────────
  */
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Check, ChevronDown, Plus, X } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Pause,
+  Play,
+  Plus,
+  X,
+} from 'lucide-react';
 import type { LucideIcon, LucideProps } from 'lucide-react';
 
 /**
@@ -32,7 +43,9 @@ import type { LucideIcon, LucideProps } from 'lucide-react';
 const icon = cva('shrink-0', {
   variants: {
     size: {
-      /** 小さい方。札や表の行の中で使う */
+      /** **枠の中に収める。** チェックボックスの印のように、16px の箱へ入れる */
+      xs: 'size-3',
+      /** 小さい方。ラベルや表の行の中で使う */
       sm: 'size-4',
       /** 行の高さと同じ。文字やボタンと並べたときに揃う */
       md: 'size-6',
@@ -49,7 +62,7 @@ const icon = cva('shrink-0', {
  */
 export interface IconProps extends Omit<LucideProps, 'size'>, VariantProps<typeof icon> {}
 
-/** `ChevronDown` → `chevron-down`。**図案の名前から名乗りを導く** */
+/** `ChevronDown` → `chevron-down`。**絵柄の名前から名乗りを導く** */
 const kebab = (name: string) => name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 
 /**
@@ -62,7 +75,7 @@ const kebab = (name: string) => name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLo
  *
  * 名前を渡したとき（`aria-label`）だけ、隠さない。
  *
- * ## 図案は選び直せる
+ * ## 絵柄は選び直せる
  *
  * この関数は公開している。**ここに無いアイコンは、利用側が同じ形で包める。**
  *
@@ -72,7 +85,7 @@ const kebab = (name: string) => name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLo
  * ```
  */
 export function defineIcon(Source: LucideIcon) {
-  // 図案の名前から導く。**手で書かない**——2箇所に同じことが並ぶと静かにずれる
+  // 絵柄の名前から導く。**手で書かない**——2箇所に同じことが並ぶと静かにずれる
   const name = `icon-${kebab(Source.displayName ?? 'unknown')}`;
   return function Icon({ size, className, ...props }: IconProps) {
     const named = props['aria-label'] !== undefined || props['aria-labelledby'] !== undefined;
@@ -95,7 +108,7 @@ export function defineIcon(Source: LucideIcon) {
 /**
  * 閉じる。
  *
- * **図案は lucide のものである。** 寸法と読み上げの既定だけがこちらのものになる。
+ * **絵柄は lucide のものである。** 寸法と読み上げの既定だけがこちらのものになる。
  */
 export const IconX = defineIcon(X);
 
@@ -107,3 +120,21 @@ export const IconChevronDown = defineIcon(ChevronDown);
 
 /** 印。**満たしていることを表す**（Field が使う） */
 export const IconCheck = defineIcon(Check);
+
+/** 目。**隠しているものを見せる**（PasswordInput が使う） */
+export const IconEye = defineIcon(Eye);
+
+/** 閉じた目。**見せているものを隠す** */
+export const IconEyeOff = defineIcon(EyeOff);
+
+/** 左向きの矢印。**前へ送る**（Carousel が使う） */
+export const IconChevronLeft = defineIcon(ChevronLeft);
+
+/** 右向きの矢印。**次へ送る** */
+export const IconChevronRight = defineIcon(ChevronRight);
+
+/** 止める。**自動で送るのを止める**（Carousel が使う） */
+export const IconPause = defineIcon(Pause);
+
+/** 再生する。**自動で送る** */
+export const IconPlay = defineIcon(Play);

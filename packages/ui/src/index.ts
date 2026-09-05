@@ -13,11 +13,42 @@ export {
   type AccordionContentProps,
 } from './accordion/index.ts';
 export { Badge, type BadgeProps } from './badge/index.ts';
+export {
+  Carousel,
+  type CarouselProps,
+  type CarouselOptions,
+  CarouselSlides,
+  type CarouselSlidesProps,
+  CarouselSlide,
+  type CarouselSlideProps,
+  CarouselPrevious,
+  CarouselNext,
+  type CarouselButtonProps,
+  CarouselMarkers,
+  type CarouselMarkersProps,
+  CarouselPlayPause,
+  AUTOPLAY_DELAY,
+} from './carousel/index.ts';
 export { Checkbox, type CheckboxProps } from './checkbox/index.ts';
 export { Button, type ButtonProps } from './button/index.ts';
 export { Field, type FieldProps } from './field/index.ts';
 export { Form, type FormProps, FormActions, type FormActionsProps } from './form/index.ts';
 export { Input, type InputProps } from './input/index.ts';
+export {
+  PasswordInput,
+  type PasswordInputProps,
+} from './password-input/index.ts';
+export { Switch, type SwitchProps } from './switch/index.ts';
+export {
+  Tabs,
+  type TabsProps,
+  TabsList,
+  type TabsListProps,
+  TabsTrigger,
+  type TabsTriggerProps,
+  TabsPanel,
+  type TabsPanelProps,
+} from './tabs/index.ts';
 export { Textarea, type TextareaProps } from './textarea/index.ts';
 export {
   Toaster,
@@ -25,6 +56,7 @@ export {
   type ToastController,
   showToast,
   dismissToast,
+  removeToast,
   dismissAllToasts,
   type Toast,
   type ToastInput,

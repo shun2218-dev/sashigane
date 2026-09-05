@@ -12,7 +12,7 @@ import '../../test/tokens.css';
  *
  *   **押すと印が出ること** — 状態を持たずに `peer-checked:` で出しているので、
  *     CSS が当たっていないと**押せているのに何も変わらない**
- *   **線が器にあること** — 入力そのものに置くと色が凹んだ面の段になる（決定6-34）
+ *   **線が枠にあること** — 入力そのものに置くと色が凹んだ面の段になる（決定6-34）
  *   **印が塗りを宣言していること** — 塗るだけだと前景が置き去りになる（原則5）
  */
 
@@ -26,11 +26,11 @@ const boxIn = (container: HTMLElement) => {
 
 const frameIn = (container: HTMLElement) => {
   const el = container.querySelector('[data-sg-component="checkbox-frame"]');
-  if (!el) throw new Error('器が描画されていません');
+  if (!el) throw new Error('枠が描画されていません');
   return el;
 };
 
-/** 入った印。**器の中の、読み上げに出ない要素** */
+/** 入った印。**枠の中の、読み上げに出ない要素** */
 const markIn = (container: HTMLElement) => {
   const el = frameIn(container).querySelector('[aria-hidden="true"]');
   if (!el) throw new Error('印が描画されていません');
@@ -93,7 +93,7 @@ describe('面と線', () => {
     expect(getComputedStyle(box).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 
-  it('線は器が描き、入力そのものは線を持たない', async () => {
+  it('線は枠が描き、入力そのものは線を持たない', async () => {
     const { container } = await render(onSurface(<Checkbox aria-label="x" />));
     const f = getComputedStyle(frameIn(container));
     const b = getComputedStyle(boxIn(container));
@@ -130,7 +130,7 @@ describe('面と線', () => {
       onSurface(
         <div style={{ display: 'flex', width: 40 }}>
           <Checkbox aria-label="x" />
-          <span>とても長い札がここに続く場合でも</span>
+          <span>とても長いラベルがここに続く場合でも</span>
         </div>,
       ),
     );
@@ -141,8 +141,8 @@ describe('面と線', () => {
   });
 });
 
-describe('札との結びつけ', () => {
-  it('横並びでは札が右に来て、押すと入る', async () => {
+describe('ラベルとの結びつけ', () => {
+  it('横並びではラベルが右に来て、押すと入る', async () => {
     const { container } = await render(
       onSurface(
         <Field layout="inline" id="cb" label="同意する">
@@ -151,8 +151,8 @@ describe('札との結びつけ', () => {
       ),
     );
     const label = container.querySelector('label');
-    if (!label) throw new Error('札が描画されていません');
-    // **札が右にあること。** 上に置くと、どの選択肢の札か目で辿れない
+    if (!label) throw new Error('ラベルが描画されていません');
+    // **ラベルが右にあること。** 上に置くと、どの選択肢のラベルか目で辿れない
     expect(label.getBoundingClientRect().left).toBeGreaterThan(
       frameIn(container).getBoundingClientRect().right,
     );
@@ -160,7 +160,32 @@ describe('札との結びつけ', () => {
     expect(label.control).toBe(boxIn(container));
 
     await userEvent.click(label);
-    // 札を押しても入る。**結びつけができていないと入らない**
+    // ラベルを押しても入る。**結びつけができていないと入らない**
     await expect.poll(() => boxIn(container).checked).toBe(true);
+  });
+});
+
+describe('大きさ', () => {
+  /**
+   * **印が枠に収まっていることを測る。**
+   *
+   * 枠を 24 から 16 に縮めたとき、印は `Icon` の `sm`（16px）のままだった。
+   * **枠と同じ大きさなので、縁まで埋まる。**
+   *
+   * 「収まっている」を測るのであって、特定の px を測るのではない——
+   * `Icon` の段を変えても、収まっていれば通る。
+   */
+  it('入った印が枠の中に収まる', async () => {
+    const { container } = await render(
+      onSurface(<Checkbox aria-label="x" defaultChecked />),
+    );
+    const frame = container.querySelector('[data-sg-component="checkbox-frame"]');
+    if (!frame) throw new Error('枠が描画されていません');
+    const icon = frame.querySelector('svg');
+    if (!icon) throw new Error('印が描画されていません');
+    const box = frame.getBoundingClientRect().width;
+    const mark = icon.getBoundingClientRect().width;
+    expect(box, '枠の大きさ').toBe(16);
+    expect(mark, '印の大きさ').toBeLessThan(box);
   });
 });

@@ -14,7 +14,7 @@ import '../../test/tokens.css';
  *   **キーボードで開いて選べること** — 矢印・Home/End・Enter・Escape・打った文字
  *   **押せない選択肢を飛ばすこと** — 止まれると、選べないものを選ぼうとして何も起きない
  *   **値がフォームに載ること** — 見えている部分は値を持たない
- *   **読み上げに必要な属性が揃うこと** — 焦点を動かさない作りなので、属性が全部である
+ *   **読み上げに必要な属性が揃うこと** — フォーカスを動かさない作りなので、属性が全部である
  */
 
 const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}</div>;
@@ -43,7 +43,7 @@ const nativeIn = (container: HTMLElement) => {
   return el;
 };
 
-/** いま指しているもの。**焦点は引き金にあるので、属性から辿るしかない** */
+/** いま指しているもの。**フォーカスは引き金にあるので、属性から辿るしかない** */
 const activeIn = (container: HTMLElement) => {
   const id = triggerIn(container).getAttribute('aria-activedescendant');
   return id ? container.querySelector(`#${CSS.escape(id)}`)?.textContent : null;
@@ -83,7 +83,7 @@ describe('開け閉め', () => {
     );
     await userEvent.click(triggerIn(container));
     await expect.poll(() => listIn(container)).not.toBeNull();
-    // **引き金の {blur} では足りない。** 選択肢を押すとき焦点を動かさない作りなので、
+    // **引き金の {blur} では足りない。** 選択肢を押すときフォーカスを動かさない作りなので、
     // 外を押しても {blur} が来ない場面がある
     await userEvent.click(container.querySelectorAll('button')[0] as Element);
     await expect.poll(() => listIn(container)).toBeNull();
@@ -137,7 +137,7 @@ describe('キーボード', () => {
     /*
       **かな漢字変換を通す文字では測れない。** 変換中の打鍵は `key` が
       文字にならず（`Process`）、この仕組みには届かない。
-      **日本語の札では効かない**ということでもある。ここでは効く側を測る。
+      **日本語のラベルでは効かない**ということでもある。ここでは効く側を測る。
     */
     const latin = [
       { value: 'a', label: 'Apple' },
@@ -245,8 +245,8 @@ describe('読み上げに渡すもの', () => {
   });
 });
 
-describe('札との結びつけ', () => {
-  it('Field の札が引き金を指す', async () => {
+describe('ラベルとの結びつけ', () => {
+  it('Field のラベルが引き金を指す', async () => {
     const { container } = await render(
       onSurface(
         <Field id="s" label="果物" error="選んでください">
@@ -256,7 +256,7 @@ describe('札との結びつけ', () => {
     );
     const label = container.querySelector('label');
     const trigger = triggerIn(container);
-    // **button は札を付けられる要素である。** 指せないと読み上げが名前を言えない
+    // **button はラベルを付けられる要素である。** 指せないと読み上げが名前を言えない
     expect(label?.control).toBe(trigger);
     expect(trigger.getAttribute('aria-describedby')).toBe('s-error');
     expect(trigger.getAttribute('aria-invalid')).toBe('true');
@@ -267,7 +267,7 @@ describe('札との結びつけ', () => {
     const bad = await render(onSurface(<Select aria-label="x" options={options} aria-invalid />));
     const frame = (c: HTMLElement) => {
       const el = c.querySelector('[data-sg-component="select-frame"]');
-      if (!el) throw new Error('器が描画されていません');
+      if (!el) throw new Error('枠が描画されていません');
       return getComputedStyle(el);
     };
     expect(frame(bad.container).outlineColor).not.toBe(frame(plain.container).outlineColor);

@@ -153,6 +153,19 @@ export const fontInputNames = (): string[] => [
 ];
 
 /**
+ * 残り時間のゲージの長さを差す口（決定6-46）。
+ *
+ * **宣言しない。** 宣言すると `var()` のフォールバックが効かず、
+ * 書かなかったときに通知の滞在時間へ落ちられなくなる。
+ * 覆いの濃さ（`--sg-color-scrim`）と同じ形である。
+ *
+ * **段ではない。** 差すのは利用側が決めた長さで、そのトーストだけの値である。
+ */
+export const GAUGE_DURATION_INPUT = '--sg-gauge-duration';
+
+export const motionInputNames = (): string[] => [GAUGE_DURATION_INPUT];
+
+/**
  * タイポグラフィのセマンティック。
  *
  * **サイズと行高は必ず対で使う**（決定1-4）。プリミティブだけを公開すると
@@ -288,6 +301,36 @@ export const SPIN_ANIMATION = 'sg-spin var(--sg-duration-loop-0) linear infinite
  * 加減速も付けない（`linear`）——回り続けるものに始点と終点は無い。
  */
 export const SPIN_KEYFRAMES = ['@keyframes sg-spin {', '  to { transform: rotate(1turn); }', '}'];
+
+/**
+ * 残り時間のゲージ（決定6-46）。**満ちた状態から空へ、まっすぐ減る。**
+ *
+ * 加減速は付けない。**時間そのものを表しているので、速さが変わると嘘になる。**
+ */
+export const GAUGE_KEYFRAMES = ['@keyframes sg-gauge {', '  to { transform: scaleX(0); }', '}'];
+
+/**
+ * 出入りの動き（決定6-47）。**現れるときは寄って、消えるときは畳まれる。**
+ *
+ * 消えるときに高さを 0 にするのは、**後ろに並んでいるものが跳ねないため**である。
+ * `interpolate-size` が `auto` の補間を許しているので、高さのまま書ける。
+ */
+export const APPEAR_KEYFRAMES = [
+  '@keyframes sg-appear {',
+  '  from { opacity: 0; translate: 0 var(--sg-space-3); }',
+  '}',
+];
+
+export const DISAPPEAR_KEYFRAMES = [
+  '@keyframes sg-disappear {',
+  '  to {',
+  '    opacity: 0;',
+  '    translate: 0 var(--sg-space-3);',
+  '    block-size: 0;',
+  '    padding-block: 0;',
+  '  }',
+  '}',
+];
 
 export const SKELETON_KEYFRAMES = [
   '@keyframes skeleton {',

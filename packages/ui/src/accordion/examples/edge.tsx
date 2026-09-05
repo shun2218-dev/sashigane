@@ -30,7 +30,7 @@ export default function Edge() {
         <AccordionItem>
           <AccordionTrigger>
             取っ手がとても長いときでも、矢印に重ならずに折り返します。
-            Supercalifragilisticexpialidocious のような長い語も器を破りません。
+            Supercalifragilisticexpialidocious のような長い語も枠を破りません。
           </AccordionTrigger>
           <AccordionContent>中身。</AccordionContent>
         </AccordionItem>

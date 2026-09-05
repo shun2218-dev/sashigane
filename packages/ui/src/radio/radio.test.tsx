@@ -11,9 +11,9 @@ import '../../test/tokens.css';
  *
  * 測るのは3つである。
  *
- *   **群れの中で1つだけ選ばれること** — 素の `input` に任せている部分だが、
+ *   **グループの中で1つだけ選ばれること** — 素の `input` に任せている部分だが、
  *     `name` を配っていないので**利用側が書き忘れると全部が独立に選べる**
- *   **群れの札が読み上げに届くこと** — `fieldset` と `legend` でしか作れない
+ *   **グループのラベルが読み上げに届くこと** — `fieldset` と `legend` でしか作れない
  *   **印が塗りを宣言していること** — 塗るだけだと前景が置き去りになる（原則5）
  */
 
@@ -24,7 +24,7 @@ const radiosIn = (container: HTMLElement) =>
 
 const frameIn = (container: HTMLElement) => {
   const el = container.querySelector('[data-sg-component="radio-frame"]');
-  if (!el) throw new Error('器が描画されていません');
+  if (!el) throw new Error('枠が描画されていません');
   return el;
 };
 
@@ -54,7 +54,7 @@ describe('前提', () => {
 });
 
 describe('選ぶ', () => {
-  it('群れの中で1つだけ選ばれる', async () => {
+  it('グループの中で1つだけ選ばれる', async () => {
     const { container } = await render(onSurface(group));
     const [a, b] = radiosIn(container);
     await userEvent.click(a as Element);
@@ -68,13 +68,13 @@ describe('選ぶ', () => {
   it('押すと印が出る', async () => {
     const { container } = await render(onSurface(group));
     const first = container.querySelector('[data-sg-component="radio-frame"]');
-    if (!first) throw new Error('器が描画されていません');
+    if (!first) throw new Error('枠が描画されていません');
     expect(getComputedStyle(markIn(first)).display).toBe('none');
     await userEvent.click(radiosIn(container)[0] as Element);
     await expect.poll(() => getComputedStyle(markIn(first)).display).not.toBe('none');
   });
 
-  it('印は塗りを宣言し、輪の中に収まる', async () => {
+  it('印は塗りを宣言し、丸の中に収まる', async () => {
     const { container } = await render(
       onSurface(<Radio aria-label="x" name="one" value="a" defaultChecked />),
     );
@@ -83,28 +83,28 @@ describe('選ぶ', () => {
     if (!dot) throw new Error('点が描画されていません');
     expect(dot.getAttribute('data-sg-fill')).toBe('accent');
     expect(getComputedStyle(dot).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
-    // **点は輪より小さいこと。** 同じ大きさだと、選ばれていない側と形が変わって見える
+    // **点は丸より小さいこと。** 同じ大きさだと、選ばれていない側と形が変わって見える
     expect(dot.getBoundingClientRect().width).toBeLessThan(frame.getBoundingClientRect().width);
   });
 });
 
-describe('群れの札', () => {
+describe('グループのラベル', () => {
   it('fieldset と legend で作る', async () => {
     const { container } = await render(onSurface(group));
     const fieldset = container.querySelector('fieldset');
     expect(fieldset).not.toBeNull();
-    // **legend でしか作れない。** 読み上げは選択肢を読むたびに群れの札を添える
+    // **legend でしか作れない。** 読み上げは選択肢を読むたびにグループのラベルを添える
     expect(fieldset?.querySelector('legend')?.textContent).toBe('プラン');
   });
 
-  it('説明が群れに届く', async () => {
+  it('説明がグループに届く', async () => {
     const { container } = await render(onSurface(group));
     const fieldset = container.querySelector('fieldset');
     expect(fieldset?.getAttribute('aria-describedby')).toBe('g-description');
     expect(container.querySelector('#g-description')?.textContent).toBe('あとから変えられます');
   });
 
-  it('誤りは群れに付く', async () => {
+  it('誤りはグループに付く', async () => {
     const { container } = await render(
       onSurface(
         <RadioGroup id="e" label="送り方" error="どれか選んでください">
@@ -115,7 +115,7 @@ describe('群れの札', () => {
       ),
     );
     const fieldset = container.querySelector('fieldset');
-    // **選ばれていないのは選択肢1つの問題ではない**ので、群れが名乗る
+    // **選ばれていないのは選択肢1つの問題ではない**ので、グループが名乗る
     expect(fieldset?.getAttribute('aria-invalid')).toBe('true');
     expect(fieldset?.getAttribute('aria-describedby')).toBe('e-error');
     expect(container.querySelector('#e-error')?.textContent).toBe('どれか選んでください');
@@ -124,7 +124,7 @@ describe('群れの札', () => {
   it('説明も誤りも無いときは、空の段落を置かない', async () => {
     const { container } = await render(
       onSurface(
-        <RadioGroup id="p" label="札だけ">
+        <RadioGroup id="p" label="ラベルだけ">
           <Field layout="inline" id="p-a" label="ふつう">
             <Radio name="p-choice" value="a" />
           </Field>
@@ -137,7 +137,7 @@ describe('群れの札', () => {
 });
 
 describe('面と線', () => {
-  it('凹んだ面を宣言し、線は器が描く', async () => {
+  it('凹んだ面を宣言し、線は枠が描く', async () => {
     const { container } = await render(onSurface(<Radio aria-label="x" name="s" value="a" />));
     const radio = radiosIn(container)[0] as HTMLInputElement;
     expect(radio.getAttribute('data-sg-surface')).toBe('inset');
@@ -149,6 +149,29 @@ describe('面と線', () => {
     expect(Number.parseFloat(f.borderTopWidth)).toBe(0);
     expect(Number.parseFloat(b.borderTopWidth)).toBe(0);
     expect(b.outlineStyle).toBe('none');
+  });
+
+  /**
+   * **点と丸の比を測る。**
+   *
+   * 24 の丸に 8 の点を置いていた時期があり、比 0.33 で**丸の中が空いて見えた**
+   * （利用者の指摘）。**見た目の話だが、比は数で測れる。**
+   *
+   * 上下に幅を持たせているのは、`spacing` に 20px の段が無いためである
+   * ——丸は 16 か 24 しか取れないので、比も飛び飛びにしかならない。
+   */
+  it('選ばれた点が、丸の半分ある', async () => {
+    const { container } = await render(
+      onSurface(<Radio aria-label="x" name="ratio" value="a" defaultChecked />),
+    );
+    const frame = frameIn(container);
+    const dot = markIn(frame).firstElementChild;
+    if (!dot) throw new Error('点が描画されていません');
+    const outer = frame.getBoundingClientRect().width;
+    const inner = dot.getBoundingClientRect().width;
+    expect(outer, '丸の大きさ').toBe(16);
+    expect(inner / outer, '点と丸の比').toBeGreaterThanOrEqual(0.4);
+    expect(inner / outer, '点と丸の比').toBeLessThanOrEqual(0.6);
   });
 
   it('丸い', async () => {

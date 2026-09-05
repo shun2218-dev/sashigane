@@ -29,6 +29,7 @@ import {
 import {
   durationSemanticVars,
   fontInputNames,
+  motionInputNames,
   primitiveVars,
   spacingSemanticVars,
   typographySemanticVars,
@@ -83,5 +84,5 @@ export const tokenLayers = (palette: Palette): TokenLayers => ({
     ...declaredNames(colorSemanticVars('light', palette)),
   ].sort(),
   // 覆いの濃さも差し込み口である。**宣言していない**——宣言すると差せない
-  inputs: [...fontInputNames(), ...colorInputNames()].sort(),
+  inputs: [...fontInputNames(), ...colorInputNames(), ...motionInputNames()].sort(),
 });

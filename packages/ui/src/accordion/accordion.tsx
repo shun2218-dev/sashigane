@@ -8,8 +8,8 @@
  * **一度に1つだけ開く形も、素の仕組みで解ける**（`details` の `name`）。
  * 状態を持たないので、hooks も文脈も要らない。
  *
- * **名前は利用側が渡す。** 器が作って配る形も試したが、
- * 安定した名前を作るには `useId` が要り、**器がクライアント側の部品になる。**
+ * **名前は利用側が渡す。** 枠が作って配る形も試したが、
+ * 安定した名前を作るには `useId` が要り、**枠がクライアント側の部品になる。**
  * いまの部品はどれもサーバ側で描けるので、そこを崩さない。
  *
  * **印は `flex` が消す。** `summary` の既定の三角は `display: list-item` に付くので、
@@ -24,7 +24,7 @@ import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import { IconChevronDown } from '../icon/icon.tsx';
 
 /**
- * 折りたたみの器。
+ * 折りたたみの枠。
  *
  * ## 状態を持たない
  *
@@ -42,10 +42,10 @@ export interface AccordionProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * 折りたたみを並べる器。**並べ方だけを持つ。**
+ * 折りたたみを並べる枠。**並べ方だけを持つ。**
  *
- * 一度に1つだけ開きたいときは、**升に同じ `name` を渡す**——
- * 器が作って配る形にはしていない（上の覚書）。
+ * 一度に1つだけ開きたいときは、**項目に同じ `name` を渡す**——
+ * 枠が作って配る形にはしていない（上の覚書）。
  */
 export function Accordion({ className, ...props }: AccordionProps) {
   const classes = 'flex flex-col';
@@ -74,11 +74,25 @@ export interface AccordionItemProps extends HTMLAttributes<HTMLDetailsElement> {
   ref?: Ref<HTMLDetailsElement>;
 }
 
+/**
+ * 折りたたみの項目。
+ *
+ * ## 開閉の動きは宣言で表す
+ *
+ * `data-sg-collapse` を付けると、**中身の高さが動く。**
+ * 面・塗り・覆い・スケルトンと同じ形で、規則は `tokens.css` が持つ。
+ *
+ * **クラスでは書けない。** 動かす相手が `::details-content` という擬似要素で、
+ * Tailwind のクラス名の規則では指せないためである。
+ *
+ * 動きを減らす設定は `tokens.css` が尊重する。**利用側の責務にしない。**
+ */
 export function AccordionItem({ defaultOpen, className, ...props }: AccordionItemProps) {
   const classes = 'group border-b-1 border-border';
   return (
     <details
       data-sg-component="accordion-item"
+      data-sg-collapse=""
       open={defaultOpen}
       className={className ? `${classes} ${className}` : classes}
       {...props}
@@ -108,6 +122,7 @@ export function AccordionTrigger({ className, children, ...props }: AccordionTri
       {...props}
     >
       {children}
+      {/* **中身と同じ長さで回す。** 別々だと、矢印が回りきってから中身が動く */}
       <IconChevronDown className="transition-transform duration-200 group-open:rotate-180" />
     </summary>
   );

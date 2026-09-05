@@ -18,13 +18,14 @@
  * 既定の長さは**トークンの段から来る**が、置き場からは読まない——
  * ここは DOM を知らない。読むのは描く側（`toast.tsx`）である。
  *
- * ## 消えるときの動きを持っていない
+ * ## 消えるときは「消えかけ」を経る
  *
- * 消すと**その場で消える。** 動かすには、消す前に「消えかけ」の状態を作り、
- * CSS の時間と同じ長さだけ待ってから外すことになる。
- * **同じ長さが2箇所（CSS と JS）に要る**ので、揃っているかを誰も見られない。
+ * `dismissToast` は**その場では外さない。** `leaving` を立てるだけで、
+ * 実際に外すのは描く側が動きの終わりを見てからである（`removeToast`）。
  *
- * モーダルは待つ側をブラウザが持っていた（`allow-discrete`）。ここには無い。
+ * **長さは CSS にしか無い。** かつてこの形を退けたのは
+ * 「同じ長さが2箇所（CSS と JS）に要る」ためだったが、
+ * **JS は長さを知らずに済む**——動き（`Animation`）の終わりを待てばよい。
  * ─────────────────────────────────────────────
  */
 
@@ -41,6 +42,12 @@ export interface Toast {
    * 渡さなければ**滞在の段のまん中**（4000ms）。`null` を渡すと消えない。
    */
   duration?: number | null;
+  /**
+   * 消えかけ。**まだ描かれている。**
+   *
+   * 立ってから実際に外れるまでのあいだ、出ていく動きが走る。
+   */
+  leaving?: boolean;
 }
 
 export interface ToastInput {
@@ -89,22 +96,38 @@ export const showToast = (input: ToastInput): string => {
   return id;
 };
 
+/**
+ * 消し始める。**その場では外さない**——出ていく動きが走る。
+ *
+ * 既に消えかけのものは何もしない。**通知ると、描き直しが止まらない。**
+ */
 export const dismissToast = (id: string): void => {
+  if (!toasts.some((t) => t.id === id && !t.leaving)) return;
+  toasts = toasts.map((t) => (t.id === id ? { ...t, leaving: true } : t));
+  emit();
+};
+
+/**
+ * 実際に外す。**動きの終わりを見た描く側が呼ぶ。**
+ *
+ * 動きが無いとき（トークンを入れていない配布先）も描く側が呼ぶ——
+ * **CSS が無いと消えない**のでは、閉じるボタンが効かないことになる。
+ */
+export const removeToast = (id: string): void => {
   const next = toasts.filter((t) => t.id !== id);
-  // **数が変わらないなら知らせない。** 知らせると、無い id を消すたびに描き直す
   if (next.length === toasts.length) return;
   toasts = next;
   emit();
 };
 
 /*
- * 描く場所は1つだけにする。**2つ置くと、同じ知らせが2回読まれる。**
+ * 描く場所は1つだけにする。**2つ置くと、同じ通知が2回読まれる。**
  *
  * 重なって見えるだけなら見た目の話で済むが、読み上げの領域も2つになるので、
  * **同じ文言が2回読まれる。** 文書に「1つだけ置く」と書いても守られない（教訓3）。
  *
  * 先に置かれたものが描く。**外れたら次のものへ渡す**——
- * 渡さないと、最初のものを外した画面で知らせが出なくなる。
+ * 渡さないと、最初のものを外した画面で通知が出なくなる。
  */
 let mounted: symbol[] = [];
 const ownerListeners = new Set<Listener>();
@@ -123,7 +146,7 @@ export const subscribeToasterOwner = (listener: Listener): (() => void) => {
 /** 描く番かどうか。**最初に置かれたものだけが真** */
 export const isToasterOwner = (id: symbol): boolean => mounted[0] === id;
 
-/** 置かれたことを知らせる。戻り値を呼ぶと外れる */
+/** 置かれたことを通知る。戻り値を呼ぶと外れる */
 export const claimToaster = (id: symbol): (() => void) => {
   mounted = [...mounted, id];
   emitOwner();
@@ -133,7 +156,14 @@ export const claimToaster = (id: symbol): (() => void) => {
   };
 };
 
-/** 全部消す。**画面が変わるときに使う**——前の画面の知らせが残らないように */
+/**
+ * 全部消す。**画面が変わるときに使う**——前の画面の通知が残らないように。
+ *
+ * **これだけは消えかけを経ない。** 1つずつ消すときは見えているので動きが要るが、
+ * 画面ごと変わるときの目的は「残さないこと」であり、**動かす相手がもう居ない。**
+ *
+ * 消えかけのまま残すと、**次の画面に前の画面の通知が出たまま入る。**
+ */
 export const dismissAllToasts = (): void => {
   if (toasts.length === 0) return;
   toasts = [];

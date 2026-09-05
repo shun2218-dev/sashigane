@@ -6,6 +6,8 @@
     "button",
     "badge",
     "list",
+    "carousel",
+    "tabs",
     "modal",
     "toast",
     "separator",
@@ -15,8 +17,10 @@
     "form",
     "field",
     "input",
+    "password-input",
     "textarea",
     "checkbox",
+    "switch",
     "radio",
     "select"
   ]

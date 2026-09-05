@@ -42,6 +42,7 @@ develop
   ↓  release/vX.Y.Z を切る
 release/vX.Y.Z
   ↓  バージョンを上げる（package.json と文書）
+  ↓  **README を現状に合わせる**
   ↓  main へ PR。自己レビューして投稿する
 main
   ↓  マージ後にタグを打つ（vX.Y.Z）
@@ -142,6 +143,7 @@ SASHIGANE_ALLOW_PROTECTED_PUSH=1 git push
 |---|---|
 | `packages/tokens/package.json` の `version` | **出所はここ1つ**（決定4-6） |
 | 文書のバージョンへの言及 | 「まだ打っていない」「`0.0.0`（未リリース）」など、番号や状態を書いた箇所 |
+| **README** | **利用者が最初に読む面である**（決定4-8）。`pnpm check:readme-freshness` が数と状態を見る |
 
 **ブランチ名がそのバージョンを名乗る**ので、`release/v0.1.0` の中の `version` は
 `0.1.0` である。**食い違ったまま `main` へ入れない。**
@@ -150,6 +152,7 @@ SASHIGANE_ALLOW_PROTECTED_PUSH=1 git push
 
 | | 日 | 内容 |
 |---|---|---|
+| `v0.1.2` | 2026-09-06 | 部品が22個に。カルーセル・パスワードの入力欄・タブ・スイッチ。「はじめに」を書き直す |
 | `v0.1.1` | 2026-09-05 | ブランドのマーク。favicon・ナビ・OG の絵 |
 | `v0.1.0` | 2026-09-05 | 最初のリリース |
 

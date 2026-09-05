@@ -2,7 +2,7 @@
  * ── 維持する側への覚書 ───────────────────────────────
  *
  * **見た目は Input と同じものを使う。** 別に書くと、片方だけ直したときにずれる。
- * 器（`frame`）も中身（`control`）も Input から借りている。
+ * 枠（`frame`）も中身（`control`）も Input から借りている。
  *
  * 高さだけが違う。**行数は利用側が決める**（`rows`）——
  * 何行が適切かは中身の事情であって、システムの事情ではない。
@@ -24,7 +24,7 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
 }
 
 /**
- * 多行の入力欄。
+ * 複数行の入力欄。
  *
  * ## 見た目は1行の入力欄と同じ
  *

@@ -1,0 +1,84 @@
+import { Card } from '../../card/card.tsx';
+import {
+  Carousel,
+  CarouselMarkers,
+  CarouselNext,
+  CarouselPlayPause,
+  CarouselPrevious,
+  CarouselSlide,
+  CarouselSlides,
+} from '../carousel.tsx';
+
+/**
+ * エッジケース。**1枚だけのときと、端で折り返すとき。**
+ *
+ * 1枚しか無ければ前も次も押せない。**送る先が無いのに押せるのは嘘である。**
+ *
+ * 折り返す形は既定ではない。**順番に意味が無いときだけ入れる**——
+ * 写真や広告のように、どこから見ても構わないもの。
+ * **手順や記事の並びには入れない。** 折り返すと「最後まで来た」が分からなくなる。
+ *
+ * 自動で送る形には**止める器が必須**である。置かないと落ちる——
+ * 自動で動くものには止める手段が要る。
+ * 動きを減らす設定のときは**止まった状態で始まる。**
+ *
+ * **止める器は、送る器の代わりではない。** 4つとも別の役目を持つので、
+ * 同じ場所に置くと片方が消える。
+ */
+export default function Edge() {
+  return (
+    <div style={{ display: 'grid', gap: 24, maxWidth: 420 }}>
+      <Carousel label="1枚だけのもの">
+        <CarouselSlides>
+          <CarouselSlide>
+            <Card>これだけ</Card>
+          </CarouselSlide>
+        </CarouselSlides>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <CarouselPrevious />
+          <CarouselNext />
+        </div>
+      </Carousel>
+
+      <Carousel label="自動で送るもの" autoplay options={{ loop: true }}>
+        <CarouselSlides>
+          {['一', '二', '三'].map((n) => (
+            <CarouselSlide key={n}>
+              <Card>{n}枚目</Card>
+            </CarouselSlide>
+          ))}
+        </CarouselSlides>
+        {/*
+          **止める器は、送る器の代わりではない。** 4つとも別の役目を持つ。
+
+          前へ・次へは**場所を移す**もの、止める・再生は**勝手に動くのを制する**もの、
+          印は**いまどこか**を示すもの。
+          同じ場所に置くと、片方が消える。
+        */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <CarouselPrevious />
+            <CarouselNext />
+          </div>
+          <CarouselMarkers />
+          <CarouselPlayPause />
+        </div>
+      </Carousel>
+
+      <Carousel label="折り返すもの" options={{ loop: true }}>
+        <CarouselSlides>
+          {['一', '二', '三'].map((n) => (
+            <CarouselSlide key={n}>
+              <Card>{n}枚目</Card>
+            </CarouselSlide>
+          ))}
+        </CarouselSlides>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <CarouselPrevious />
+          <CarouselMarkers />
+          <CarouselNext />
+        </div>
+      </Carousel>
+    </div>
+  );
+}

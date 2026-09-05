@@ -3,6 +3,7 @@ export { useToast, type ToastController } from './use-toast.ts';
 export {
   showToast,
   dismissToast,
+  removeToast,
   dismissAllToasts,
   type Toast,
   type ToastInput,

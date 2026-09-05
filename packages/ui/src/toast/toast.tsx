@@ -9,7 +9,7 @@
  *
  * `showPopover()` を呼ぶと**最前面の層に出る**ので、
  * `z-index` も `overflow` を持つ祖先も関係しなくなる。
- * Select の一覧は箱の中に描いていて、**器に切り取られた**——同じ轍を踏まない。
+ * Select の一覧は箱の中に描いていて、**枠に切り取られた**——同じ轍を踏まない。
  *
  * `manual` にしてあるのは、**`Escape` や外を押しただけで消えない**ようにするため。
  * 消し方はトースト1つずつが持つ。
@@ -34,6 +34,7 @@
  * 長く出る側へ倒れるので、読み終わる前に消えることはない。
  * ─────────────────────────────────────────────
  */
+import type { CSSProperties } from 'react';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Button } from '../button/button.tsx';
 import { IconX } from '../icon/icon.tsx';
@@ -41,47 +42,41 @@ import {
   claimToaster,
   dismissToast,
   isToasterOwner,
+  removeToast,
   subscribeToasterOwner,
 } from './toast-store.ts';
 import { useToast } from './use-toast.ts';
 
 /*
-  既定の滞在時間。**CSS から読む。**
+  既定の滞在時間を JS で読むのをやめた（決定6-47）。
 
-  この部品はトークンのパッケージを import しない——
-  コンポーネントがトークンを受け取る道は CSS だけである。
+  以前はここで `--sg-duration-notice` を読み、ミリ秒に直して `setTimeout` に渡していた。
+  **CSS の時間は `4000ms` が `4s` として返る**ので、数だけを読むと 4 になる——
+  実際にそれで「押した瞬間に消える」を出したことがある。
 
-  読めないとき（トークンを入れていない配布先）は**消さない側へ倒れる。**
-  適当な数値を埋めると、段の外の値が1つ増える。
+  いまは**待つ相手が帯の動きそのもの**で、長さは CSS の中だけにある。
+  **読み違える経路が無くなった。**
 */
-const dwellDefault = (): number | undefined => {
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue('--sg-duration-notice')
-    .trim();
-  const ms = milliseconds(raw);
-  return ms !== undefined && ms > 0 ? ms : undefined;
-};
-
-/*
-  CSS の時間をミリ秒にする。**単位は `s` にも `ms` にもなる。**
-
-  ブラウザは `4000ms` を `4s` に正規化して返す。数だけを読むと
-  **4000 のつもりで 4 を受け取り、押した瞬間に消える。**
-  実際にそうなっていた——検査では `60ms` を差し込んでいて、
-  この形を一度も通していなかった。
-*/
-const milliseconds = (value: string): number | undefined => {
-  const m = /^(-?[\d.]+)(ms|s)$/.exec(value);
-  if (!m) return undefined;
-  const n = Number.parseFloat(m[1] as string);
-  if (!Number.isFinite(n)) return undefined;
-  return m[2] === 's' ? n * 1000 : n;
-};
 
 const TONE_CLASS = {
   default: 'outline-border',
   success: 'outline-success',
   danger: 'outline-danger',
+} as const;
+
+/**
+ * ゲージの色。**線と同じ重みを指す。**
+ *
+ * 淡い塗りを使う。**不透明な塗りは出ていない**（塗りは宣言するもの）ので、
+ * ここで使えるのは色のついた地の段である。
+ *
+ * **クラスを組み立てない。** `bg-${tone}-subtle` のように書くと、
+ * Tailwind の走査に読めず、クラスが生成されない。
+ */
+const GAUGE_CLASS = {
+  default: 'bg-accent-subtle',
+  success: 'bg-success-subtle',
+  danger: 'bg-danger-subtle',
 } as const;
 
 /**
@@ -103,7 +98,7 @@ const TONE_CLASS = {
  *
  * ## 2つ置いても描くのは1つです
  *
- * 2つとも描くと**同じ知らせが2回読まれます。** 後から置いたものは何も描きません。
+ * 2つとも描くと**同じ通知が2回読まれます。** 後から置いたものは何も描きません。
  * 先に置いたものが外れたら、**次のものへ番が渡ります。**
  *
  * ## 最前面の層に出ます
@@ -117,7 +112,7 @@ export function Toaster() {
 
   /*
     描く番かどうか。**2つ置かれても、描くのは先に置かれた方だけである。**
-    2つとも描くと、同じ知らせが2回読まれる。
+    2つとも描くと、同じ通知が2回読まれる。
   */
   const selfRef = useRef<symbol>(undefined);
   selfRef.current ??= Symbol('toaster');
@@ -144,27 +139,72 @@ export function Toaster() {
   }, [owner]);
 
   /*
-   * 自動で消す。**止めている間は数えない。**
+   * 消すのも外すのも、**動きの終わりを待つ。**
    *
-   * 一覧が変わるたびに入れ直すので、新しいものが出ると
-   * 前から出ているものの寿命も延びる。**長く出る側へ倒れる。**
+   * ## 時計を1つにする
+   *
+   * 以前は `setTimeout` で消し、帯は CSS の動きで縮めていた。**別々の時計である。**
+   * タブを裏に回すなど、片方だけが遅れる状況でずれた。
+   *
+   * いまは待つ相手が**帯の動きそのもの**である。止めれば動きも止まり、
+   * 再開すれば続きから進む。**残り時間を JS が持たなくてよくなった。**
+   *
+   * ## 長さを2箇所に持たない
+   *
+   * 置き場の覚書は「消えるときの動きを持たない」理由を
+   * 「同じ長さが CSS と JS の2箇所に要る」としていた。**要らない**——
+   * `Animation` の終わりを待つので、**JS は長さを知らない。**
+   *
+   * ## 動きが無いときは待たない
+   *
+   * トークンを入れていない配布先では動きが無い。**待つと永久に消えない。**
+   * 動きが1つも無ければその場で進める。
    */
+  const watched = useRef(new Set<string>());
+
   useEffect(() => {
-    if (paused) return undefined;
     /*
-      **描くときではなく、ここで読む。** 描くときに読むとサーバ側でも走り、
-      `getComputedStyle` が無いので落ちる。ここは画面のある側でしか走らない。
+      **番でないあいだは領域が無い。** `owner` を見ていないと、
+      番になる前に出たトーストが**一度も見張られないまま残る**——
+      効果は `toasts` が変わらない限り走り直さない。
     */
-    const fallback = dwellDefault();
-    const timers = toasts
-      // **`null` は「消さない」である。** 渡していない（undefined）とは違う
-      .map((toast) => ({ toast, ms: toast.duration === undefined ? fallback : toast.duration }))
-      .filter((t): t is { toast: (typeof toasts)[number]; ms: number } => typeof t.ms === 'number')
-      .map(({ toast, ms }) => window.setTimeout(() => dismissToast(toast.id), ms));
-    return () => {
-      for (const timer of timers) window.clearTimeout(timer);
+    const region = regionRef.current;
+    if (!region) return undefined;
+    let live = true;
+
+    const after = (el: Element | null, done: () => void) => {
+      const animations = el?.getAnimations() ?? [];
+      // **動きが無ければ待たない。** CSS が届いていない配布先で止まる
+      if (animations.length === 0) {
+        done();
+        return;
+      }
+      void Promise.allSettled(animations.map((a) => a.finished)).then(() => {
+        if (live) done();
+      });
     };
-  }, [toasts, paused]);
+
+    for (const toast of toasts) {
+      const li = region.querySelector(`[data-sg-toast-id="${toast.id}"]`);
+      if (toast.leaving) {
+        // 消えかけ。**出ていく動きが終わったら外す**
+        if (watched.current.has(`out:${toast.id}`)) continue;
+        watched.current.add(`out:${toast.id}`);
+        after(li, () => removeToast(toast.id));
+        continue;
+      }
+      // 帯が空になったら消し始める。**帯が無いもの（消えないもの）は放っておく**
+      if (watched.current.has(`in:${toast.id}`)) continue;
+      const gauge = li?.querySelector('[data-sg-component="toast-gauge"]') ?? null;
+      if (!gauge) continue;
+      watched.current.add(`in:${toast.id}`);
+      after(gauge, () => dismissToast(toast.id));
+    }
+
+    return () => {
+      live = false;
+    };
+  }, [toasts, owner]);
 
   // **番でなければ何も描かない。** 描くと領域が2つになる
   if (!owner) return null;
@@ -175,7 +215,7 @@ export function Toaster() {
       popover="manual"
       data-sg-component="toaster"
       /*
-        器は何も塗らず、押せない。**押せると、後ろのページが押せなくなる**——
+        枠は何も塗らず、押せない。**押せると、後ろのページが押せなくなる**——
         最前面の層は画面いっぱいに広がる。押せるのはトースト1つずつである。
       */
       className="pointer-events-none inset-auto right-0 bottom-0 m-0 border-0 bg-transparent p-4"
@@ -197,14 +237,19 @@ export function Toaster() {
           <li
             key={toast.id}
             data-sg-component="toast"
+            data-sg-toast-id={toast.id}
             data-sg-surface="overlay"
             data-sg-tone={toast.tone}
+            /* 出入りの動き（決定6-47）。**消えかけは外す前の状態である** */
+            data-sg-appear=""
+            data-sg-leaving={toast.leaving ? '' : undefined}
             className={
               // **1本の線で重みを表す。** 色だけで伝えないよう、文言も一緒に出る
-              `pointer-events-auto flex max-w-full items-start gap-2 rounded-sm p-3 shadow-overlay ` +
+              `pointer-events-auto relative flex max-w-full items-start gap-2 overflow-hidden ` +
+              `rounded-sm p-3 shadow-overlay ` +
               `outline-solid outline-offset-0 outline-2 ${TONE_CLASS[toast.tone]} ` +
-              // 出るときだけ薄れる。**消えるときは動かない**（置き場の覚書）
-              `opacity-100 transition-opacity duration-200 starting:opacity-0`
+              // 出入りの動きは宣言で表す（決定6-47）。クラスでは書けない
+              `opacity-100`
             }
           >
             <span className="text-body">{toast.message}</span>
@@ -216,6 +261,29 @@ export function Toaster() {
             >
               <IconX />
             </Button>
+            {/*
+              残り時間のゲージ（決定6-46）。**消えないものには出さない。**
+
+              **読み上げには出さない。** 時間の経過は `aria-live` で読み上げる
+              ようなものではなく、読ませると文言が繰り返し流れる。
+
+              長さは差し込み口に渡す。**既定は書かない**——書かないと
+              `tokens.css` 側が通知の滞在時間へ落ちる。段の外の値を増やさない。
+            */}
+            {toast.duration === null ? null : (
+              <span
+                aria-hidden="true"
+                data-sg-component="toast-gauge"
+                data-sg-gauge=""
+                data-sg-gauge-paused={paused ? '' : undefined}
+                style={
+                  typeof toast.duration === 'number'
+                    ? ({ '--sg-gauge-duration': `${toast.duration}ms` } as CSSProperties)
+                    : undefined
+                }
+                className={`absolute inset-x-0 bottom-0 h-1 ${GAUGE_CLASS[toast.tone]}`}
+              />
+            )}
           </li>
         ))}
       </ol>

@@ -154,7 +154,7 @@ describe('見た目', () => {
     expect(getComputedStyle(arrow).transitionProperty).toContain('rotate');
   });
 
-  it('升が下辺に線を持つ', async () => {
+  it('項目が下辺に線を持つ', async () => {
     const { container } = await render(one('中身'));
     const s = getComputedStyle(detailsIn(container));
     // **幅を見る。** 色だけを見ると、線を消しても通る
@@ -162,3 +162,62 @@ describe('見た目', () => {
     expect(s.borderBottomColor).not.toBe(s.color);
   });
 });
+
+describe('開閉の動き（決定6-45）', () => {
+  it('動きを宣言している', async () => {
+    const { container } = await render(one('中身'));
+    // **付いていなければ規則が当たらない。** 規則は tokens.css が持つ
+    expect(detailsIn(container).hasAttribute('data-sg-collapse')).toBe(true);
+  });
+
+  it('中身の高さが遷移の対象に入っている', async () => {
+    const { container } = await render(one('中身'));
+    const cs = getComputedStyle(detailsIn(container), '::details-content');
+    /*
+     * **擬似要素を測る。** 動かす相手は `::details-content` であって
+     * `AccordionContent` の div ではない。div を測ると、
+     * **規則を消しても通る**——div 自身は遷移を持たないので、
+     * 「遷移が無い」が期待値になってしまう。
+     */
+    expect(cs.transitionProperty).toContain('block-size');
+    expect(Number.parseFloat(cs.transitionDuration)).toBeGreaterThan(0);
+  });
+
+  it('開くとき、途中の高さを通る', async () => {
+    const { container } = await render(one('中身が入っている。ここが伸び縮みする。'));
+    const details = detailsIn(container);
+
+    /*
+     * **押す前から毎フレーム測る。** ここに至るまでに2回外している。
+     *
+     *   押したあとに測り始め、最初の1回を閉じた高さと比べた
+     *     → **既に途中の高さ**なので、速さ次第で落ちた（CI で `51 <= 50`）
+     *   押したあとに走っている遷移を探した
+     *     → `userEvent.click` を待つあいだに 200ms の遷移が終わっていた
+     *   `transitionrun` を張った
+     *     → **擬似要素の遷移は元の要素まで上がってこない**（測った。1件も届かない）
+     *
+     * 押す前から測れば、**閉じた高さも途中も終わりも同じ列に入る。**
+     * 速さが変わっても、列が長くなるか短くなるかの違いにしかならない。
+     */
+    const heights: number[] = [];
+    let sampling = true;
+    const loop = (async () => {
+      while (sampling) {
+        heights.push(Math.round(details.getBoundingClientRect().height));
+        await new Promise((r) => requestAnimationFrame(() => r(undefined)));
+      }
+    })();
+
+    const summary = container.querySelector('summary');
+    await userEvent.click(summary as Element);
+    await new Promise((r) => setTimeout(r, 500));
+    sampling = false;
+    await loop;
+
+    const closed = heights[0] as number;
+    const distinct = new Set(heights);
+    // **瞬間で開くと2種類しか出ない。** 途中を通っていることがそのまま出る
+    expect(distinct.size, `見えた高さ: ${[...distinct].join(',')}`).toBeGreaterThan(2);
+    expect(Math.max(...heights), '開いた高さ').toBeGreaterThan(closed);
+  });});

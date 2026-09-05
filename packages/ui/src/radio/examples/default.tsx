@@ -3,10 +3,10 @@ import { Radio } from '../radio.tsx';
 import { RadioGroup } from '../radio-group.tsx';
 
 /**
- * 通常。**群れの札は RadioGroup が付ける。**
+ * 通常。**グループのラベルは RadioGroup が付ける。**
  *
- * 1つずつの札だけでは、**何についての選択なのかが読み上げに出ない。**
- * `name` は利用側が渡す——群れから配るには文脈が要り、
+ * 1つずつのラベルだけでは、**何についての選択なのかが読み上げに出ない。**
+ * `name` は利用側が渡す——グループから配るには文脈が要り、
  * この部品がクライアント側になる。
  */
 export default function Default() {
