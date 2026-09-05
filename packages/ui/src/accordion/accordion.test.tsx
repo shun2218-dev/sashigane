@@ -162,3 +162,55 @@ describe('見た目', () => {
     expect(s.borderBottomColor).not.toBe(s.color);
   });
 });
+
+describe('開閉の動き（決定6-45）', () => {
+  it('動きを宣言している', async () => {
+    const { container } = await render(one('中身'));
+    // **付いていなければ規則が当たらない。** 規則は tokens.css が持つ
+    expect(detailsIn(container).hasAttribute('data-sg-collapse')).toBe(true);
+  });
+
+  it('中身の高さが遷移の対象に入っている', async () => {
+    const { container } = await render(one('中身'));
+    const cs = getComputedStyle(detailsIn(container), '::details-content');
+    /*
+     * **擬似要素を測る。** 動かす相手は `::details-content` であって
+     * `AccordionContent` の div ではない。div を測ると、
+     * **規則を消しても通る**——div 自身は遷移を持たないので、
+     * 「遷移が無い」が期待値になってしまう。
+     */
+    expect(cs.transitionProperty).toContain('block-size');
+    expect(Number.parseFloat(cs.transitionDuration)).toBeGreaterThan(0);
+  });
+
+  it('開くとき、途中の高さを通る', async () => {
+    const { container } = await render(one('中身が入っている。ここが伸び縮みする。'));
+    const details = detailsIn(container);
+    const closed = details.getBoundingClientRect().height;
+
+    const summary = container.querySelector('summary');
+    await userEvent.click(summary as Element);
+
+    /*
+     * **静止した2つの状態を見比べても、動いたことは分からない。**
+     * 開き終わった高さだけを測ると、瞬間で開いても通る（教訓4）。
+     *
+     * 途中の高さを1つでも捉えれば、遷移が実際に走っている。
+     * **`expect.poll` で待つ**——遷移は次の描画より後に進む。
+     */
+    const seen = new Set<number>();
+    await expect
+      .poll(
+        () => {
+          seen.add(Math.round(details.getBoundingClientRect().height));
+          return seen.size;
+        },
+        { timeout: 2000 },
+      )
+      .toBeGreaterThan(2);
+
+    const heights = [...seen].sort((a, b) => a - b);
+    expect(heights[0], '閉じた高さ').toBeLessThanOrEqual(Math.round(closed) + 1);
+    expect(heights.at(-1), '開いた高さ').toBeGreaterThan(Math.round(closed));
+  });
+});

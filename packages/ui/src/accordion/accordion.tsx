@@ -74,11 +74,25 @@ export interface AccordionItemProps extends HTMLAttributes<HTMLDetailsElement> {
   ref?: Ref<HTMLDetailsElement>;
 }
 
+/**
+ * 折りたたみの升。
+ *
+ * ## 開閉の動きは宣言で表す
+ *
+ * `data-sg-collapse` を付けると、**中身の高さが動く。**
+ * 面・塗り・覆い・骨組みと同じ形で、規則は `tokens.css` が持つ。
+ *
+ * **クラスでは書けない。** 動かす相手が `::details-content` という擬似要素で、
+ * Tailwind のクラス名の規則では指せないためである。
+ *
+ * 動きを減らす設定は `tokens.css` が尊重する。**利用側の責務にしない。**
+ */
 export function AccordionItem({ defaultOpen, className, ...props }: AccordionItemProps) {
   const classes = 'group border-b-1 border-border';
   return (
     <details
       data-sg-component="accordion-item"
+      data-sg-collapse=""
       open={defaultOpen}
       className={className ? `${classes} ${className}` : classes}
       {...props}
@@ -108,6 +122,7 @@ export function AccordionTrigger({ className, children, ...props }: AccordionTri
       {...props}
     >
       {children}
+      {/* **中身と同じ長さで回す。** 別々だと、矢印が回りきってから中身が動く */}
       <IconChevronDown className="transition-transform duration-200 group-open:rotate-180" />
     </summary>
   );
