@@ -30,7 +30,14 @@ const REPO = 'shun2218-dev/sashigane';
 const gh = (args) => JSON.parse(execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 32 << 20 }));
 
 /**
- * マージ済みの PR。作業ブランチ → develop も、リリースの develop → main も含める。
+ * マージ済みの PR。**リリース PR も取るが、集計には入れない**（Issue #180）。
+ *
+ * リリース PR（`base === 'main'`）の中身は、**すでに個別の PR で数えたコミット
+ * そのもの**である。同じ枠で数えると、コミットが二重に数えられ、マージコミットが
+ * 「人手」に化け、先頭コミットが古すぎて CI の分類も外れる。
+ *
+ * **「落ちた」と「動かなかった」を混ぜないのと同じ形である**（development-process.md）。
+ * 混ぜずに、別の節へ並べる。**黙って外さない。**
  *
  * **一覧では commits を取らない。** GraphQL が PR 数 × コミット数 × 著者数まで
  * 展開しようとして上限に当たる（実測）。1本ずつ取り直す。
@@ -153,6 +160,16 @@ const failedStep = (runId) => {
 const humanCommits = (commits) =>
   commits.filter((c) => !/Co-Authored-By:\s*Claude/i.test(c.messageBody ?? ''));
 
+/**
+ * `gh pr view --json commits` は **100 件で切る。**
+ *
+ * 切られたことは戻り値に現れない。**ちょうど 100 なら切られたと見なす。**
+ * 本当に 100 だった場合も「切られたかもしれない」と出るが、
+ * **切られたのに気づかないより良い**（教訓2）。
+ */
+const COMMIT_PAGE_LIMIT = 100;
+const maybeTruncated = (commits) => commits.length === COMMIT_PAGE_LIMIT;
+
 const rows = pulls
   .map((pr) => {
     const first = pr.commits[0];
@@ -161,10 +178,12 @@ const rows = pulls
     return {
       number: pr.number,
       base: pr.baseRefName,
+      head: pr.headRefName,
       issue,
       leadHours: opened ? (Date.parse(pr.mergedAt) - Date.parse(opened)) / 3_600_000 : null,
       reviews: pr.reviews.length,
       commits: pr.commits.length,
+      truncated: maybeTruncated(pr.commits),
       human: humanCommits(pr.commits).length,
       ci: first ? firstCommitCi(pr, first.oid) : { kind: '未実行', detail: 'コミットが取れない' },
       title: pr.title,
@@ -179,20 +198,38 @@ const rows = pulls
 const pct = (n, d) => (d === 0 ? '—' : `${((n / d) * 100).toFixed(0)}%`);
 const hours = (h) => (h === null ? '—' : h < 48 ? `${h.toFixed(1)}h` : `${(h / 24).toFixed(1)}d`);
 
-console.log(`# sashigane の開発計測（${rows.length} 本のマージ済み PR）\n`);
+/**
+ * **リリース PR は作業 PR ではない**（Issue #180）。
+ *
+ * develop に積んだものをまとめて `main` へ移す操作であり、
+ * 中身は**すでに個別の PR で数えたコミット**である。同じ表に混ぜると、
+ * 数としては出るのに**何を数えているかが変わる。**
+ *
+ * **base だけで判定しない。** ブランチ戦略ができる前は作業ブランチが直接 `main` を
+ * 向いていた（#2 #4 #6 #8。branching.md の「経緯」）。**あれは作業 PR である。**
+ * base で切ると、リポジトリで最初に書かれた4本が集計から消える。
+ *
+ * head で見る。`release/vX.Y.Z`（決定4-7）と、それ以前の形である `develop` の2つ。
+ */
+const RELEASE_HEAD = /^(develop|release\/v\d+\.\d+\.\d+)$/;
+const isRelease = (r) => r.base === 'main' && RELEASE_HEAD.test(r.head);
+const work = rows.filter((r) => !isRelease(r));
+const releases = rows.filter(isRelease);
+
+console.log(`# sashigane の開発計測（作業 PR ${work.length} 本）\n`);
 
 console.log('| PR | Issue | リードタイム | 自己レビュー | コミット | 人手 | 初回コミットの CI |');
 console.log('|---|---|---|---|---|---|---|');
-for (const r of rows) {
+for (const r of work) {
   console.log(
     `| #${r.number} | ${r.issue ? `#${r.issue}` : '—'} | ${hours(r.leadHours)} | ${r.reviews} | ${r.commits} | ${r.human} | ${r.ci.kind}${r.ci.detail ? `（${r.ci.detail}）` : ''} |`,
   );
 }
 
-const ran = rows.filter((r) => r.ci.kind === '成功' || r.ci.kind === '失敗');
+const ran = work.filter((r) => r.ci.kind === '成功' || r.ci.kind === '失敗');
 const passed = ran.filter((r) => r.ci.kind === '成功');
-const excluded = rows.length - ran.length;
-const withIssue = rows.filter((r) => r.leadHours !== null);
+const excluded = work.length - ran.length;
+const withIssue = work.filter((r) => r.leadHours !== null);
 const median = (xs) => {
   const s = [...xs].sort((a, b) => a - b);
   return s.length === 0 ? null : s[Math.floor(s.length / 2)];
@@ -212,7 +249,7 @@ console.log(
 );
 {
   const why = new Map();
-  for (const r of rows.filter((x) => !ran.includes(x))) {
+  for (const r of work.filter((x) => !ran.includes(x))) {
     why.set(r.ci.kind, (why.get(r.ci.kind) ?? 0) + 1);
   }
   console.log(
@@ -221,10 +258,10 @@ console.log(
   );
 }
 console.log(`\nリードタイム（Issue 作成 → マージ）の中央値: ${hours(median(withIssue.map((r) => r.leadHours)))}`);
-console.log(`  Issue に紐づいた PR: ${withIssue.length} / ${rows.length} 本`);
+console.log(`  Issue に紐づいた PR: ${withIssue.length} / ${work.length} 本`);
 {
-  const zero = rows.filter((r) => r.reviews === 0);
-  console.log(`\n自己レビューの回数: 中央値 ${median(rows.map((r) => r.reviews))}`);
+  const zero = work.filter((r) => r.reviews === 0);
+  console.log(`\n自己レビューの回数: 中央値 ${median(work.map((r) => r.reviews))}`);
   console.log(
     `  ※ 数えているのは**レビュー投稿の件数**であって、レビュー → 修正の往復回数ではない。` +
       '\n     開発者が1人で「1回投稿 → 修正コミット」という運用なので近い値になっている。' +
@@ -270,8 +307,40 @@ if (failures.length === 0) {
   console.log('\n  ※ 分類は ci.yml の step 名そのもの。**分類表を別に持たない**（持つとずれる）');
 }
 
+/**
+ * **外したものを黙って消さない。** 何本を、なぜ外したかを出す。
+ *
+ * リリース PR は「作業が速かった／遅かった」を語らない。語るのは
+ * **1回のリリースにどれだけ積んだか**だけなので、その1列だけを出す。
+ */
+console.log(`\n## リリース PR（集計から外している ${releases.length} 本）\n`);
+if (releases.length === 0) {
+  console.log('  無し。**まだ `main` へ入れていない**');
+} else {
+  console.log('| PR | 積んだコミット | 自己レビュー |');
+  console.log('|---|---|---|');
+  for (const r of releases) {
+    console.log(`| #${r.number} | ${r.commits}${r.truncated ? ' 以上' : ''} | ${r.reviews} |`);
+  }
+  console.log(
+    '\n  ※ **中身は個別の PR で既に数えたコミットである。** 同じ枠に入れると' +
+      '\n     コミットが二重に数えられ、マージコミットが「人手」に化け、' +
+      '\n     先頭コミットが古すぎて CI の分類も外れる（Issue #180）',
+  );
+  if (releases.some((r) => r.truncated)) {
+    console.log(
+      `  ※ 「以上」は **API が ${COMMIT_PAGE_LIMIT} 件で切っている**ことを表す。` +
+        '\n     切られたことは戻り値に現れないので、ちょうど上限のときはそう出す',
+    );
+  }
+}
+
 console.log(`\n## 人手のコミット\n`);
-const humanTotal = rows.reduce((a, r) => a + r.human, 0);
-console.log(`  ${humanTotal} 件 / 全 ${rows.reduce((a, r) => a + r.commits, 0)} コミット`);
+const humanTotal = work.reduce((a, r) => a + r.human, 0);
+console.log(`  ${humanTotal} 件 / 作業 PR の ${work.reduce((a, r) => a + r.commits, 0)} コミット`);
 console.log('  ※ `Co-Authored-By: Claude` を持たないコミットを数えている。');
 console.log('  **理由は機械では取れない。** 知りたい場合はコミットメッセージを読むこと');
+console.log(
+  '  ※ **リポジトリ全体のコミット数ではない。** PR ごとの数の総和である。' +
+    '\n     リリース PR を混ぜると同じコミットを二度数えるので、外してある（Issue #180）',
+);
