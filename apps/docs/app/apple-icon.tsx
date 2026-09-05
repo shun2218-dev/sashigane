@@ -1,11 +1,12 @@
 import { ImageResponse } from 'next/og';
-import { MARK_PATH_PLAIN, ROTATION, VIEW_BOX } from '../lib/mark';
+import { MARK_PATH, ROTATION, VIEW_BOX } from '../lib/mark';
 import { brandFill, onBrandFill } from '../lib/brand';
 
 /**
  * ホーム画面に置かれる絵。**角丸も余白も端末が付ける**ので、地を塗って中央に置くだけ。
  *
- * **刻みは落とす。** この大きさでも端末が縮めて出すことがあり、favicon と同じ理由が当たる。
+ * **刻みは残す。** 124px で描くので潰れない。**刻みが無いと、ただの抽象記号になる。**
+ * 落とすのは favicon（16px）だけである。
  *
  * 塗りとその上の色は、宣言する塗りの組（決定6-9）をそのまま使う。
  */
@@ -26,8 +27,8 @@ export default function AppleIcon() {
         }}
       >
         <svg width="124" height="124" viewBox={VIEW_BOX} fill={onBrandFill} fillRule="evenodd">
-          <path d={MARK_PATH_PLAIN} />
-          <path d={MARK_PATH_PLAIN} transform={ROTATION} />
+          <path d={MARK_PATH} />
+          <path d={MARK_PATH} transform={ROTATION} />
         </svg>
       </div>
     ),
