@@ -11,6 +11,7 @@ import {
   CarouselSlide,
   CarouselSlides,
 } from './carousel.tsx';
+import Edge from './examples/edge.tsx';
 import '../../test/tokens.css';
 
 /**
@@ -197,4 +198,33 @@ describe('自動で送る', () => {
     await expect.poll(() => btn().getAttribute('aria-label')).toBe('自動で送るのを止める');
   });
 
+});
+
+describe('例が教えている形', () => {
+  /**
+   * **例は教材である**（決定6-4）。展示ページも型表もここから出る。
+   *
+   * 止める器を**送る器の場所に置いてしまい**、「前へ」が消えた例を一度配った。
+   * 利用者の指摘で気づいた——**4つとも別の役目を持つ。**
+   *
+   *   前へ・次へ   場所を移す
+   *   止める・再生 勝手に動くのを制する
+   *   印           いまどこか
+   *
+   * 例が片方を落としたら落ちるようにする。
+   */
+  it('自動で送る例が、送る器も止める器も両方見せている', async () => {
+    const { container } = await render(onSurface(<Edge />));
+    const auto = container.querySelector('[aria-label="自動で送るもの"]');
+    if (!auto) throw new Error('自動で送る例が描画されていません');
+
+    for (const [name, selector] of [
+      ['前へ', '[data-sg-component="carousel-previous"]'],
+      ['次へ', '[data-sg-component="carousel-next"]'],
+      ['止める・再生', '[data-sg-component="carousel-play-pause"]'],
+      ['印', '[data-sg-component="carousel-markers"]'],
+    ] as const) {
+      expect(auto.querySelector(selector), `${name}が例に無い`).not.toBeNull();
+    }
+  });
 });

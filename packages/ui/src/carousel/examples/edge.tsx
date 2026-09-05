@@ -20,6 +20,9 @@ import {
  * 自動で送る形には**止める器が必須**である。置かないと落ちる——
  * 自動で動くものには止める手段が要る。
  * 動きを減らす設定のときは**止まった状態で始まる。**
+ *
+ * **止める器は、送る器の代わりではない。** 4つとも別の役目を持つので、
+ * 同じ場所に置くと片方が消える。
  */
 export default function Edge() {
   return (
@@ -44,10 +47,20 @@ export default function Edge() {
             </CarouselSlide>
           ))}
         </CarouselSlides>
+        {/*
+          **止める器は、送る器の代わりではない。** 4つとも別の役目を持つ。
+
+          前へ・次へは**場所を移す**もの、止める・再生は**勝手に動くのを制する**もの、
+          印は**いまどこか**を示すもの。
+          同じ場所に置くと、片方が消える。
+        */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <CarouselPlayPause />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <CarouselPrevious />
+            <CarouselNext />
+          </div>
           <CarouselMarkers />
-          <CarouselNext />
+          <CarouselPlayPause />
         </div>
       </Carousel>
 
