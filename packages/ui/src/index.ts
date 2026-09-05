@@ -29,6 +29,7 @@ export {
   type ToastController,
   showToast,
   dismissToast,
+  removeToast,
   dismissAllToasts,
   type Toast,
   type ToastInput,

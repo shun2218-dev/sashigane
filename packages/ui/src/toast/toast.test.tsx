@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { Button } from '../button/button.tsx';
-import { dismissAllToasts, showToast } from './toast-store.ts';
+import { dismissAllToasts, dismissToast, showToast } from './toast-store.ts';
 import { Toaster } from './toast.tsx';
 import { useToast } from './use-toast.ts';
 import '../../test/tokens.css';
@@ -167,8 +167,26 @@ describe('描く場所', () => {
     await expect.poll(() => toastsIn(container)).toHaveLength(1);
     // **補間の途中の値は読まない。** 動きの根拠になっている宣言を読む
     const cs = getComputedStyle(toastsIn(container)[0] as Element);
-    expect(cs.transitionProperty).toContain('opacity');
-    expect(Number.parseFloat(cs.transitionDuration)).toBeGreaterThan(0);
+    expect(cs.animationName).toContain('sg-appear');
+    expect(Number.parseFloat(cs.animationDuration)).toBeGreaterThan(0);
+  });
+
+  it('消えるときにも動きが付いていて、終わってから外れる', async () => {
+    const { container } = await render(onSurface(<Toaster />));
+    const id = showToast({ message: '消える', duration: null });
+    await expect.poll(() => toastsIn(container)).toHaveLength(1);
+
+    dismissToast(id);
+    /*
+     * **その場では外れない。** 消えかけを経る。
+     * ここが即座に 0 になるなら、出ていく動きは誰にも見えていない。
+     */
+    await expect.poll(() => toastsIn(container)[0]?.hasAttribute('data-sg-leaving')).toBe(true);
+    const cs = getComputedStyle(toastsIn(container)[0] as Element);
+    expect(cs.animationName).toContain('sg-disappear');
+
+    // **動きが終われば外れる。** 長さは CSS の中にしかない
+    await expect.poll(() => toastsIn(container), { timeout: 2000 }).toHaveLength(0);
   });
 });
 
@@ -391,27 +409,25 @@ describe('残り時間のゲージ（決定6-46）', () => {
      * **属性だけでなく、実際に止まっていることを測る。**
      * 属性が付いていても、規則が当たっていなければ動き続ける。
      *
-     * **属性が付いた直後に読むと、まだ1フレーム進む**——動きは合成側で走っており、
-     * 止まるまでに一拍ある。実際、16ms ぶん進んだ値を掴んで落ちた。
+     * **動きそのものの時刻を読む。** `currentTime` は描画とは無関係の厳密な値で、
+     * フレームが飛んでも同じ数を返す。
      *
-     * **止まったことを先に確かめる。** 描画を1つ跨いで同じ値になるまで待つ。
-     *
-     * **同じフレームの中で2回読んでも必ず同じ値になる**——走っていても等しい。
-     * はじめそれで「止まった」と判定し、**3回とも同じだけ進んだ値を掴んで落ちた。**
+     * かつて `transform` を読んで比べていたが、**同じフレームの中では
+     * 走っていても等しい**ので、フレームが飛べば「止まった」と誤判定できた。
      */
-    await expect
-      .poll(
-        async () => {
-          const a = getComputedStyle(gauge).transform;
-          await new Promise((r) => requestAnimationFrame(() => r(undefined)));
-          return getComputedStyle(gauge).transform === a;
-        },
-        { timeout: 1000 },
-      )
-      .toBe(true);
+    const animation = gauge.getAnimations()[0];
+    if (!animation) throw new Error('ゲージが動いていません');
+    await expect.poll(() => animation.playState).toBe('paused');
 
-    const before = getComputedStyle(gauge).transform;
+    /*
+     * **`playState` が変わってから、実際に止まるまで一拍ある。**
+     * 読むと 16.7ms——ちょうど1フレーム——進んだ値が返った。
+     *
+     * `ready` は、その一拍が済むまでを持っている。**待つ側を自分で作らない。**
+     */
+    await animation.ready;
+    const at = animation.currentTime;
     await new Promise((r) => setTimeout(r, 250));
-    expect(getComputedStyle(gauge).transform, '止まっていない').toBe(before);
+    expect(animation.currentTime, '止まっていない').toBe(at);
   });
 });
