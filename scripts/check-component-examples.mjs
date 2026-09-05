@@ -400,12 +400,21 @@ const markerOf = (name) =>
     .toLowerCase();
 
 /** export している部品の名前。`export function X` と `export const X = ` の両方 */
+/**
+ * **全部大文字のものは定数であって部品ではない。**
+ *
+ * React の部品は必ず先頭が大文字の CamelCase である。`AUTOPLAY_DELAY` のような
+ * 名前は部品になりえない。除かないと、**定数に名乗りを求めて落ちる**——
+ * 実際に落ちた。
+ */
+const isConstantName = (name) => /^[A-Z0-9_]+$/.test(name);
+
 const exportedComponents = (source) => {
   const text = withoutComments(source);
   return [
     ...[...text.matchAll(/export\s+function\s+([A-Z]\w*)/g)].map((m) => m[1]),
     ...[...text.matchAll(/export\s+const\s+([A-Z]\w*)\s*=/g)].map((m) => m[1]),
-  ];
+  ].filter((name) => !isConstantName(name));
 };
 
 /**

@@ -24,21 +24,38 @@
  * 利用側の責務にしない。
  * ─────────────────────────────────────────────
  */
+import Autoplay from 'embla-carousel-autoplay';
 import useEmblaCarousel from 'embla-carousel-react';
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useMemo,
+  useRef,
   useState,
   type HTMLAttributes,
   type ReactNode,
   type Ref,
 } from 'react';
 import { Button } from '../button/button.tsx';
-import { IconChevronLeft, IconChevronRight } from '../icon/icon.tsx';
+import { IconChevronLeft, IconChevronRight, IconPause, IconPlay } from '../icon/icon.tsx';
 
 type EmblaApi = ReturnType<typeof useEmblaCarousel>[1];
+
+/**
+ * 自動で送る間隔の既定。
+ *
+ * **選んだ値である。導いていない。** 滞在の段の `dwell-2` と同じ数だが、
+ * そこから解いているわけではない——**偶然そろっているだけ**である。
+ *
+ * CSS から読む道は取らない。読んでミリ秒に直す経路は、
+ * **`4000ms` が `4s` として返るのを読み違えて**一度壊したので外してある。
+ *
+ * 段に合わせたい利用側は `autoplay={{ delay }}` で渡す。
+ * **こちらが持つのは「渡されなかったときの1つ」だけ**である。
+ */
+export const AUTOPLAY_DELAY = 4000;
 
 interface CarouselState {
   /** 送り枠に付ける ref。**枠は CarouselSlides が描く** */
@@ -50,6 +67,17 @@ interface CarouselState {
   count: number;
   canPrev: boolean;
   canNext: boolean;
+  /** 自動で送る設定になっているか */
+  autoplay: boolean;
+  /** いま自動で送っているか。**止めているあいだは偽** */
+  playing: boolean;
+  toggle: () => void;
+  /**
+   * 停止・再生の器が置かれたことを申告する。
+   *
+   * **置かれていないと落とす**（WCAG 2.2.2）。自動で動くものには止める手段が要る。
+   */
+  registerPlayPause: () => () => void;
 }
 
 const Ctx = createContext<CarouselState | null>(null);
@@ -62,6 +90,15 @@ const useCarousel = (): CarouselState => {
 };
 
 export interface CarouselProps extends HTMLAttributes<HTMLDivElement> {
+  /**
+   * 自動で送る。**既定は送らない。**
+   *
+   * **`CarouselPlayPause` を一緒に置かないと落ちる**（WCAG 2.2.2）——
+   * 自動で動くものには、止める手段が無ければならない。
+   *
+   * 動きを減らす設定のときは**止まった状態で始まる。** 再生は利用者が選ぶ。
+   */
+  autoplay?: boolean | { delay?: number };
   /**
    * 端で折り返す。**既定は折り返さない。**
    *
@@ -96,7 +133,14 @@ export interface CarouselProps extends HTMLAttributes<HTMLDivElement> {
  * `label` は必須である。**何のカルーセルかが読み上げに出ない**と、
  * 前後に送っても何を見ているのか分からない。
  */
-export function Carousel({ loop = false, label, className, children, ...props }: CarouselProps) {
+export function Carousel({
+  autoplay = false,
+  loop = false,
+  label,
+  className,
+  children,
+  ...props
+}: CarouselProps) {
   /*
     **動きを減らす設定のときは飛ばす。** 利用側の責務にしない。
 
@@ -112,7 +156,66 @@ export function Carousel({ loop = false, label, className, children, ...props }:
     return () => q.removeEventListener('change', on);
   }, []);
 
-  const [viewportRef, api] = useEmblaCarousel({ loop, duration: reduce ? 0 : 25 });
+  /*
+    **自動で送るのは頼んだときだけ。** 動きを減らす設定のときは、
+    止まった状態で始める——**再生は利用者が選ぶ。**
+    黙って動かさないが、動かす手段は残す。
+  */
+  const delay = typeof autoplay === 'object' ? (autoplay.delay ?? AUTOPLAY_DELAY) : AUTOPLAY_DELAY;
+  const plugins = useMemo(
+    () =>
+      autoplay
+        ? [
+            Autoplay({
+              delay,
+              playOnInit: !reduce,
+              // **触ったら止める。** 読んでいる最中に送られるのは邪魔である
+              stopOnInteraction: true,
+              stopOnMouseEnter: true,
+              stopOnFocusIn: true,
+            }),
+          ]
+        : [],
+    [autoplay, delay, reduce],
+  );
+
+  const [viewportRef, api] = useEmblaCarousel({ loop, duration: reduce ? 0 : 25 }, plugins);
+  const [playing, setPlaying] = useState(false);
+  const hasPlayPause = useRef(false);
+
+  const registerPlayPause = useCallback(() => {
+    hasPlayPause.current = true;
+    return () => {
+      hasPlayPause.current = false;
+    };
+  }, []);
+
+  /*
+    **止める手段が無ければ落とす**（WCAG 2.2.2）。
+
+    文書に書くだけでは守られない（教訓3）。**黙って動き続けるほうが害が大きい**——
+    読んでいる最中に勝手に送られ、止める方法が無い。
+  */
+  useEffect(() => {
+    if (!autoplay) return;
+    if (hasPlayPause.current) return;
+    throw new Error(
+      'autoplay を使うときは CarouselPlayPause を一緒に置いてください（止める手段が要ります）',
+    );
+  }, [autoplay]);
+
+  const toggle = useCallback(() => {
+    const plugin = api?.plugins()?.autoplay;
+    if (!plugin) return;
+    if (plugin.isPlaying()) plugin.stop();
+    else plugin.play();
+    /*
+      **押した結果をその場で読む。** 催しに任せていた時期があるが、
+      **札が変わらなかった**——押しても「止める」のままだった。
+      催しは触って止まったときのために残してある。
+    */
+    setPlaying(plugin.isPlaying());
+  }, [api]);
   const [selected, setSelected] = useState(0);
   const [count, setCount] = useState(0);
   const [canPrev, setCanPrev] = useState(false);
@@ -126,16 +229,42 @@ export function Carousel({ loop = false, label, className, children, ...props }:
       setCanPrev(api.canScrollPrev());
       setCanNext(api.canScrollNext());
     };
-    sync();
-    api.on('select', sync).on('reInit', sync);
+    const syncPlaying = () => setPlaying(api.plugins()?.autoplay?.isPlaying() ?? false);
+    const all = () => {
+      sync();
+      syncPlaying();
+    };
+    all();
+    api
+      .on('select', all)
+      .on('reInit', all)
+      .on('autoplay:play', syncPlaying)
+      .on('autoplay:stop', syncPlaying);
     return () => {
-      api.off('select', sync).off('reInit', sync);
+      api
+        .off('select', all)
+        .off('reInit', all)
+        .off('autoplay:play', syncPlaying)
+        .off('autoplay:stop', syncPlaying);
     };
   }, [api]);
 
   const classes = 'relative flex flex-col gap-3';
   return (
-    <Ctx.Provider value={{ viewportRef, api, selected, count, canPrev, canNext }}>
+    <Ctx.Provider
+      value={{
+        viewportRef,
+        api,
+        selected,
+        count,
+        canPrev,
+        canNext,
+        autoplay: Boolean(autoplay),
+        playing,
+        toggle,
+        registerPlayPause,
+      }}
+    >
       <div
         data-sg-component="carousel"
         role="region"
@@ -289,5 +418,40 @@ export function CarouselMarkers({
         />
       ))}
     </div>
+  );
+}
+
+/**
+ * 自動で送るのを止める／再生する。**`autoplay` を使うときは必須である。**
+ *
+ * WCAG 2.2.2 は、自動で動くものに**止める手段**を求めている。
+ * 置かれていないと `Carousel` が落ちる——**黙って動き続けるほうが害が大きい。**
+ *
+ * 動きを減らす設定のときは**止まった状態で始まる。** ここから再生できる。
+ */
+export function CarouselPlayPause({
+  playLabel = '自動で送る',
+  pauseLabel = '自動で送るのを止める',
+  className,
+}: {
+  playLabel?: string;
+  pauseLabel?: string;
+  className?: string;
+}) {
+  const { autoplay, playing, toggle, registerPlayPause } = useCarousel();
+  useEffect(() => registerPlayPause(), [registerPlayPause]);
+  // **自動で送らない枠では何も出さない。** 押しても何も起きないものを置かない
+  if (!autoplay) return null;
+  return (
+    <Button
+      data-sg-component="carousel-play-pause"
+      variant="outline"
+      iconOnly
+      aria-label={playing ? pauseLabel : playLabel}
+      onClick={toggle}
+      className={className}
+    >
+      {playing ? <IconPause /> : <IconPlay />}
+    </Button>
   );
 }

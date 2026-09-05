@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import {
+  AUTOPLAY_DELAY,
   Carousel,
   CarouselMarkers,
   CarouselNext,
+  CarouselPlayPause,
   CarouselPrevious,
   CarouselSlide,
   CarouselSlides,
@@ -128,4 +130,71 @@ describe('組み立て', () => {
     // **何も起きないまま黙ると、配線の間違いに気づけない**
     await expect(render(onSurface(<CarouselPrevious />))).rejects.toThrow();
   });
+});
+
+describe('自動で送る', () => {
+  const auto = (props: Record<string, unknown> = {}) => (
+    <Carousel label="見せ物" autoplay {...props}>
+      <CarouselSlides>
+        {['一', '二', '三'].map((n) => (
+          <CarouselSlide key={n}>{n}枚目</CarouselSlide>
+        ))}
+      </CarouselSlides>
+      <CarouselPlayPause />
+    </Carousel>
+  );
+
+  it('止める手段が無ければ落ちる', async () => {
+    /*
+     * **WCAG 2.2.2。** 自動で動くものには止める手段が要る。
+     *
+     * 文書に書くだけでは守られない。**黙って動き続けるほうが害が大きい**——
+     * 読んでいる最中に勝手に送られ、止める方法が無い。
+     */
+    await expect(
+      render(
+        onSurface(
+          <Carousel label="止められないもの" autoplay>
+            <CarouselSlides>
+              <CarouselSlide>一</CarouselSlide>
+              <CarouselSlide>二</CarouselSlide>
+            </CarouselSlides>
+          </Carousel>,
+        ),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('置いてあれば落ちない', async () => {
+    const { container } = await render(onSurface(auto()));
+    expect(container.querySelector('[data-sg-component="carousel-play-pause"]')).not.toBeNull();
+  });
+
+  it('自動で送らない枠には、止める器を出さない', async () => {
+    // **押しても何も起きないものを置かない**
+    const { container } = await render(
+      onSurface(
+        <Carousel label="手で送るもの">
+          <CarouselSlides>
+            <CarouselSlide>一</CarouselSlide>
+          </CarouselSlides>
+          <CarouselPlayPause />
+        </Carousel>,
+      ),
+    );
+    expect(container.querySelector('[data-sg-component="carousel-play-pause"]')).toBeNull();
+  });
+
+  it('押すと止まり、もう一度押すと再生する', async () => {
+    const { container } = await render(onSurface(auto()));
+    const btn = () =>
+      container.querySelector('[data-sg-component="carousel-play-pause"]') as HTMLButtonElement;
+    // **札が状態を伝える。** 図案だけでは、いまどちらなのかが読み上げに出ない
+    await expect.poll(() => btn().getAttribute('aria-label')).toBe('自動で送るのを止める');
+    await userEvent.click(btn());
+    await expect.poll(() => btn().getAttribute('aria-label')).toBe('自動で送る');
+    await userEvent.click(btn());
+    await expect.poll(() => btn().getAttribute('aria-label')).toBe('自動で送るのを止める');
+  });
+
 });

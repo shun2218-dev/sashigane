@@ -17,7 +17,18 @@
  * ─────────────────────────────────────────────
  */
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Plus, X } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  Pause,
+  Play,
+  Plus,
+  X,
+} from 'lucide-react';
 import type { LucideIcon, LucideProps } from 'lucide-react';
 
 /**
@@ -121,3 +132,9 @@ export const IconChevronLeft = defineIcon(ChevronLeft);
 
 /** 右向きの矢印。**次へ送る** */
 export const IconChevronRight = defineIcon(ChevronRight);
+
+/** 止める。**自動で送るのを止める**（Carousel が使う） */
+export const IconPause = defineIcon(Pause);
+
+/** 再生する。**自動で送る** */
+export const IconPlay = defineIcon(Play);
