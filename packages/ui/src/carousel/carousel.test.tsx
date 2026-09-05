@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
+import type { CarouselOptions } from './carousel.tsx';
 import {
   AUTOPLAY_DELAY,
   Carousel,
@@ -27,7 +28,7 @@ import '../../test/tokens.css';
 
 const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}</div>;
 
-const three = (props: { loop?: boolean } = {}) => (
+const three = (props: Record<string, unknown> = {}) => (
   <Carousel label="おすすめ" {...props}>
     <CarouselSlides>
       {['一', '二', '三'].map((n) => (
@@ -105,7 +106,7 @@ describe('送り', () => {
   });
 
   it('折り返す形では端でも押せる', async () => {
-    const { container } = await render(onSurface(three({ loop: true })));
+    const { container } = await render(onSurface(three({ options: { loop: true } })));
     await expect.poll(() => byLabel(container, '前へ').disabled).toBe(false);
   });
 });
@@ -226,5 +227,28 @@ describe('例が教えている形', () => {
     ] as const) {
       expect(auto.querySelector(selector), `${name}が例に無い`).not.toBeNull();
     }
+  });
+});
+
+describe('送りの設定', () => {
+  it('Embla の設定をそのまま渡せる', async () => {
+    const { container } = await render(
+      onSurface(three({ options: { loop: true, align: 'start' } })),
+    );
+    // **折り返す設定が効いていれば、先頭でも前へ送れる**
+    await expect.poll(() => byLabel(container, '前へ').disabled).toBe(false);
+  });
+
+  it('duration は型として渡せない', () => {
+    /*
+     * **送りの速さは動きを減らす設定から決めている。**
+     * 渡せるようにすると、利用側がその設定を打ち消せてしまう。
+     *
+     * これは型で塞いでいる。**走らせても分からない**ので、
+     * 型が受け付けないことをここに書き残す。
+     */
+    // @ts-expect-error duration は受けない
+    const rejected: CarouselOptions = { duration: 100 };
+    expect(rejected).toBeTruthy();
   });
 });

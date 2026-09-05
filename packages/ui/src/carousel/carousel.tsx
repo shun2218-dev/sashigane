@@ -44,6 +44,18 @@ import { IconChevronLeft, IconChevronRight, IconPause, IconPlay } from '../icon/
 type EmblaApi = ReturnType<typeof useEmblaCarousel>[1];
 
 /**
+ * 送りの設定。**Embla のものをそのまま受ける。**
+ *
+ * 型は `useEmblaCarousel` の引数から取っている——**import を増やさない**ためで、
+ * Embla が設定を足したり変えたりすれば、こちらは何もせずに追随する。
+ *
+ * **`duration` だけ外している。** 送りの速さは動きを減らす設定から決めており、
+ * 渡せるようにすると**利用側がその設定を打ち消せてしまう。**
+ * 尊重するのは利用側の責務ではない。
+ */
+export type CarouselOptions = Omit<NonNullable<Parameters<typeof useEmblaCarousel>[0]>, 'duration'>;
+
+/**
  * 自動で送る間隔の既定。
  *
  * **選んだ値である。導いていない。** 滞在の段の `dwell-2` と同じ数だが、
@@ -100,12 +112,18 @@ export interface CarouselProps extends HTMLAttributes<HTMLDivElement> {
    */
   autoplay?: boolean | { delay?: number };
   /**
-   * 端で折り返す。**既定は折り返さない。**
+   * 送りの設定。**Embla のものをそのまま渡す。**
    *
-   * 折り返すと「最後まで来た」が分からなくなるので、
-   * **見せ物**のときだけ入れる。
+   * ```tsx
+   * <Carousel label="…" options={{ loop: true, align: 'start', slidesToScroll: 2 }} />
+   * ```
+   *
+   * よく使うのは `loop`（端で折り返す）である。
+   * **折り返すと「最後まで来た」が分からなくなる**ので、見せ物のときだけ入れる。
+   *
+   * **`duration` は受けない。** 送りの速さは動きを減らす設定から決めている。
    */
-  loop?: boolean;
+  options?: CarouselOptions;
   /**
    * 何を並べているかの名前。**読み上げが「何のカルーセルか」を言えるようにする。**
    */
@@ -118,7 +136,7 @@ export interface CarouselProps extends HTMLAttributes<HTMLDivElement> {
  * 横に送って見せる枠。**送りの仕組みは Embla が持つ。**
  *
  * ```tsx
- * <Carousel label="おすすめ">
+ * <Carousel label="おすすめ" options={{ loop: true }}>
  *   <CarouselSlides>
  *     <CarouselSlide>1枚目</CarouselSlide>
  *   </CarouselSlides>
@@ -135,7 +153,7 @@ export interface CarouselProps extends HTMLAttributes<HTMLDivElement> {
  */
 export function Carousel({
   autoplay = false,
-  loop = false,
+  options,
   label,
   className,
   children,
@@ -179,7 +197,15 @@ export function Carousel({
     [autoplay, delay, reduce],
   );
 
-  const [viewportRef, api] = useEmblaCarousel({ loop, duration: reduce ? 0 : 25 }, plugins);
+  /*
+    **`duration` は後に置く。** 利用側の設定を先に広げ、こちらが持つものを上書きする。
+    逆にすると、**利用側が動きを減らす設定を打ち消せてしまう。**
+  */
+  const emblaOptions = useMemo(
+    () => ({ ...options, duration: reduce ? 0 : 25 }),
+    [options, reduce],
+  );
+  const [viewportRef, api] = useEmblaCarousel(emblaOptions, plugins);
   const [playing, setPlaying] = useState(false);
   const hasPlayPause = useRef(false);
 
