@@ -97,6 +97,8 @@ pnpm check:token-values       # tokens.js の値が tokens.css とずれてい�
 pnpm check:docs-refs          # 文書が挙げている名前と参照が実在すること（Issue #91）と
                               # version を持つ package.json が1つだけであること（決定4-6）
 pnpm check:token-types        # 生成した tokens.d.ts が型として成立すること
+pnpm check:brand              # ブランドの色がトークンの段とずれていないことと、
+                              # 追跡下の SVG がマークの形と一致すること（決定6-44）
 pnpm check:output-header      # 生成物が配布先で意味を成すこと（原則6、決定3-4）
 pnpm check:component-examples # 3状態の例・展示ページ・テストが揃っていること（決定6-4・6-6）と
                               # 展示がトークンを受け取れること（決定6-12）と
@@ -122,7 +124,7 @@ pnpm check:component-classes  # コンポーネントが書いたクラスを生
 
 `check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` `check:token-values`
 `check:token-types` `check:output-header` `check:sample-page` `check:docs-refs`
-`check:component-classes` `check:public-language` は `dist/` を読むので、
+`check:component-classes` `check:public-language` `check:brand` は `dist/` を読むので、
 先に `pnpm build:tokens` が要る。
 CI はその順で走らせている。
 
