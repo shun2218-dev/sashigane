@@ -17,7 +17,7 @@
  * ─────────────────────────────────────────────
  */
 import { cva, type VariantProps } from 'class-variance-authority';
-import { Check, ChevronDown, Plus, X } from 'lucide-react';
+import { Check, ChevronDown, Eye, EyeOff, Plus, X } from 'lucide-react';
 import type { LucideIcon, LucideProps } from 'lucide-react';
 
 /**
@@ -107,3 +107,9 @@ export const IconChevronDown = defineIcon(ChevronDown);
 
 /** 印。**満たしていることを表す**（Field が使う） */
 export const IconCheck = defineIcon(Check);
+
+/** 目。**隠しているものを見せる**（PasswordInput が使う） */
+export const IconEye = defineIcon(Eye);
+
+/** 閉じた目。**見せているものを隠す** */
+export const IconEyeOff = defineIcon(EyeOff);
