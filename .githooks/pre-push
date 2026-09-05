@@ -27,7 +27,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       fi
       echo "pre-push: $branch への直接 push は禁止されています。" >&2
       echo "          作業ブランチを develop から切って PR を出してください。" >&2
-      echo "          リリースは develop → main の PR で行います（docs/branching.md）。" >&2
+      echo "          リリースは develop → release/vX.Y.Z → main の PR で行います（docs/branching.md）。" >&2
       exit 1
     fi
   done

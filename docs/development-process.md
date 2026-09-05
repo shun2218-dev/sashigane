@@ -23,7 +23,8 @@ pnpm install
 
 **チャット内だけのレビューはレビューとみなさない。** 後から誰も検証できないため。
 
-リリースするときだけ `develop` → `main` の PR を出す。
+リリースするときは `develop` から `release/vX.Y.Z` を切り、そこから `main` へ PR を出す。
+**`main` へ入れたあと `release/vX.Y.Z` → `develop` の戻しを出す**（[branching.md](./branching.md)）。
 
 ## 詰まったとき
 
