@@ -186,31 +186,38 @@ describe('開閉の動き（決定6-45）', () => {
   it('開くとき、途中の高さを通る', async () => {
     const { container } = await render(one('中身が入っている。ここが伸び縮みする。'));
     const details = detailsIn(container);
-    const closed = details.getBoundingClientRect().height;
+
+    /*
+     * **押す前から毎フレーム測る。** ここに至るまでに2回外している。
+     *
+     *   押したあとに測り始め、最初の1回を閉じた高さと比べた
+     *     → **既に途中の高さ**なので、速さ次第で落ちた（CI で `51 <= 50`）
+     *   押したあとに走っている遷移を探した
+     *     → `userEvent.click` を待つあいだに 200ms の遷移が終わっていた
+     *   `transitionrun` を張った
+     *     → **擬似要素の遷移は元の要素まで上がってこない**（測った。1件も届かない）
+     *
+     * 押す前から測れば、**閉じた高さも途中も終わりも同じ列に入る。**
+     * 速さが変わっても、列が長くなるか短くなるかの違いにしかならない。
+     */
+    const heights: number[] = [];
+    let sampling = true;
+    const loop = (async () => {
+      while (sampling) {
+        heights.push(Math.round(details.getBoundingClientRect().height));
+        await new Promise((r) => requestAnimationFrame(() => r(undefined)));
+      }
+    })();
 
     const summary = container.querySelector('summary');
     await userEvent.click(summary as Element);
+    await new Promise((r) => setTimeout(r, 500));
+    sampling = false;
+    await loop;
 
-    /*
-     * **静止した2つの状態を見比べても、動いたことは分からない。**
-     * 開き終わった高さだけを測ると、瞬間で開いても通る（教訓4）。
-     *
-     * 途中の高さを1つでも捉えれば、遷移が実際に走っている。
-     * **`expect.poll` で待つ**——遷移は次の描画より後に進む。
-     */
-    const seen = new Set<number>();
-    await expect
-      .poll(
-        () => {
-          seen.add(Math.round(details.getBoundingClientRect().height));
-          return seen.size;
-        },
-        { timeout: 2000 },
-      )
-      .toBeGreaterThan(2);
-
-    const heights = [...seen].sort((a, b) => a - b);
-    expect(heights[0], '閉じた高さ').toBeLessThanOrEqual(Math.round(closed) + 1);
-    expect(heights.at(-1), '開いた高さ').toBeGreaterThan(Math.round(closed));
-  });
-});
+    const closed = heights[0] as number;
+    const distinct = new Set(heights);
+    // **瞬間で開くと2種類しか出ない。** 途中を通っていることがそのまま出る
+    expect(distinct.size, `見えた高さ: ${[...distinct].join(',')}`).toBeGreaterThan(2);
+    expect(Math.max(...heights), '開いた高さ').toBeGreaterThan(closed);
+  });});
