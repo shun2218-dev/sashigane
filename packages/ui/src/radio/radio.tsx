@@ -10,6 +10,14 @@
  * チェックボックスと違い、**塗るのは箱全体ではなく中の点**である。
  * 外側の輪は線のままにしておかないと、選ばれていない側と形が変わって見える。
  *
+ * ## 輪 16 に対して点 8
+ *
+ * **輪と点の比は 0.5 である。** 24 の輪に 8 の点を置いていた時期があり、
+ * 比 0.33 で**輪の中が空いて見えた。**
+ *
+ * 中間の大きさは無い——`spacing` に 20px の段が無いので、輪は 16 か 24 しか取れない。
+ * チェックボックスと揃えて 16 にしている。
+ *
  * 出し入れは `peer-checked:` で、**状態を持たない**（checkbox.tsx の覚書）。
  * ─────────────────────────────────────────────
  */
@@ -51,7 +59,7 @@ export function Radio({ valid, className, ...props }: RadioProps) {
   const state = stateOf(valid, props['aria-invalid']);
   // 式の中で組み立てない。cva の呼び出しを補間の中へ直接置くと、
   // 静的解析の検査が読み切れずに落ちる
-  const outer = `${ring({ state })} relative inline-flex size-6 shrink-0 rounded-full`;
+  const outer = `${ring({ state })} relative inline-flex size-4 shrink-0 rounded-full`;
   const off = props.disabled;
   return (
     <span data-sg-component="radio-frame" className={className ? `${outer} ${className}` : outer}>

@@ -151,6 +151,29 @@ describe('面と線', () => {
     expect(b.outlineStyle).toBe('none');
   });
 
+  /**
+   * **点と輪の比を測る。**
+   *
+   * 24 の輪に 8 の点を置いていた時期があり、比 0.33 で**輪の中が空いて見えた**
+   * （利用者の指摘）。**見た目の話だが、比は数で測れる。**
+   *
+   * 上下に幅を持たせているのは、`spacing` に 20px の段が無いためである
+   * ——輪は 16 か 24 しか取れないので、比も飛び飛びにしかならない。
+   */
+  it('選ばれた点が、輪の半分ある', async () => {
+    const { container } = await render(
+      onSurface(<Radio aria-label="x" name="ratio" value="a" defaultChecked />),
+    );
+    const frame = frameIn(container);
+    const dot = markIn(frame).firstElementChild;
+    if (!dot) throw new Error('点が描画されていません');
+    const outer = frame.getBoundingClientRect().width;
+    const inner = dot.getBoundingClientRect().width;
+    expect(outer, '輪の大きさ').toBe(16);
+    expect(inner / outer, '点と輪の比').toBeGreaterThanOrEqual(0.4);
+    expect(inner / outer, '点と輪の比').toBeLessThanOrEqual(0.6);
+  });
+
   it('丸い', async () => {
     const { container } = await render(onSurface(<Radio aria-label="x" name="r" value="a" />));
     const frame = frameIn(container);

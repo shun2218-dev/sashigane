@@ -60,7 +60,7 @@ export function Checkbox({ valid, className, ...props }: CheckboxProps) {
   const state = stateOf(valid, props['aria-invalid']);
   // 式の中で組み立てない。cva の呼び出しを補間の中へ直接置くと、
   // 静的解析の検査が読み切れずに落ちる
-  const outer = `${ring({ state })} relative inline-flex size-6 shrink-0 rounded-sm`;
+  const outer = `${ring({ state })} relative inline-flex size-4 shrink-0 rounded-sm`;
   const off = props.disabled;
   return (
     <span
@@ -89,7 +89,8 @@ export function Checkbox({ valid, className, ...props }: CheckboxProps) {
             : 'pointer-events-none absolute inset-0 hidden items-center justify-center rounded-sm peer-checked:flex'
         }
       >
-        <IconCheck size="sm" />
+        {/* **`sm`（16px）は器と同じ大きさで収まらない。** 器に入る段を使う */}
+        <IconCheck size="xs" />
       </span>
     </span>
   );
