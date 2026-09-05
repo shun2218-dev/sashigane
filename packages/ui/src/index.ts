@@ -18,6 +18,10 @@ export { Button, type ButtonProps } from './button/index.ts';
 export { Field, type FieldProps } from './field/index.ts';
 export { Form, type FormProps, FormActions, type FormActionsProps } from './form/index.ts';
 export { Input, type InputProps } from './input/index.ts';
+export {
+  PasswordInput,
+  type PasswordInputProps,
+} from './password-input/index.ts';
 export { Textarea, type TextareaProps } from './textarea/index.ts';
 export {
   Toaster,

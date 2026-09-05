@@ -15,6 +15,7 @@
     "form",
     "field",
     "input",
+    "password-input",
     "textarea",
     "checkbox",
     "radio",
