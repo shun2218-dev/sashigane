@@ -1,26 +1,36 @@
 #!/bin/sh
-# main への直接 push を機械的に防ぐ。
-# 理由: 開発プロセス上、変更は必ず Issue → branch → PR を通す。
-# 人間・AIエージェントを問わず、速度を理由にこの手順を飛ばさないための強制。
+# main と develop への直接 push を機械的に防ぐ。
+#
+# ブランチの役割:
+#   main    リリース線。ここにあるものが公開される
+#   develop 統合線。作業ブランチはここから切り、ここへ PR を出す
+#
+# 変更は必ず Issue → branch → PR を通す。人間・AIエージェントを問わず、
+# 速度を理由にこの手順を飛ばさないための強制。
+#
+# このフックは手元だけの防御である。clone した別環境や GitHub の Web UI からの
+# 操作は止められない。そのため GitHub 側の branch protection と併用する。
+# 詳細は docs/branching.md。
 #
 # 意図的に迂回する必要がある場合のみ:
-#   SASHIGANE_ALLOW_MAIN_PUSH=1 git push
+#   SASHIGANE_ALLOW_PROTECTED_PUSH=1 git push
 # 迂回した場合は docs/agent-failures.md に理由を記録すること。
 
-protected="main"
+protected_branches="main develop"
 
 while read -r local_ref local_sha remote_ref remote_sha; do
-  case "$remote_ref" in
-    "refs/heads/$protected")
-      if [ "$SASHIGANE_ALLOW_MAIN_PUSH" = "1" ]; then
-        echo "pre-push: SASHIGANE_ALLOW_MAIN_PUSH=1 のため $protected への push を許可します" >&2
+  for branch in $protected_branches; do
+    if [ "$remote_ref" = "refs/heads/$branch" ]; then
+      if [ "$SASHIGANE_ALLOW_PROTECTED_PUSH" = "1" ]; then
+        echo "pre-push: SASHIGANE_ALLOW_PROTECTED_PUSH=1 のため $branch への push を許可します" >&2
         exit 0
       fi
-      echo "pre-push: $protected への直接 push は禁止されています。" >&2
-      echo "          branch を切って PR を出してください。" >&2
+      echo "pre-push: $branch への直接 push は禁止されています。" >&2
+      echo "          作業ブランチを develop から切って PR を出してください。" >&2
+      echo "          リリースは develop → release/vX.Y.Z → main の PR で行います（docs/branching.md）。" >&2
       exit 1
-      ;;
-  esac
+    fi
+  done
 done
 
 exit 0

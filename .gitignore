@@ -5,9 +5,27 @@ node_modules/
 
 # 生成物はコミットしない（原則1）
 packages/*/dist/
+apps/*/dist/
+apps/*/public/tokens.css
+apps/*/public/preview.css
 apps/*/public/r/
+apps/*/generated/
 *.tsbuildinfo
+
+# 実ブラウザのテストが失敗時に残すもの（決定6-6）
+packages/*/src/**/__screenshots__/
+.vitest-attachments/
 
 # ビルド成果物
 .next/
-storybook-static/
+apps/*/out/
+# Next.js が生成する型参照。中身が .next/ を指すので、ビルド前は解決できない
+apps/*/next-env.d.ts
+
+# next dev が書き出す。**生成物なのでコミットしない**（原則1）。
+# 中身は「この Next.js は訓練データと違う。node_modules/next/dist/docs/ を読め」という
+# 案内で、消しても next dev が書き直す。読む必要があるときは node_modules から読む。
+apps/*/AGENTS.md
+apps/*/CLAUDE.md
+apps/docs/public/r/
+packages/ui/.registry-check/

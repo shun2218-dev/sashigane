@@ -1,157 +1,192 @@
 # sashigane
 
-自分の開発を楽にするための、自分好みのデザインシステム。
+トークンを唯一の正とするデザインシステム。値は規則から生成し、色は OKLCH で作る。
+配布は npm ではなく **shadcn レジストリ方式**で、利用側リポジトリにコードを落とす。
 
-トークンを単一の正とし、値は規則から生成する。色は OKLCH で生成し、
-配布は npm パッケージではなく shadcn レジストリ方式で行う。
-
-> **現在の状態: 設計確定（実装前）**
-> スケールの基準・セマンティック役割・検証結果を [docs/](./docs) に確定させた段階。
-> コードはまだ無い。
-
----
-
-## 設計の要点
-
-### 値は導出する。選ばない
-
-唯一の根本定数は `root = 16px`。ここから spacing / typography を機械的に生成する。
-`tokens.json` が持つ生の数字は最小限で、それ以外はすべて規則の出力である。
-
-```
-spacing.base = root ÷ 4 = 4px
-type.base    = root     = 16px
-line-height  = a + (root ÷ 2) / size
-radius       = spacing スケールの 0〜16 の部分集合
-```
-
-時間（duration）だけは `root` から導けないため独自のアンカーを持つ。これは例外として明示している。
-
-### 覆えるかを先に検証した
-
-既存4プロジェクト（ichirizuka / pylabo / holosphere / pdf-merge-app）から
-実値を全抽出し、生成スケールが実需要を表現できるかを機械的に照合した。
-
-| 項目 | 結果 |
-|---|---|
-| spacing（4px 以上） | ✅ 33/34（97%）を ±20% 以内で覆う |
-| radius | ✅ 完全に覆う。外れは全て過去の実装の自己矛盾 |
-| duration（遷移） | ✅ 覆う |
-| font-size | ⚠️ 上限不足 → 上方向を3段延長し ±8% カバー率 44% → **78%** |
-| line-height | ⚠️ 単一式では 1.0 未満を生成できず、大型数値の詰めた行送りを表現できなかった → 漸近線を3系統に分割 |
-| border-width | ⚠️ 未定義だった → 新規に定義 |
-| ループアニメーション周期 | ⚠️ 遷移とは知覚上の制約が違う → 別スケールとして新規に定義 |
-
-**検証によって設計を4箇所修正した。** 覆えなかった箇所と、それが
-「役割の定義不足」なのか「過去の実装が不統一だっただけ」なのかの切り分けは
-[docs/verification.md](./docs/verification.md) に全て残してある。
-
-主な「不統一だっただけ」の例:
-
-- `padding: 18px 20px` — 同一宣言内に 18 と 20 が混在。選ばれた値ではない
-- pylabo は自前で radius トークンを定義しながら、別の場所で `5px` `10px` を直書きしていた
-- ichirizuka の accent 色が、アクセント / リンク / フォーカスリング / 増加方向 / データ塗りの
-  **5つの役割を1つの値で兼ねていた**（値の不統一ではなく、役割の定義が存在しなかった）
-
-### 層を分ける。そして分離を機械的に証明する
-
-```
-プリミティブ   --sg-blue-500        生成物。全段用意してよい
-セマンティック --sg-color-danger    実際に使う場所が1つ以上あるものだけ定義
-```
-
-コンポーネントはセマンティックしか参照できない。名前が数字で終わるか単語で終わるかで
-層が判別できるため、lint は1つの正規表現で強制できる。
-
-`packages/tokens` は React も `packages/ui` も import しない。これを CI で検査する。
-
-- `packages/tokens/package.json` の `dependencies` が空であること
-- 素の HTML に `tokens.css` だけを読み込み、CSS 変数が解決すること
-
-**トークン層が単体で成立することが、この設計の証明になる。**
-
-### 3段階の導入深度
-
-| 導入深度 | 内容 |
-|---|---|
-| `@sashigane/tokens` | CSS 変数のみ。React 非依存 |
-| `@sashigane/<component>` | コンポーネント単体 |
-| `@sashigane/base` | 全部（`registry:base`） |
+> ## ⚠️ 開発中：まだインストールできません
+>
+> トークンの生成・CSS / SCSS / JS の出力・色システムは動いています。
+> コンポーネントは Card と Button の2つがあります。
+>
+> **未実装なのはレジストリの配信**です。バージョンの規則は決めましたが、
+> **タグはまだ1つも切っていません** — 配信が動いていないものを
+> リリースしたことにしないためです。
 
 ---
+
+## 何を解決するものか
+
+複数のプロジェクトで同じ UI を書き直すのをやめるために作っている。
+
+- **値を選ばない。** 唯一の根本定数は `root = 16px`。余白も文字サイズも行高も、そこから規則で導く
+- **トークン層は React にも Tailwind にも依存しない。** 素の CSS でも SCSS でも使える
+- **コンポーネントはセマンティックトークンしか参照できない。** lint で強制する
+
+## 導入（予定）
+
+3段階の深さで入れられるようにする。
+
+| 深度 | 入るもの | 依存 |
+|---|---|---|
+| `@sashigane/tokens` | CSS 変数のみ | なし（React 不要） |
+| `@sashigane/<component>` | コンポーネント単体 | React |
+| `@sashigane/base` | 全部 | React |
+
+**トークンだけを入れて動くこと**を要件にしている。
+素の CSS で書かれたプロジェクトにも、SCSS のプロジェクトにも入る。
+
+Tailwind を使う場合は、`--sg-*` を Tailwind の名前空間に写像するアダプタ CSS を追加で読む。
+トークン層自体は Tailwind を知らない。
+
+アダプタは Tailwind の名前空間を全部落としてから、こちらのものだけを写像する。
+**アプリ固有の寸法（チャートの高さ、サイドバーの幅など）は利用側が足す。**
+
+```css
+@import "./tokens.css";   /* レジストリ方式なので相対パスで読む */
+@import "./theme.css";
+
+@theme {
+  --container-sidebar: 16rem;   /* → w-sidebar */
+  --spacing-chart: 21.25rem;    /* → h-chart */
+}
+```
+
+幅は `--container-*` にも書けるが、**高さは `--spacing-*` しか読まない**（Tailwind v4 に
+高さ専用の名前空間が無いため）。**高さのために開けた口は余白にも開く** — `--spacing-chart`
+を足すと `p-chart` も書けるようになります。こちらのスケール自体は緩みません（`p-5` は不可）。
+
+## 入っているもの
+
+`root = 16px` から導出される。導出できない次元だけが例外を持つ
+（時間は独自のアンカー、画面幅は機器の寸法、書体は値を持たず構造だけ）。
+
+| | 規則 | 値 |
+|---|---|---|
+| spacing | `base = root ÷ 4`、`3/2` と `4/3` を交互に適用 | `0, 4, 8, 12, 16, 24, 32, 48, 64, 96` |
+| font-size | アンカー `root`、下 `÷9/8` ×3、上 `×5/4` ×7 | `11.24 … 16 … 76.29`（11段） |
+| line-height | `a + (root ÷ 2) / size`、`a` は display / ui / prose | サイズから自動で決まる |
+| letter-spacing | `0.025 × (root ÷ size − 1)` em。大文字化は `0.08em` の加算項 | サイズから自動で決まる |
+| font-weight | 役割で `400 / 500 / 600 / 700`。**書体に合わせて差し替えられる** | `base` `emphasis` `heading` `strong` |
+| radius | spacing の 0〜16 の部分集合 | `0, 4, 8, 12, 16` + `full` |
+| duration | 遷移 `200ms` / ループ `1000ms` アンカー、比率 `√2` | `100 … 400` / `707 … 1414` |
+| border-width | px 固定 | `1, 2, 3` |
+| elevation | オフセットとぼかしは高さ `h` に比例。濃さは面1段分として色から解く | `h = 0〜3` |
+| breakpoint | **導出できない。** 画面幅は組版ではなく機器の寸法で決まる | `40, 48, 64, 80rem` |
+| 密度 | 骨格の余白だけが動く。段は spacing スケールから取る | ページ / セクション / 面の3役割 |
+| font-family | **値は持たない。**欧文 → 和文 → generic の順序だけを規定する | 書体名は利用側が `--sg-font-brand-*` へ差す |
+| 不透明度 | **持たない。** 薄めると保証の外へ出るため。中間の値は色で解く | `0` と `1` だけ |
+
+### 色
+
+**primary を1色選ぶと、パレット全体が生成されます。**
+
+```ts
+import { generatePalette, hexToOklch } from '@sashigane/tokens';
+
+const palette = generatePalette(hexToOklch('#3b82f6'));
+palette.warnings; // 再現できない色・見分けにくい組み合わせを教えます
+```
+
+生成されるもの: primary / 中間色 / status 4色 / 識別色 5色 の各11段。
+
+連続値（ヒートマップ、値→色）には **`--sg-color-sequential-1..10`** を使います。
+離散系列とは別の役割で、面に近い側から遠い側へ並びます（暗色モードでは向きが逆）。
+**帯の上に置く文字のコントラストは保証の外です。**
+
+**コントラストは構造的に保証されます。** 文字は 4.5:1、線や点などのマークは 3:1 を、
+**どの色相を選んでも、どの面の上でも**満たします（全360色相 × 両モード × 面3段で検証済み）。
+暗色モードは色を反転せず、参照する段を変えるだけです。
+
+余白のうち**骨格の3箇所**（ページの左右・セクション間・面の内側）は密度で動きます。
+狭い画面では自動で1段詰まり、`data-sg-density` で固定もできます。
+
+```html
+<main data-sg-density="comfortable">…</main>
+```
+
+面は**塗るのではなく宣言します。**
+
+```html
+<body data-sg-surface="page">
+  <article data-sg-surface="surface">…</article>
+</body>
+```
+
+`data-sg-surface` は背景と前景を同時に決めます。面が深くなると、
+**役割名はそのままで**文字とアクセントが1段深い段を指します。
+`bg-surface` のようなユーティリティは用意していません。塗るだけだと前景が
+ページ用のまま残り、コントラストが落ちても気づけないためです。
+
+名乗れる面は `page` / `surface` / `inset` / `overlay` の4つです。
+`overlay`（ポップオーバーやツールチップ）は**どこに置いても同じ段**になります。
+
+hover も同じ考え方で、塗るのではなく宣言します。
+
+```html
+<article data-sg-surface="surface">
+  <button data-sg-interactive>…</button>
+</article>
+```
+
+`data-sg-interactive` を付けた要素は、hover 中だけ1段深い面の文脈になります。
+背景と前景が一緒に動くので、hover しても保証は崩れません。
+
+**不透明度で薄めることはできません。** どの役割も、薄めると 4.5:1 を割ります
+（端点を要件ちょうどまで解いているため、余裕がゼロです）。
+Tailwind のアルファ修飾子（`text-accent/50`、`bg-danger/15`）も同じ理由で塞いでいます。
+
+```css
+/* 塗りの状態変化は、塗りの段を1段ずらす（accent と状態色4つに `-strong` があります） */
+.btn-primary:hover { background: var(--sg-color-accent-strong); }
+
+/* 帯やバッジには淡い地があります。文字は塗りに対して解いてあります */
+.note-danger { background: var(--sg-color-danger-subtle); color: var(--sg-color-on-danger-subtle); }
+```
+
+```html
+<!-- 塗りを持たない要素は面の文脈で -->
+<button data-sg-interactive>やめる</button>
+```
+
+浮きは**面の宣言とは別に指定します。** 影ありを既定にはしません
+（観測した4本のうち1本は影を1つも使わず、罫線だけで階層を作っていました）。
+
+```css
+.card    { box-shadow: var(--sg-elevation-raised); }   /* カード */
+.popover { box-shadow: var(--sg-elevation-overlay); }  /* 重なるもの */
+.modal   { box-shadow: var(--sg-elevation-front); }    /* 前面 */
+```
+
+**暗色モードでは同じ1行が影ではなく輪郭を出します。** 暗い面の上では、
+影の色を純黒・不透明にしても 1.08:1〜1.73:1 にしかならず、影という手段が成立しないためです
+（明色は 10.91:1〜19.27:1）。段は面の深さに合わせて動きます。
+
+
+## 開発
+
+```bash
+pnpm install
+pnpm test
+```
+
+手順とブランチ戦略は [docs/development-process.md](./docs/development-process.md) と
+[docs/branching.md](./docs/branching.md)。
 
 ## ドキュメント
 
 | ファイル | 内容 |
 |---|---|
-| [CLAUDE.md](./CLAUDE.md) | エージェント向けの規則。**作業前に必ず読む** |
-| [docs/decisions.md](./docs/decisions.md) | 設計決定。生成規則・値・退けた案・改訂履歴 |
-| [docs/roles.md](./docs/roles.md) | 既存4本から観測したセマンティック役割 |
+| [docs/principles.md](./docs/principles.md) | 動かせない設計原則 |
+| [docs/decisions.md](./docs/decisions.md) | 設計決定の全文。生成規則・値・退けた案・改訂履歴 |
 | [docs/verification.md](./docs/verification.md) | 生成スケールが実需要を覆えるかの検証 |
-| [docs/agent-failures.md](./docs/agent-failures.md) | ガードレール追加の理由 |
-| [docs/experiments/](./docs/experiments) | 仕様を推測せず実際に動かして確かめた記録 |
+| [docs/roles.md](./docs/roles.md) | 既存プロジェクトから観測したセマンティック役割 |
+| [docs/lessons.md](./docs/lessons.md) | 開発中に得た教訓 |
+| [docs/agent-failures.md](./docs/agent-failures.md) | 失敗の記録。教訓の由来 |
+| [docs/experiments/](./docs/experiments) | 仕様を推測せず動かして確かめた記録 |
 
----
-
-## 進め方
-
-| Phase | 内容 | 状態 |
-|---|---|---|
-| 0 | 設計確定 | ✅ |
-| 1 | トークン層（生成スクリプト、lint、CI 検査） | 進行中 |
-| 2 | **コンポーネントを1つも書かずに ichirizuka へトークンのみ導入** | |
-| 3 | コンポーネント3〜5個 | |
-| 4 | `registry:base`、エージェント向け Skill | |
-
-Phase 2 を Phase 3 より前に置いているのは、層分離をコンポーネント実装前に実証するため。
-ここで必ず設計の穴が出る。
-
-ichirizuka は `dependencies` が `next` / `react` / `react-dom` のみという規約を持つ。
-**これを破らずに導入できることが要件**であり、そのままトークン層の React 非依存性の検定になる。
-
----
-
-## セットアップ
-
-```bash
-pnpm install
-```
-
-`prepare` スクリプトが `core.hooksPath` を `.githooks` に向ける。
-**これを実行するまで pre-push フックは有効にならない。**
-`core.hooksPath` は `.git/config` に保存され追跡対象外のため、
-clone しただけではフックが存在しないのと同じになる。
-
-```bash
-pnpm scales            # スケールを表示し、不変条件を検査する
-pnpm verify:coverage   # 実需要に対するカバー率を出す（観測対象4本がローカルに必要）
-```
-
----
-
-## 開発プロセス
-
-**規則の正は [CLAUDE.md](./CLAUDE.md) にある。** ここではなぜそうしているかだけを書く。
-
-人間も AI エージェントも同じ手順を通る。Issue を立て、branch を切り、PR を出し、
-**自己レビューの結果を PR に投稿してから**マージする。
-チャットの中だけで完結したレビューは、後から誰も検証できないのでレビューとみなさない。
-
-`main` への直接 push は pre-push フックで機械的に防いでいる。
-手順を守るかどうかを意志の問題にしない、という判断である。
-
-### ガードレールは失敗の後にしか作らない
-
-新しいルール・フック・lint を足すときは、必ず
-[docs/agent-failures.md](./docs/agent-failures.md) に
-「何が起きたか / なぜ起きたか / だから何を足したか」を先に書く。
-
-**ルールが先にあってはならない。** 理由の書かれていないルールは、後から誰も消せなくなる。
-
-このファイルは現在3件を記録している。すべてこのリポジトリで実際に起きたもので、
-うち2件は同じ誤りの再発である。**失敗を隠さないこと自体が成果物の一部**だと考えている。
-
----
+このリポジトリは AI 駆動開発の実践例を兼ねている。
+**設計判断の根拠と失敗の記録を残すことを成果物の一部**として扱っており、
+上記のうち後半4つはそのための文書。
 
 ## ライセンス
 

@@ -1,0 +1,23 @@
+{
+  "title": "コンポーネント",
+  "pages": [
+    "accordion",
+    "card",
+    "button",
+    "badge",
+    "list",
+    "modal",
+    "toast",
+    "separator",
+    "icon",
+    "spinner",
+    "table",
+    "form",
+    "field",
+    "input",
+    "textarea",
+    "checkbox",
+    "radio",
+    "select"
+  ]
+}

@@ -1,0 +1,850 @@
+/**
+ * primary 1色からパレット全体を生成する。
+ *
+ * 色は静的な値の集合ではない。利用者が primary を選ぶと、
+ * セマンティックまで含めた全段がここで導出される（決定5-1）。
+ *
+ * 生成結果は提案であり、人間が編集できる。
+ * ただし保証が崩れる入力・編集には警告を返す。警告を握りつぶさないこと。
+ */
+import tokens from '../tokens.json' with { type: 'json' };
+import { minPerceptualDistance } from './cvd.ts';
+import {
+  contrastRatio,
+  hueDistance,
+  inSrgbGamut,
+  oklchToLinearRgb,
+  relativeLuminance,
+  shortestHueDelta,
+  type Oklch,
+} from './oklch.ts';
+
+const cfg = tokens.color;
+
+export type Step = (typeof cfg.steps)[number];
+export const steps: readonly number[] = cfg.steps;
+
+export type StatusName = keyof typeof cfg.statusHues.canonical;
+export const statusNames = Object.keys(cfg.statusHues.canonical) as StatusName[];
+
+export interface Warning {
+  code:
+    | 'primary-chroma-unreachable'
+    | 'primary-lightness-shifted'
+    | 'status-too-close-to-primary'
+    | 'contrast-below-target';
+  message: string;
+  detail?: Record<string, number | string>;
+}
+
+/**
+ * 段 → 明度。anchorStep を anchorL に固定し、上下をそれぞれ等間隔で埋める。
+ *
+ * 等間隔ではなく折れ線にしているのは、anchorL が
+ * 「明色の面に対し最悪色相でも本文 4.5:1」の境界だからである（決定5-2）。
+ * 保証境界を段の定義に含めることで、コントラストが構造的に決まる。
+ */
+export const lightnessesFor = (anchorL: number, bottom: number): number[] => {
+  const { top, anchorStep } = cfg.lightness;
+  const a = cfg.steps.indexOf(anchorStep as Step);
+  return cfg.steps.map((_, i) =>
+    i <= a
+      ? top - ((top - anchorL) / a) * i
+      : anchorL - ((anchorL - bottom) / (cfg.steps.length - 1 - a)) * (i - a),
+  );
+};
+
+/**
+ * 与えた色相すべてが sRGB に収まる最大の彩度を二分探索で求める。
+ *
+ * 全360色相ではなく実際に定義する色相に限定するのは、
+ * 全色相を要求すると彩度が最も狭い色相に引きずられて全体がくすむため（決定5-3）。
+ */
+export const maxSafeChroma = (L: number, hues: readonly number[]): number => {
+  let lo = 0;
+  let hi = 0.4;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    const ok = hues.every((H) => inSrgbGamut(oklchToLinearRgb({ L, C: mid, H })));
+    if (ok) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+};
+
+/**
+ * status の色相。意味で固定した基準から primary へ引き寄せるが、
+ * 上限を設けて意味を守る。近づきすぎた場合は逆に離す（決定5-4）。
+ */
+export const resolveStatusHues = (
+  primaryH: number,
+): { hues: Record<StatusName, number>; warnings: Warning[] } => {
+  const { canonical, maxPull, pullRatio, minSeparation } = cfg.statusHues;
+  const warnings: Warning[] = [];
+  const hues = {} as Record<StatusName, number>;
+
+  for (const name of statusNames) {
+    const base = canonical[name];
+    const pull = shortestHueDelta(base, primaryH) * pullRatio;
+    let h = (base + Math.max(-maxPull, Math.min(maxPull, pull)) + 360) % 360;
+
+    // primary に近すぎるなら、許容域の中で最も離れる位置へ動かす
+    if (hueDistance(h, primaryH) < minSeparation) {
+      const candidates = [base - maxPull, base + maxPull].map((v) => (v + 360) % 360);
+      h = candidates.reduce((best, c) =>
+        hueDistance(c, primaryH) > hueDistance(best, primaryH) ? c : best,
+      );
+      if (hueDistance(h, primaryH) < minSeparation) {
+        warnings.push({
+          code: 'status-too-close-to-primary',
+          message:
+            `primary の色相が ${name} と近すぎます（角距離 ${hueDistance(h, primaryH).toFixed(0)}°）。` +
+            `${name} と primary が見分けにくくなります。`,
+          detail: { status: name, statusHue: h, primaryHue: primaryH },
+        });
+      }
+    }
+    hues[name] = h;
+  }
+  return { hues, warnings };
+};
+
+/**
+ * 識別色。primary から等間隔に配り、status の周囲を避ける（決定5-5）。
+ * 避ける際は禁止帯の近い方の縁へ寄せる。
+ */
+export const resolveCategoricalHues = (
+  primaryH: number,
+  statusHues: readonly number[],
+): number[] => {
+  const { count, avoidRadius } = cfg.categorical;
+  const out: number[] = [];
+  for (let i = 0; i < count; i++) {
+    let h = (primaryH + (360 / count) * i) % 360;
+    for (const s of statusHues) {
+      const d = shortestHueDelta(s, h);
+      if (Math.abs(d) < avoidRadius) {
+        h = (s + (d >= 0 ? avoidRadius : -avoidRadius) + 360) % 360;
+      }
+    }
+    out.push(h);
+  }
+  return out;
+};
+
+export interface Ramp {
+  hue: number;
+  /** 段 → 色 */
+  byStep: Record<number, Oklch>;
+}
+
+const buildRamp = (
+  hue: number,
+  lightness: readonly number[],
+  chromaByStep: readonly number[],
+): Ramp => ({
+  hue,
+  byStep: Object.fromEntries(
+    cfg.steps.map((s, i) => [s, { L: lightness[i]!, C: chromaByStep[i]!, H: hue }]),
+  ),
+});
+
+/**
+ * パレットを構成する色相を、彩度の決め方ごとに束ねたもの。
+ *
+ * primary と status は**それぞれ単独**で彩度を取る。
+ * status をセット内で揃えていた時期があったが、共通値を引き下げているのは
+ * warning（黄系）だけで、実際に損をするのは danger だけだった。
+ * `#a84b53` は危険を伝える色として弱い（決定5-3 の再改訂）。
+ *
+ * 識別色は**セット内で共通**のまま。系列は互いに対等であるべきで、
+ * 特定の系列だけ強く見える理由がない。
+ */
+interface HueSets {
+  /** 単独で彩度を取る色相（primary と status） */
+  solo: number[];
+  /** セット内で彩度を揃える色相（識別色） */
+  shared: number[];
+  /** 中間色の彩度を決めるための全色相 */
+  all: number[];
+}
+
+/**
+ * ある anchorL のときの、全ランプの彩度と中間色の面を求める。
+ *
+ * 彩度はセット単位で決まる（決定5-3）ので、アンカーを解くときも
+ * **実際に使われる彩度**で評価しなければならない。
+ * ここを共通彩度で評価していた時期があり、セット単位に変えた瞬間に保証が破れた
+ * （網羅テストが検出した）。
+ */
+const resolveChroma = (lightness: readonly number[], hues: HueSets) => {
+  const chromaFor = (hs: readonly number[]) => lightness.map((L) => maxSafeChroma(L, hs));
+  const shared = chromaFor(hues.shared);
+  return {
+    /**
+     * 単独で彩度を取る色相 → その彩度。
+     *
+     * 色相をキーにした1つの Map にまとめてはならない。
+     * 識別色の1本目は primary と同じ色相なので、キーが衝突して
+     * **primary が識別色の（低い）彩度で上書きされる。**
+     * 同じ色相でも別のランプなら別の彩度を持つ。
+     */
+    solo: new Map<number, number[]>(hues.solo.map((h) => [h, chromaFor([h])])),
+    /** 識別色はセット内で共通の彩度 */
+    shared,
+    sharedHues: hues.shared,
+    neutral: chromaFor(hues.all).map((c) => c * cfg.chroma.neutralRatio),
+  };
+};
+
+type Requirement = { readonly step: number; readonly min: number };
+
+/**
+ * 指定した面に対して、要件をすべて満たす最悪コントラストの余裕を返す。
+ * 正なら全要件を満たしている。
+ */
+const marginFor = (
+  lightness: readonly number[],
+  hues: HueSets,
+  surfaceStep: number,
+  reqs: readonly Requirement[],
+): number => {
+  const c = resolveChroma(lightness, hues);
+  const si = cfg.steps.indexOf(surfaceStep as Step);
+  const surface = { L: lightness[si]!, C: c.neutral[si]!, H: hues.solo[0]! };
+  let margin = Number.POSITIVE_INFINITY;
+  for (const req of reqs) {
+    const i = cfg.steps.indexOf(req.step as Step);
+    // 各ランプを**実際に使う彩度**で評価する。
+    // 共通彩度で評価していた時期があり、彩度の決め方を変えた瞬間に保証が破れた
+    const check = (H: number, C: number) => {
+      margin = Math.min(margin, contrastBetween({ L: lightness[i]!, C, H }, surface) - req.min);
+    };
+    for (const [H, chroma] of c.solo) check(H, chroma[i]!);
+    for (const H of c.sharedHues) check(H, c.shared[i]!);
+  }
+  return margin;
+};
+
+/**
+ * 明度の端点を、要件をすべて満たすぎりぎりまで動かす。
+ *
+ * 端点を固定値で持つことはできない。面は純白でも純黒でもなく、
+ * その明るさも彩度も primary に依存し、彩度はセット単位でも変わるため、
+ * 生成のたびに解き直す必要がある。
+ *
+ * 経緯: 純白に対する境界を固定値で持っていて保証が破れ、
+ * 明色側だけ解いて暗色側が破れ、要件を1つだけ見て別の要件が破れた。
+ * **3回とも網羅テストが検出した。** 要件は表で持ち、全部同時に満たす形にした。
+ */
+const solveEndpoint = (
+  build: (endpoint: number) => number[],
+  hues: HueSets,
+  surfaceStep: number,
+  reqs: readonly Requirement[],
+  range: readonly [number, number],
+  /** 端点を小さくするほどコントラストが上がるなら true */
+  darkerIsBetter: boolean,
+): number => {
+  let [lo, hi] = range;
+  for (let i = 0; i < 36; i++) {
+    const mid = (lo + hi) / 2;
+    const ok = marginFor(build(mid), hues, surfaceStep, reqs) >= 0;
+    if (darkerIsBetter) ok ? (lo = mid) : (hi = mid);
+    else ok ? (hi = mid) : (lo = mid);
+  }
+  return darkerIsBetter ? lo : hi;
+};
+
+/**
+ * 識別色の各系列にどの段を割り当てるかを、色覚特性下での見分けやすさが
+ * 最大になるように選ぶ（決定5-8）。
+ *
+ * 5系列を同じ段（＝同じ明度・同じ彩度）で並べると、違いが色相しかない。
+ * 二色覚では色相軸が潰れるため、2型色覚下で最小 ΔE が 0.003 まで落ちる。
+ * 段をずらすと明度で見分けられるようになる。
+ *
+ * 候補は 5! = 120 通り。全部試して最良を採る（約 0.5ms）。
+ * 探索であって恣意ではない。同じ入力からは必ず同じ結果が出る。
+ */
+const bestStepAssignment = (
+  ramps: readonly Ramp[],
+  candidates: readonly number[],
+): number[] => {
+  const permutations = (xs: readonly number[]): number[][] =>
+    xs.length <= 1
+      ? [[...xs]]
+      : xs.flatMap((x, i) =>
+          permutations([...xs.slice(0, i), ...xs.slice(i + 1)]).map((rest) => [x!, ...rest]),
+        );
+  let best: number[] = [...candidates];
+  let bestScore = -1;
+  for (const perm of permutations(candidates)) {
+    const score = minPerceptualDistance(ramps.map((r, i) => r.byStep[perm[i]!]!));
+    if (score > bestScore) {
+      bestScore = score;
+      best = perm;
+    }
+  }
+  return best;
+};
+
+export interface Palette {
+  /** 生成のたびに解き直したアンカー段の明度 */
+  anchorLightness: number;
+  /** 生成のたびに解き直した下端の明度 */
+  bottomLightness: number;
+  /** 識別色の系列 i がマークに使う段。色覚特性下の見分けやすさで決まる（決定5-8） */
+  categoricalSteps: { light: number[]; dark: number[] };
+  lightnesses: readonly number[];
+  primary: Ramp;
+  neutral: Ramp;
+  status: Record<StatusName, Ramp>;
+  categorical: Ramp[];
+  warnings: Warning[];
+}
+
+/**
+ * primary から全パレットを生成する。
+ *
+ * 受け継ぐのは色相だけで、L と C は規則が決める（決定5-1）。
+ * 入力の L / C が規則の出力と大きく離れる場合は警告する。
+ */
+export const generatePalette = (primary: Oklch): Palette => {
+  const warnings: Warning[] = [];
+  const { hues: statusHues, warnings: statusWarnings } = resolveStatusHues(primary.H);
+  warnings.push(...statusWarnings);
+
+  const statusList = statusNames.map((n) => statusHues[n]);
+  const categorical = resolveCategoricalHues(primary.H, statusList);
+  const allHues = [primary.H, ...statusList, ...categorical];
+
+  // 彩度は「同じ場面に並ぶセット」単位で揃える（決定5-3）。
+  // primary は単独で使われるので揃える相手がおらず、色相ごとの最大を取れる。
+  // 全ランプで共通にすると #e879f9 が #875a8d になり、ブランド色として機能しない。
+  const hueSets: HueSets = {
+    solo: [primary.H, ...statusList],
+    shared: categorical,
+    all: allHues,
+  };
+  const g = cfg.guarantees;
+  // アンカーは下端に影響されないので先に解く
+  const anchorL = solveEndpoint(
+    (a) => lightnessesFor(a, cfg.lightness.bottomInitial),
+    hueSets, g.lightSurfaceStep, g.light, [0.25, 0.8], true,
+  );
+  const bottomL = solveEndpoint(
+    (b) => lightnessesFor(anchorL, b),
+    hueSets, g.darkSurfaceStep, g.dark, [0.02, 0.4], true,
+  );
+  const lightnesses = lightnessesFor(anchorL, bottomL);
+  const chroma = resolveChroma(lightnesses, hueSets);
+  const soloChroma = (h: number) => chroma.solo.get(h)!;
+
+  // 入力の色が規則の出力でどれだけ再現できるかを確かめる
+  const nearest = cfg.steps.reduce((best, s, i) =>
+    Math.abs(lightnesses[i]! - primary.L) <
+    Math.abs(lightnesses[cfg.steps.indexOf(best as Step)]! - primary.L)
+      ? s
+      : best,
+  );
+  const nearestIndex = cfg.steps.indexOf(nearest as Step);
+  const dC = primary.C - soloChroma(primary.H)[nearestIndex]!;
+  const dL = Math.abs(primary.L - lightnesses[nearestIndex]!);
+  if (dC > cfg.warnings.primaryChromaExcess) {
+    warnings.push({
+      code: 'primary-chroma-unreachable',
+      message:
+        `選んだ色の彩度（${primary.C.toFixed(3)}）は、この明度で sRGB に収まる上限` +
+        `（${soloChroma(primary.H)[nearestIndex]!.toFixed(3)}）を超えています。くすんだ色で生成されます。`,
+      detail: { requested: primary.C, available: soloChroma(primary.H)[nearestIndex]!, step: nearest },
+    });
+  }
+  if (dL > cfg.warnings.primaryLightnessExcess) {
+    warnings.push({
+      code: 'primary-lightness-shifted',
+      message:
+        `選んだ色の明度（${primary.L.toFixed(3)}）に一致する段がありません。` +
+        `最も近い段 ${nearest}（${lightnesses[nearestIndex]!.toFixed(3)}）に丸められます。`,
+      detail: { requested: primary.L, nearest: lightnesses[nearestIndex]!, step: nearest },
+    });
+  }
+
+  const categoricalRamps = categorical.map((h) => buildRamp(h, lightnesses, chroma.shared));
+
+  return {
+    anchorLightness: anchorL,
+    bottomLightness: bottomL,
+    lightnesses,
+    primary: buildRamp(primary.H, lightnesses, soloChroma(primary.H)),
+    neutral: buildRamp(primary.H, lightnesses, chroma.neutral),
+    status: Object.fromEntries(
+      statusNames.map((n) => [n, buildRamp(statusHues[n], lightnesses, soloChroma(statusHues[n]))]),
+    ) as Record<StatusName, Ramp>,
+    categorical: categoricalRamps,
+    categoricalSteps: {
+      light: bestStepAssignment(categoricalRamps, cfg.categorical.lightSteps),
+      dark: bestStepAssignment(categoricalRamps, cfg.categorical.darkSteps),
+    },
+    warnings,
+  };
+};
+
+/**
+ * パレットがコントラスト保証を満たしているかを検査する。
+ *
+ * 生成直後は必ず満たすが、**人間が編集したあとは満たすとは限らない。**
+ * テーマビルダーはユーザーが値をいじるたびにこれを呼び、警告を出す。
+ * 生成物は提案であって強制ではないが、保証が崩れたことは知らせる必要がある（決定5-1）。
+ */
+export const verifyPalette = (palette: Palette): Warning[] => {
+  const warnings: Warning[] = [];
+  const ramps: [string, Ramp][] = [
+    ['primary', palette.primary],
+    ...statusNames.map((n) => [n, palette.status[n]] as [string, Ramp]),
+    ...palette.categorical.map((r, i) => [`categorical-${i + 1}`, r] as [string, Ramp]),
+  ];
+  for (const [side, surfaceStep, reqs] of [
+    ['明色', cfg.guarantees.lightSurfaceStep, cfg.guarantees.light],
+    ['暗色', cfg.guarantees.darkSurfaceStep, cfg.guarantees.dark],
+  ] as const) {
+    const surface = palette.neutral.byStep[surfaceStep];
+    if (!surface) continue;
+    for (const req of reqs) {
+      for (const [name, ramp] of ramps) {
+        const fg = ramp.byStep[req.step];
+        if (!fg) continue;
+        const ratio = contrastBetween(fg, surface);
+        if (ratio < req.min) {
+          warnings.push({
+            code: 'contrast-below-target',
+            message:
+              `${name} の段 ${req.step} が${side}の面に対して ${ratio.toFixed(2)}:1 しかありません` +
+              `（必要: ${req.min}:1）。この組み合わせは読めない可能性があります。`,
+            detail: { ramp: name, step: req.step, surface: surfaceStep, ratio, required: req.min },
+          });
+        }
+      }
+    }
+  }
+  return warnings;
+};
+
+/**
+ * 影の色（決定1-8 改訂）。**濃さは値ではなく色システムから解く。**
+ *
+ * 影の暗さを「面の梯子1段分」と定義する。`bg-page` の上に落ちた影の最も濃い点が、
+ * 1段深い面（`bg-surface`）と同じ相対輝度になるアルファを解く。
+ * **暗色モードが面の梯子で表す「1段」と、明色モードの影が、同じ量になる。**
+ *
+ * 色は中間色ランプの暗端を取る。決定5-6 により primary の色相で着色されているので、
+ * 決定1-8 が要求した「影は純黒ではなく背景の色相を持たせる」が自動的に満たされる。
+ *
+ * **高さでは変えない。** 決定1-8 は「単位面積あたりの濃度は h とともに低下」と
+ * 書いていたが、物理どおり `1/h²` で落とすと h=3 の影が最も薄くなり、
+ * 浮きの順序が見た目で逆転する。h が表すのは広がりだけにする。
+ *
+ * **面の深さでも変えない。** 深い面ほど「1段分」に必要なアルファは上がる
+ * （全360色相で page 0.246〜0.253 → 3段目 0.331〜0.336）が、page で解いた
+ * 1つの値を全段で使っても、できる影の対比は 1.28〜1.31 に収まる（測定済み）。
+ * 面ごとに解き直すと、影の色が面の数だけ増える割に見た目が動かない。
+ */
+export interface ShadowInk {
+  /** 影の色。中間色ランプの暗端 */
+  color: Oklch;
+  /** 合成後が「1段深い面」と同じ相対輝度になるアルファ */
+  alpha: number;
+}
+export const shadowInkFor = (palette: Palette): ShadowInk => {
+  const y = (c: Oklch) => relativeLuminance(oklchToLinearRgb(c));
+  const [page, next] = cfg.guarantees.surfaces.light;
+  const color = palette.neutral.byStep[cfg.steps[cfg.steps.length - 1]!]!;
+  const yPage = y(palette.neutral.byStep[page!]!);
+  const yNext = y(palette.neutral.byStep[next!]!);
+  return { color, alpha: (yPage - yNext) / (yPage - y(color)) };
+};
+
+/** 前景と背景のコントラスト比。テーマビルダーの警告と CI の両方で使う */
+export const contrastBetween = (fg: Oklch, bg: Oklch): number =>
+  contrastRatio(
+    relativeLuminance(oklchToLinearRgb(fg)),
+    relativeLuminance(oklchToLinearRgb(bg)),
+  );
+
+/**
+ * 面ごとの、役割が参照する段（決定5-12）。
+ *
+ * **保証は面の1段目でしか成立しない**ことが Phase 2 の2本目で分かった
+ * （docs/experiments/phase2-holosphere.md）。端点を解く相手を深い面に変えても解は無い。
+ * 明色は濃いアンカーを、暗色は明るい段400を要求して両立しないためで、これは測って確かめた。
+ *
+ * ランプ自体は変えない。**面が1段深くなるごとに、役割が参照する段も深い側へずらす。**
+ * 必要な段はすべて既存の11段の中にある。
+ */
+export interface SurfaceRoles {
+  /** この面が使う中間色の段 */
+  surface: number;
+  text: { default: number; muted: number; faint: number };
+  border: { subtle: number; default: number; strong: number };
+  /**
+   * チャートのグリッド線。**UI の境界より薄い第4の段**である（roles.md）。
+   *
+   * 面のすぐ外側の段を取る。border.subtle は面から depth+2 段外側なので、
+   * gridline は必ずその内側に入る。新しい定数は持ち込まない。
+   */
+  gridline: number;
+  /** 色つきランプのうち、文字に使う段（4.5:1） */
+  colorText: number;
+  /** 色つきランプのうち、マークに使う段（3:1）。決定5-7 */
+  colorMark: number;
+  /**
+   * 塗りの**1段強い段**（決定5-15）。hover / 押下 / 選択で塗りを差し替えるときに使う。
+   *
+   * 面から遠ざかる向きへ1段動かすので、**塗りは必ず濃く（暗色では明るく）なる。**
+   * 塗りの上の文字はランプの端にあり（決定5-14）、塗りが端へ寄れば対比は増えるだけである。
+   * 全360色相・全モード・全面で最悪 6.04:1（通常は 4.50:1）。
+   */
+  colorStrong: number;
+  /**
+   * **淡い塗りの段**（決定5-16）。面から遠ざかる向きへ1段だけ動かした、色のついた地。
+   *
+   * `colorText` の塗りは不透明で強い。バッジや帯には**もっと弱い地**が要る
+   * （roles.md が pylabo と holosphere で独立に観測した status の3変種の1つ）。
+   *
+   * **要件を持たない。** 面そのものであって前景ではないからである。
+   * ページ地との差は 1.12〜1.25 で 3:1 に届かないが、
+   * status を色だけで伝えないと決めてある（決定5-9）ので、
+   * **塗りは意味の唯一の手がかりではない。** 面の梯子自身も 1.30 で成立させている。
+   */
+  colorSubtle: number;
+  /**
+   * 淡い塗りの上に載せる**その色自身**の段（決定5-16）。
+   *
+   * 観測された組み方は「淡い塗り＋その色の文字」だが、**そのままでは成立しない。**
+   * 明色で `danger` の段500 を段100 の上に置くと 4.02:1 で、4.5 に届かない。
+   * **淡い塗りを面とみなして段を解き直す**（決定5-12 と同じ考え方）。
+   */
+  onSubtle: number;
+  /**
+   * 塗りの上に載せる文字の段（決定5-14）。**ランプごとに解く。**
+   *
+   * これまでは `bg-page` を流用していた。値としては正しかったが、
+   * **塗りの側から導出していない**ので、塗りの段を変えた瞬間に追随しない。
+   * 前景に面の色を借りるのは意味の嘘であり、`--sg-color-bg-page` を
+   * 前景として書ける道を残すことでもある。
+   */
+  onFill: { accent: number } & { [K in StatusName]: number };
+  /**
+   * **宣言する塗りの上に載せる文字**（決定6-9）。`onFill` と規則は同じで、段が違う。
+   *
+   * `onFill` は `colorText` の塗りに対して解いており、暗色ではその段が明るいので
+   * 暗い端が選ばれる。**宣言する塗りは面にもモードにも依存しない段（`fill`）**なので、
+   * そちらに対して解き直すと両モードとも明るい端になる。
+   */
+  onDeclaredFill: { accent: number } & { [K in StatusName]: number };
+  /**
+   * **宣言する塗りの段**（決定6-9）。`data-sg-fill` が使う。
+   *
+   * 面にもモードにも依存しない。**ランプの明るい端（白）が文字として成立する
+   * 最も浅い段**を取る。塗りはブランドの色であって、テーマで変わるものではない。
+   *
+   * `colorText` と分けているのは、`colorText` が**面の上の文字**として解かれており、
+   * 暗色では明るい段（400）になって白が載らないためである。
+   * 1つの役割で塗りと文字を兼ねると、どちらかが必ず割れる。
+   */
+  fill: number;
+  /**
+   * 宣言する塗りの**境界**の段（決定6-9）。**面ごとに解く。**
+   *
+   * 塗り自体が面から 3:1 離れていればその塗り自身。離れていなければ、
+   * 面から見て 3:1 を満たす最も浅い段を取る。
+   *
+   * **部品の識別を担うのは境界である。** そのため hover で塗りが動いても境界は動かさない。
+   * 暗色の深い面では、塗りだけでは 3:1 に届かない（実測 2.56 / 2.03 / 1.54）。
+   */
+  fillBorder: number;
+  /**
+   * 宣言する塗りの hover の段（決定6-9）。**文字から遠ざかる向きへ1段。**
+   *
+   * 文字は明るい端なので、遠ざかる＝濃くなる。対比は増えるだけである。
+   * 面との比は下がるが、識別は `fillBorder` が担っている。
+   */
+  fillStrong: number;
+  /**
+   * 識別色の系列ごとの段。**面が深いと段が足りず null になる。**
+   *
+   * 暗色の inset では 3:1 を満たす段が4つしか残らず、5系列を配れない。
+   * null の面では変数を出さないので、親の面の値をそのまま継承する。
+   * **チャートを inset に載せることは保証しない**（決定5-12）。
+   */
+  series: number[] | null;
+}
+
+/** 面から遠ざかる向きに並べた段。明色は濃くなる向き、暗色は明るくなる向き */
+const awayFromSurface = (mode: 'light' | 'dark'): number[] =>
+  mode === 'light' ? [...cfg.steps] : [...cfg.steps].reverse();
+
+/** ランプのどれか1つでも要件を割ったら不合格。最悪ケースで判定する */
+const meets = (
+  step: number,
+  surface: Oklch,
+  min: number,
+  ramps: readonly Ramp[],
+): boolean => ramps.every((r) => contrastBetween(r.byStep[step]!, surface) >= min);
+
+/**
+ * 面ごとの割り当ては、系列色の順列（5! = 120通り）を面の数だけ解く。
+ * 出力生成では同じパレット・同じモードで何度も呼ばれるので memo 化する。
+ */
+const rolesCache = new WeakMap<Palette, Map<string, SurfaceRoles[]>>();
+
+export const surfaceRolesFor = (
+  palette: Palette,
+  mode: 'light' | 'dark',
+): SurfaceRoles[] => {
+  const cached = rolesCache.get(palette)?.get(mode);
+  if (cached) return cached;
+  const solved = solveSurfaceRoles(palette, mode);
+  const byMode = rolesCache.get(palette) ?? new Map();
+  byMode.set(mode, solved);
+  rolesCache.set(palette, byMode);
+  return solved;
+};
+
+const solveSurfaceRoles = (
+  palette: Palette,
+  mode: 'light' | 'dark',
+): SurfaceRoles[] => {
+  const g = cfg.guarantees;
+  const surfaces = mode === 'light' ? g.surfaces.light : g.surfaces.dark;
+  const order = awayFromSurface(mode);
+  const colored: Ramp[] = [palette.primary, ...statusNames.map((n) => palette.status[n])];
+  const neutral = [palette.neutral];
+  const baseSeries =
+    mode === 'light' ? cfg.categorical.lightSteps : cfg.categorical.darkSteps;
+
+  return surfaces.map((surfaceStep, depth) => {
+    const bg = palette.neutral.byStep[surfaceStep]!;
+    /** 面より外側にある段だけを候補にする。面より内側は必ず沈む */
+    const outward = order.slice(order.indexOf(surfaceStep) + 1);
+    const shallowest = (min: number, ramps: readonly Ramp[], after = -1): number =>
+      outward.find((s) => order.indexOf(s) > after && meets(s, bg, min, ramps)) ??
+      outward[outward.length - 1]!;
+
+    const faint = shallowest(g.textMin, neutral);
+    const muted = shallowest(g.textMin, neutral, order.indexOf(faint));
+    const colorText = shallowest(g.textMin, colored);
+
+    /**
+     * マークは文字の段より**1段明るい側**を取る（決定5-7）。明色でも暗色でも同じ向きで、
+     * 暗色ではコントラストがむしろ上がる。要件（3:1）を満たす最も浅い段ではない。
+     *
+     * 最小を満たす段を取ると明色で段500 になり、テーマビルダーで目視したとき
+     * チャート系列が全部くすんで見分けられなかった。このランプは明るい段ほど彩度が乗る。
+     * **数値では気づけなかった判断**なので、規則の側に残す。
+     */
+    const markStep = (textStep: number): number => {
+      const i = cfg.steps.indexOf(textStep as Step) - 1;
+      const candidate = cfg.steps[Math.max(i, 0)]!;
+      return meets(candidate, bg, g.markMin, colored) ? candidate : textStep;
+    };
+
+    /**
+     * 1段強い側。ランプの端まで来ていたら動かさない（動かす先が無い）。
+     * 名前を持つ面ではどこでも端に達しないことを検査で確かめている。
+     */
+    const strongStep = (textStep: number): number =>
+      outward[outward.indexOf(textStep) + 1] ?? textStep;
+
+    /**
+     * **面のすぐ外側の段。** 2つの役割がここから来る（自己レビュー B1）。
+     *
+     *   gridline     チャートのグリッド線。UI の境界より薄い第4の段（決定5-13）
+     *   colorSubtle  淡い塗り。色のついた地（決定5-16）
+     *
+     * **役割は違うが規則は同じ**である。どちらも「面のすぐ外側」で、
+     * 要件を持たないので「最も浅い」がそのまま「最も薄い／最も淡い」になる。
+     * 同じ式を2箇所に書くと、片方だけ直したときに静かにずれる（決定2-6）。
+     */
+    const justOutside = outward[0] ?? surfaceStep;
+
+    /**
+     * 淡い塗りの上で、**その色自身**が 4.5:1 を満たす最も浅い段（決定5-16）。
+     *
+     * 塗りが色を持つので、面（中間色）に対して解いた `colorText` は使えない。
+     * **塗りごとに解く。** 最も厳しいランプに合わせる——ランプごとに段が変わると、
+     * 同じ場面に並んだバッジで文字の濃さが揃わない（決定5-3 と同じ考え方）。
+     */
+    const onSubtle = (() => {
+      const after = outward.indexOf(justOutside) + 1;
+      const meetsOnSubtle = (step: number): boolean =>
+        colored.every(
+          (r) => contrastBetween(r.byStep[step]!, r.byStep[justOutside]!) >= g.textMin,
+        );
+      return outward.slice(after).find(meetsOnSubtle) ?? outward[outward.length - 1]!;
+    })();
+
+    /** 境界は装飾なので要件を持たない。面と一緒に深い側へずらす */
+    const shift = (step: number): number =>
+      order[Math.min(order.indexOf(step) + depth, order.length - 1)]!;
+
+    /**
+     * 系列色は面の深さだけ候補をずらして、色覚特性下の割り当てを解き直す（決定5-8）。
+     * ずらした候補がランプの端をはみ出す面では配れないので null を返す。
+     */
+    const shifted = baseSeries.map((s) => order.indexOf(s) + depth);
+    const series =
+      shifted.every((i) => i < order.length) && new Set(shifted).size === shifted.length
+        ? bestStepAssignment(
+            palette.categorical,
+            shifted.map((i) => order[i]!),
+          )
+        : null;
+
+    /**
+     * 塗りの上の文字は**ランプの端**から取る（決定5-14）。
+     * 端は2つしかないので、コントラストが高いほうを選べばよい。
+     *
+     * 色つきの塗り（`colorText` の段）はページ地に対してちょうど 4.5:1 に
+     * 解かれている（決定5-2）ので、その裏返しも必ず 4.5:1 になる。
+     * 深い面では塗りがさらに端へ寄るので、余裕は増えるだけである。
+     */
+    const onFillFor = (ramp: Ramp, step: number = colorText): number => {
+      const fill = ramp.byStep[step]!;
+      const ends = [cfg.steps[0]!, cfg.steps[cfg.steps.length - 1]!];
+      return ends.reduce((best, e) =>
+        contrastBetween(palette.neutral.byStep[e]!, fill) >
+        contrastBetween(palette.neutral.byStep[best]!, fill)
+          ? e
+          : best,
+      );
+    };
+
+    /**
+     * **宣言する塗り**（決定6-9）。面にもモードにも依存しない。
+     * 明るい端（白）が全ランプで文字として成立する最も浅い段を取る。
+     */
+    const whiteEnd = palette.neutral.byStep[cfg.steps[0]!]!;
+    const fill =
+      cfg.steps.find((s) =>
+        colored.every((r) => contrastBetween(whiteEnd, r.byStep[s]!) >= g.textMin),
+      ) ?? cfg.steps[cfg.steps.length - 1]!;
+    /** 文字から遠ざかる向きへ1段。文字は明るい端なので濃くなる */
+    const fillStrong = cfg.steps[cfg.steps.indexOf(fill) + 1] ?? fill;
+    /**
+     * 境界。塗り自体が面から 3:1 離れていればそれでよい。
+     * 離れていなければ、面から見て 3:1 を満たす最も浅い段を取る。
+     */
+    const fillBorder = meets(fill, bg, g.markMin, colored)
+      ? fill
+      : shallowest(g.markMin, colored);
+
+    return {
+      surface: surfaceStep,
+      fill,
+      fillBorder,
+      fillStrong,
+      /** 文字の最も強い段は面によらず動かさない。どの面でも要件を満たす */
+      text: { default: mode === 'light' ? 900 : 100, muted, faint },
+      border: {
+        subtle: shift(mode === 'light' ? 200 : 800),
+        default: shift(mode === 'light' ? 300 : 700),
+        /** hover 以外の場面（選択中の行、強調した区切り）で使う第3段（決定5-13） */
+        strong: shift(mode === 'light' ? 400 : 600),
+      },
+      /** 面のすぐ外側。border.subtle より必ず薄い */
+      gridline: justOutside,
+      colorText,
+      colorMark: markStep(colorText),
+      colorStrong: strongStep(colorText),
+      colorSubtle: justOutside,
+      onSubtle,
+      onDeclaredFill: {
+        accent: onFillFor(palette.primary, fill),
+        ...(Object.fromEntries(
+          statusNames.map((n) => [n, onFillFor(palette.status[n]!, fill)]),
+        ) as { [K in StatusName]: number }),
+      },
+      onFill: {
+        accent: onFillFor(palette.primary),
+        ...(Object.fromEntries(
+          statusNames.map((n) => [n, onFillFor(palette.status[n]!)]),
+        ) as { [K in StatusName]: number }),
+      },
+      series,
+    };
+  });
+};
+
+/**
+ * 選んだ色がパレットのどこに入り、その色を文字やマークとして使えるかを説明する。
+ *
+ * **テーマビルダーの表示のために作った関数だが、判定はここが持つ。**
+ * 表示側で最近傍の段を計算し直すと、`primary-lightness-shifted` の警告が使う
+ * 判定と二重になり、ずれても「警告は出ないのに表示は別の段を指す」という形でしか
+ * 現れない（決定2-3 の「生成器が知っている事実で判定する」と同じ理由）。
+ */
+export interface PrimaryInputPlacement {
+  /** 入力の明度に最も近い primary の段 */
+  nearestStep: number;
+  nearest: Oklch;
+  delta: { L: number; C: number; H: number };
+  /** モードごとの、入力そのものを前景に使えるかの判定 */
+  modes: {
+    mode: 'light' | 'dark';
+    surfaceStep: number;
+    ratio: number;
+    /** そのモードで accent（文字の役割）が使う段 */
+    textStep: number;
+    textMin: number;
+    markMin: number;
+    asText: boolean;
+    asMark: boolean;
+  }[];
+}
+
+export const describePrimaryInput = (
+  palette: Palette,
+  input: Oklch,
+): PrimaryInputPlacement => {
+  const nearestStep = cfg.steps.reduce((best, s) =>
+    Math.abs(palette.primary.byStep[s]!.L - input.L) <
+    Math.abs(palette.primary.byStep[best]!.L - input.L)
+      ? s
+      : best,
+  );
+  const nearest = palette.primary.byStep[nearestStep]!;
+  const g = cfg.guarantees;
+
+  return {
+    nearestStep,
+    nearest,
+    delta: {
+      L: Math.abs(input.L - nearest.L),
+      C: Math.abs(input.C - nearest.C),
+      H: Math.abs(input.H - nearest.H),
+    },
+    /*
+     * **モードごとに別々に判定する。** 片方で足りていても、もう片方で足りないことがある。
+     * 明るい黄色は暗色の面で 13:1 を超えるが、明色の面では 1.25:1 しか無い。
+     * ひとまとめにすると、足りない側の数字を並べたまま反対のことを言うことになる。
+     */
+    modes: (['light', 'dark'] as const).map((mode) => {
+      const surfaceStep = mode === 'light' ? g.lightSurfaceStep : g.darkSurfaceStep;
+      const reqs = mode === 'light' ? g.light : g.dark;
+      const ratio = contrastBetween(input, palette.neutral.byStep[surfaceStep]!);
+      const text = reqs.reduce((a, b) => (a.min >= b.min ? a : b));
+      const mark = reqs.reduce((a, b) => (a.min <= b.min ? a : b));
+      return {
+        mode,
+        surfaceStep,
+        ratio,
+        textStep: text.step,
+        textMin: text.min,
+        markMin: mark.min,
+        asText: ratio >= text.min,
+        asMark: ratio >= mark.min,
+      };
+    }),
+  };
+};

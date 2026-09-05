@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>tokens.css 単体成立の確認</title>
+<!--
+  原則4（依存は一方通行）の実証ページ。
+  トークン層が React も Tailwind も知らずに成立することを目で確かめるためのもの。
+  pnpm --filter @sashigane/docs dev で起動し /standalone.html を開く。
+  tokens.css は dev / build の前に packages/tokens から生成してコピーされる（生成物なので追跡しない）。
+-->
+<!-- 読み込むのはこれ1つだけ。React も Tailwind も無い -->
+<link rel="stylesheet" href="/tokens.css">
+<style>
+  /* 面は data-sg-surface が塗る（決定5-12）。ここで background は書かない。
+     書けるようにすると、塗っただけで前景が page 用のまま残る道ができてしまう */
+  /* 骨格の余白は役割で書く（決定1-12）。狭い画面では自動で1段詰まる。
+     data-sg-density を書けば固定できる。**Tailwind は要らない** */
+  body {
+    margin: 0;
+    padding: var(--sg-space-page);
+    color: var(--sg-color-text-default);
+    font-size: var(--sg-text-body);
+    line-height: var(--sg-text-body-leading);
+    font-family: var(--sg-text-body-family);
+  }
+  .card {
+    border: var(--sg-border-width-0) solid var(--sg-color-border-default);
+    border-radius: var(--sg-radius-3);
+    padding: var(--sg-space-surface);
+    max-width: 40rem;
+  }
+  h1 { font-size: var(--sg-text-heading-1); line-height: var(--sg-text-heading-1-leading); font-family: var(--sg-text-heading-1-family); margin: 0 0 var(--sg-space-3); }
+  /* 書体だけの役割。サイズは caption、書体は numeric（決定1-11） */
+  .stats { font-size: var(--sg-text-caption); line-height: var(--sg-text-caption-leading); font-family: var(--sg-text-numeric-family); font-variant-numeric: var(--sg-text-numeric-variant); margin: 0 0 var(--sg-space-4); }
+  .stats div { display: block; }
+  /* 差し込み口（決定1-11）。**:root に差す。**
+     --sg-font-stack-* の var() は宣言された要素（:root）で置換されるので、
+     部分木に差しても届かない。実測は docs/experiments/font-family.md */
+  :root { --sg-font-brand-display-latin: Georgia; }
+  /* 連続値の色帯（決定5-11）。11段を並べる。凡例のグラデーションはこれで足りる */
+  .band { display: flex; margin: 0 0 var(--sg-space-4); }
+  .band span { flex: 1; height: var(--sg-space-5); }
+  .well { border-radius: var(--sg-radius-2); padding: var(--sg-space-4); margin: 0 0 var(--sg-space-4); }
+  .branded { border-top: var(--sg-border-width-0) solid var(--sg-color-border-subtle); margin-top: var(--sg-space-section); padding-top: var(--sg-space-4); }
+  .branded h1 { font-size: var(--sg-text-heading-3); line-height: var(--sg-text-heading-3-leading); }
+  p  { color: var(--sg-color-text-muted); margin: 0 0 var(--sg-space-4); }
+  .badge { color: var(--sg-color-danger); border: var(--sg-border-width-0) solid var(--sg-color-danger-mark); border-radius: var(--sg-radius-full); padding: 0 var(--sg-space-3); }
+  button { background: var(--sg-color-accent); color: var(--sg-color-bg-page); border: 0; border-radius: var(--sg-radius-2); padding: var(--sg-space-2) var(--sg-space-4); font: inherit; transition: opacity var(--sg-duration-2); }
+</style>
+</head>
+<body data-sg-surface="page">
+  <div class="card" data-sg-surface="surface">
+    <h1>tokens.css だけで組んだページ</h1>
+    <p>読み込んでいるのは tokens.css の1ファイルのみ。フレームワークは使っていない。</p>
+    <div class="stats">
+      <div>1,048,576</div>
+      <div>0,999,111</div>
+    </div>
+    <div class="band">
+      <span style="background: var(--sg-color-sequential-1)"></span>
+      <span style="background: var(--sg-color-sequential-2)"></span>
+      <span style="background: var(--sg-color-sequential-3)"></span>
+      <span style="background: var(--sg-color-sequential-4)"></span>
+      <span style="background: var(--sg-color-sequential-5)"></span>
+      <span style="background: var(--sg-color-sequential-6)"></span>
+      <span style="background: var(--sg-color-sequential-7)"></span>
+      <span style="background: var(--sg-color-sequential-8)"></span>
+      <span style="background: var(--sg-color-sequential-9)"></span>
+      <span style="background: var(--sg-color-sequential-10)"></span>
+    </div>
+    <button type="button">主ボタン</button>
+    <span class="badge">danger</span>
+    <!-- 面が深くなると、文字とアクセントが自動で1段深い段を指す（決定5-12）。
+         ここで役割名は1つも変えていない -->
+    <div class="well" data-sg-surface="inset">
+      <p>凹んだ面。<span class="badge">danger</span> も本文も、面が深くなった分だけ濃くなる。</p>
+    </div>
+    <div class="branded">
+      <h1>見出しの口に Georgia を差した</h1>
+      <p>差したのは display の口だけなので、本文はこのまま。上の見出しも display なので一緒に変わる。順序（欧文 → 和文 → generic）はトークンが保証する。</p>
+    </div>
+  </div>
+</body>
+</html>

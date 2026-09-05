@@ -8,14 +8,36 @@
  *
  * 教訓3「機械的に検査できるものは、文書ではなく検査にする」の適用。
  *
- * 検査できる範囲: decisions.md の表に書かれた数値。
+ * 検査できる範囲: decisions.md の表の数値と、README の概要表の数値。
  * 検査できない範囲: 表以外の本文に埋め込まれた数値、および表の「意味」。
  *   規則の説明文が値と食い違っていても、この検査は通る（教訓5）。
  */
 import { readFileSync } from 'node:fs';
-import { fontSize, leadingFamilies, lineHeight, root } from '../packages/tokens/src/index.ts';
+import {
+  durationDwell,
+  durationLoop,
+  durationTransition,
+  fontSize,
+  leadingFamilies,
+  letterSpacing,
+  letterSpacingCaps,
+  letterSpacingCoefficient,
+  fontWeight,
+  fontWeightRoles,
+  lineHeight,
+  breakpoint,
+  breakpointNames,
+  breakpointUnit,
+  elevation,
+  elevationGeometry,
+  radius,
+  root,
+  spacing,
+  width,
+} from '../packages/tokens/src/index.ts';
 
 const doc = readFileSync('docs/decisions.md', 'utf8');
+const readme = readFileSync('README.md', 'utf8');
 const errors = [];
 
 /**
@@ -29,8 +51,67 @@ const rows = (valueColumns) => {
   return [...doc.matchAll(re)].map((m) => m.slice(1).map(Number));
 };
 
+/**
+ * 節に閉じて表を読む。**文書全体から拾うと、列数の同じ表を取り違える。**
+ *
+ * 実際、幅の表（| 段 | rem | px |）を足したとき、
+ * font-size の表（| index | px | rem |）と同じ列数だったので、
+ * 全体から拾う形のままだと font-size の行数が合わなくなる。
+ */
+const rowsIn = (heading, valueColumns) => {
+  const at = doc.indexOf(heading);
+  if (at < 0) {
+    errors.push(`decisions.md に「${heading}」が見つかりません`);
+    return [];
+  }
+  const end = doc.indexOf('\n### ', at + heading.length);
+  const section = doc.slice(at, end < 0 ? doc.length : end);
+  const cell = '\\s*\\*{0,2}([\\d.]+)\\*{0,2}\\s*\\|';
+  const re = new RegExp(`^\\|\\s*\\*{0,2}(\\d+)\\*{0,2}\\s*\\|${cell.repeat(valueColumns)}\\s*$`, 'gm');
+  return [...section.matchAll(re)].map((m) => m.slice(1).map(Number));
+};
+
+/* ---------- 幅の表: | 段 | rem | px | ---------- */
+
+const widthRows = rowsIn('### 決定 6-42', 2);
+if (widthRows.length !== width.length) {
+  errors.push(
+    `幅の表が ${widthRows.length} 行しか見つかりません（期待 ${width.length} 行）`,
+  );
+} else {
+  widthRows.forEach(([i, remValue, px], index) => {
+    if (i !== index) errors.push(`幅の表の段が飛んでいます: ${i}`);
+    const want = width[index];
+    if (remValue !== Number(want.toFixed(4))) {
+      errors.push(`width[${index}] の rem: 表 ${remValue} / 生成器 ${want.toFixed(4)}`);
+    }
+    if (px !== Math.round(want * root)) {
+      errors.push(`width[${index}] の px: 表 ${px} / 生成器 ${Math.round(want * root)}`);
+    }
+  });
+}
+
+/* ---------- 滞在の表: | 段 | ms | ---------- */
+
+const dwellRows = rowsIn('### 決定 6-42', 1);
+if (dwellRows.length !== durationDwell.length) {
+  errors.push(
+    `滞在の表が ${dwellRows.length} 行しか見つかりません（期待 ${durationDwell.length} 行）`,
+  );
+} else {
+  dwellRows.forEach(([i, ms], index) => {
+    if (i !== index) errors.push(`滞在の表の段が飛んでいます: ${i}`);
+    const want = Number(durationDwell[index].toFixed(1));
+    if (ms !== want) errors.push(`durationDwell[${index}]: 表 ${ms} / 生成器 ${want}`);
+  });
+}
+
 /* ---------- font-size 表: | index | px | rem | ---------- */
-const fsRows = rows(2).filter((r) => r[0] < fontSize.length && r[1] > 5 && r[1] < 200);
+/*
+  **自分の節に閉じて読む。** 幅の表（決定6-42）が同じ列数なので、
+  文書全体から拾うと取り違える。実際、閉じる前は 16 行拾って落ちた。
+*/
+const fsRows = rowsIn('### 決定 1-3', 2).filter((r) => r[0] < fontSize.length);
 if (fsRows.length !== fontSize.length) {
   errors.push(
     `font-size の表が ${fsRows.length} 行しか見つかりません（期待 ${fontSize.length} 行）。\n` +
@@ -66,6 +147,89 @@ if (lhRows.length !== fontSize.length) {
   }
 }
 
+/* ---------- letter-spacing 表: | index | ○○px | ○○em | ---------- */
+/*
+ * **単位を書いた形で照合する。** 数字だけの表にすると font-size 表（同じ列数）と
+ * 見分けがつかず、rows(2) が両方拾って行数が合わなくなる。
+ * 表の側に単位を残すのは読み手のためでもある（em は「サイズに対する比」なので、
+ * px と並べないと大きさが分からない）。
+ */
+const lsRows = [
+  ...doc.matchAll(/^\|\s*(\d+)\s*\|\s*([\d.]+)px\s*\|\s*(-?[\d.]+)(?:em)?\s*\|\s*$/gm),
+].map((m) => [+m[1], +m[2], +m[3]]);
+
+if (lsRows.length !== fontSize.length) {
+  errors.push(
+    `letter-spacing の表が ${lsRows.length} 行しか見つかりません（期待 ${fontSize.length} 行）。`,
+  );
+} else {
+  for (const [i, px, em] of lsRows) {
+    if (px !== +fontSize[i].toFixed(2)) {
+      errors.push(`letter-spacing 表の ${i} 行目の px: 表 ${px} / 生成器 ${fontSize[i].toFixed(2)}`);
+    }
+    const want = +letterSpacing(fontSize[i]).toFixed(4);
+    if (em !== want) errors.push(`letter-spacing[${i}]: 表 ${em} / 生成器 ${want}`);
+  }
+}
+
+/* ---------- elevation 表: | h | ○○px | ○○px | ---------- */
+/*
+ * 単位付きで書いてあるので、上の rows() が拾う数値表とは混ざらない。
+ * h=0 は「影を書かなければよい」ので表に無く、行数は maxHeight と一致する。
+ */
+const elRows = [...doc.matchAll(/^\|\s*(\d+)\s*\|\s*(\d+)px\s*\|\s*(\d+)px\s*\|/gm)].map(
+  (m) => m.slice(1).map(Number),
+);
+if (elRows.length !== elevation.length - 1) {
+  errors.push(
+    `elevation の表が ${elRows.length} 行しか見つかりません（期待 ${elevation.length - 1} 行）。`,
+  );
+} else {
+  for (const [h, offset, blur] of elRows) {
+    const want = elevationGeometry(h);
+    if (offset !== want.offset) {
+      errors.push(`elevation[${h}] のオフセット: 表 ${offset} / 生成器 ${want.offset}`);
+    }
+    if (blur !== want.blur) {
+      errors.push(`elevation[${h}] のぼかし: 表 ${blur} / 生成器 ${want.blur}`);
+    }
+  }
+}
+
+/* ---------- README の概要表 ---------- */
+/*
+ * README にも値を書いている（利用者が最初に見る場所なので、
+ * リンクだけにせず実際の値を出す判断をした）。
+ * decisions.md だけを検査していると README が黙って古くなるため、ここも見る。
+ */
+const readmeExpectations = [
+  ['spacing', spacing.join(', ')],
+  ['radius', radius.join(', ')],
+  ['font-size の下端', fontSize[0].toFixed(2)],
+  ['font-size の上端', fontSize.at(-1).toFixed(2)],
+  ['font-size の段数', `（${fontSize.length}段）`],
+  ['duration 遷移の下端', String(Math.round(durationTransition[0]))],
+  ['duration 遷移の上端', String(Math.round(durationTransition.at(-1)))],
+  ['duration ループの下端', String(Math.round(durationLoop[0]))],
+  ['duration ループの上端', String(Math.round(durationLoop.at(-1)))],
+  ['breakpoint', breakpointNames.map((n) => breakpoint(n)).join(', ') + breakpointUnit],
+  ['letter-spacing の係数', `${letterSpacingCoefficient} × (root ÷ size`],
+  ['letter-spacing の大文字化の加算項', `${letterSpacingCaps}em`],
+  [
+    'font-weight の既定',
+    fontWeightRoles
+      .map((r) => /,\s*(\d+)\)$/.exec(fontWeight(r))[1])
+      .join(' / '),
+  ],
+  ['font-weight の役割名', fontWeightRoles.map((r) => `\`${r}\``).join(' ')],
+];
+
+for (const [label, text] of readmeExpectations) {
+  if (!readme.includes(text)) {
+    errors.push(`README.md に ${label} の記載が見つかりません: 「${text}」`);
+  }
+}
+
 /* ---------- 結果 ---------- */
 if (errors.length) {
   console.error('docs/decisions.md の数値表が生成器の出力と一致しません。\n');
@@ -77,5 +241,10 @@ if (errors.length) {
   process.exit(1);
 }
 
+console.log(`✓ 幅の表 ${widthRows.length} 行が生成器と一致`);
+console.log(`✓ 滞在の表 ${dwellRows.length} 行が生成器と一致`);
 console.log(`✓ font-size 表 ${fsRows.length} 行が生成器と一致`);
 console.log(`✓ line-height 表 ${lhRows.length} 行 × ${Object.keys(leadingFamilies).length} 系統が生成器と一致`);
+console.log(`✓ letter-spacing 表 ${lsRows.length} 行が生成器と一致`);
+console.log(`✓ elevation 表 ${elRows.length} 行が生成器と一致`);
+console.log(`✓ README の概要表 ${readmeExpectations.length} 項目が生成器と一致`);

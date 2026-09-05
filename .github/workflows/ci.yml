@@ -2,10 +2,33 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
 
 jobs:
+  # リリース線への PR は release/vX.Y.Z からのみ許す（決定4-7）。
+  # branch protection は「PR を経由すること」しか要求せず、head を制約しない。
+  # 作業ブランチや develop から直接 main へ PR を出せてしまうため、ここで塞ぐ。
+  #
+  # **形も見る。** release ブランチはバージョンを上げる場所であり、
+  # 名前がそのバージョンを名乗る。release/foo のような名前を通すと、
+  # どの番号を切るのかがブランチ名から読めなくなる（docs/branching.md）。
+  branch-flow:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: main への PR は release/vX.Y.Z からのみ
+        run: |
+          if ! printf '%s' "$HEAD_REF" | grep -Eq '^release/v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "main への PR は release/vX.Y.Z からのみ許可されています。" >&2
+            echo "  この PR の head: $HEAD_REF" >&2
+            echo "  develop から release/vX.Y.Z を切ってください（docs/branching.md）。" >&2
+            exit 1
+          fi
+          echo "✓ head は $HEAD_REF"
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+
   verify:
     runs-on: ubuntu-latest
     steps:
@@ -20,11 +43,27 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # 例・ソース・型表を生成する（決定6-4）。**typecheck より前**——
+      # ドキュメントサイトが生成物を import しているため、無いと型が通らない
+      - name: コンポーネント文書データの生成
+        run: pnpm docs:data
+
       # 型検査
       - name: typecheck
         run: pnpm typecheck
 
-      # スケールの不変条件（docs/decisions.md との一致を含む）
+      # トークンを生成する（以降の検査と、コンポーネントのテストが dist/ を使う）
+      # **test より前に置く。** コンポーネントのテストは実ブラウザで走り、
+      # 生成した CSS を実際に当てるため（決定6-6）
+      - name: トークンの生成
+        run: pnpm build:tokens
+
+      # 実ブラウザのテストに要る（決定6-6）
+      - name: Playwright の導入
+        run: pnpm exec playwright install --with-deps chromium
+
+      # スケールの不変条件（docs/decisions.md との一致を含む）と、
+      # コンポーネント（実ブラウザ）
       - name: test
         run: pnpm test
 
@@ -36,13 +75,89 @@ jobs:
       - name: 決定文書との一致
         run: pnpm check:docs-scales
 
-      # docs/agent-failures.md の教訓が CLAUDE.md に届いていること
-      - name: 教訓の同期
-        run: pnpm check:lessons
+      # 原則4: tokens.css がフレームワーク非依存で単体成立すること
+      - name: tokens.css の単体成立性
+        run: pnpm check:tokens-standalone
+
+      # 生成した tokens.scss が SCSS としてコンパイルできること
+      - name: tokens.scss のコンパイル
+        run: pnpm check:scss
+
+      # 生成した Tailwind アダプタが期待どおりのユーティリティを出すこと
+      - name: Tailwind アダプタ
+        run: pnpm check:tailwind-adapter
+
+      # 文書が挙げている名前・参照が実装と合っていること（Issue #91）
+      # 名前表（dist/tokens.layers.json）と theme.css を読むので build:tokens の後
+      - name: 文書の名前と参照
+        run: pnpm check:docs-refs
+
+      # 原則3: コンポーネントはセマンティックしか参照できないこと
+      # 生成器が出す名前表（dist/tokens.layers.json）を許可リストとして使うため
+      # build:tokens の後に置く
+      - name: トークンの使い方
+        run: pnpm check:token-usage
+
+      # 原則3: コンポーネントが書いたクラスを「生成された CSS の側から」見る（決定6-2）
+      # check:token-usage は class 属性の位置を起点に読むので、cva やオブジェクト引きなど
+      # 間接を1段挟むと見えない。Tailwind に走査させて出力に規則を当てる
+      - name: コンポーネントのクラス
+        run: pnpm check:component-classes
+
+      # 決定6-4: 3状態の例が揃っていること。文書に書くだけでは守られない（教訓3）
+      - name: コンポーネントの例
+        run: pnpm check:component-examples
+
+      # 決定6-8・6-11: 利用者に届く文面に内部の参照が入っていないこと
+      # JSDoc は型表として、例のソースはそのままサイトに出る
+      # 生成物（dist/）も見るので build:tokens の後
+      - name: 利用者に届く文面
+        run: pnpm check:public-language
+
+      # サンプルページが生成した変数だけで組まれていること（Issue #61）
+      # 生値を1つ混ぜても見た目は変わらないので、検査でしか気づけない
+      - name: サンプルページ
+        run: pnpm check:sample-page
+
+      # 同じセマンティックが CSS と JS の2形式に出るので、値の一致を確かめる
+      - name: CSS と JS の値の一致
+        run: pnpm check:token-values
+
+      # 生成した .d.ts は typecheck の対象外。壊れていても緑で通るため個別に見る
+      - name: 生成した型定義
+        run: pnpm check:token-types
+
+      # 原則6: 生成物は利用側リポジトリへ落ちる。落ちた先で意味を成すこと
+      - name: 生成物のヘッダ
+        run: pnpm check:output-header
+
+      # 配信物が落ちた先で成立すること（原則6）
+      # 1件ずつ落としたときの参照先の閉じと、全部落とした木がコンパイルできること。
+      # **全部まとめて1回コンパイルするだけだと依存の書き漏れが隠れる**——
+      # 他の item が持ってきたファイルで解決してしまう
+      - name: レジストリの配信物
+        run: pnpm build:registry && pnpm check:registry
+
+      # ドキュメントサイトがビルドできること
+      # 型が通ってもビルドが壊れる要因（アセット解決、import 経路、Next.js の設定）は
+      # typecheck では検出できない。**Tailwind アダプタを chrome に入れると
+      # fumadocs-ui の @apply が解決できず落ちる**ので、ここが混入の検出も兼ねる（決定6-4）
+      - name: apps/docs のビルド
+        run: pnpm --filter @sashigane/docs build
+
+      # 検索が実際に引けること（決定6-13）。ビルドした .next を読むのでこの順
+      # 索引が空でも経路は 200 を返し、画面には「見つかりません」と出るだけである
+      - name: ドキュメントサイトの検索
+        run: pnpm check:docs-search
+
+      # AI が読む形とページの絵（決定6-24）。ビルドした .next を読むのでこの順
+      # 差し込みが展開されなくても Markdown としては正しく、読む側にだけ意味が無い
+      - name: AI が読む形とページの絵
+        run: pnpm check:docs-llms
 
       # 生成物がコミットされていないこと（原則1）
       - name: 生成物が混入していないこと
-        run: node scripts/check-no-build-output.mjs
+        run: pnpm check:no-build-output
 
   # pnpm verify:coverage は観測対象4本のローカル clone を前提とするため CI では動かせない。
   # スケールを変更したら手元で実行し、docs/verification.md を更新すること。
