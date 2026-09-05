@@ -14,6 +14,7 @@ import {
   colorInputNames,
   colorSemanticVars,
   fontInputNames,
+  motionInputNames,
   generatePalette,
   toTokensCss,
   tokenLayers,
@@ -113,7 +114,9 @@ describe('層の名前表', () => {
     });
 
     it('生成器が知っている口と過不足なく一致する', () => {
-      expect(layers.inputs).toEqual([...fontInputNames(), ...colorInputNames()].sort());
+      expect(layers.inputs).toEqual(
+        [...fontInputNames(), ...colorInputNames(), ...motionInputNames()].sort(),
+      );
     });
 
     it('tokens.css に宣言が無く、かつ参照はされている', () => {
