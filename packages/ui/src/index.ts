@@ -12,6 +12,7 @@ export {
   AccordionContent,
   type AccordionContentProps,
 } from './accordion/index.ts';
+export { Alert, type AlertProps } from './alert/index.ts';
 export { Badge, type BadgeProps } from './badge/index.ts';
 export {
   Breadcrumb,
