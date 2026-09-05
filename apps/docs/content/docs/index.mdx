@@ -10,12 +10,23 @@ npm のパッケージではなく、`shadcn` の CLI で**コードが手元の
 
 ## すぐ試す
 
+配信元を `components.json` に1度書きます。**これが無いと動きません。**
+
+```json
+{
+  "registries": {
+    "@sashigane": "https://sashigane-docs.vercel.app/r/{name}.json"
+  }
+}
+```
+
+あとは欲しいものを名前で足すだけです。
+
 ```bash
 npx shadcn@latest add @sashigane/button
 ```
 
-配信元を `components.json` に1度書く必要があります。手順は
-[導入する](/docs/install) にあります。
+落ちる場所や、まとめて入れる方法は [導入する](/docs/install) にあります。
 
 ## 何が手に入るか
 
