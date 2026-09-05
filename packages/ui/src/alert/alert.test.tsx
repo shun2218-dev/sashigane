@@ -14,6 +14,7 @@ import '../../test/tokens.css';
  *   **見出しと本文が結びつくこと** — 利用側に書かせると忘れられる
  *   **閉じる釦は渡したときだけ出ること** — 消してはいけない知らせがある
  *   **中立が面を宣言し、色付きが塗りの対を持つこと** — 塗るだけの道が残っていないこと
+ *   **閉じる釦が枠の前景を継ぐこと** — 淡い塗りの上で読める段は on-{ランプ}-subtle だけ
  */
 
 const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}</div>;
@@ -140,5 +141,44 @@ describe('色', () => {
       seen.add(`${styleOf(el).background}|${styleOf(el).color}`);
     }
     expect(seen.size).toBe(5);
+  });
+});
+
+describe('閉じる釦の色', () => {
+  it('枠の前景を継ぐ', async () => {
+    /*
+      **淡い塗りの上で読めることが保証されているのは `on-{ランプ}-subtle` だけ**である。
+      釦が自分で色を書くと、保証の外の段を指す——Button の `ghost` は `text-accent` を
+      書くので、本文より薄い字が並ぶ。
+    */
+    for (const tone of ['danger', 'warning', 'success', 'info', 'accent'] as const) {
+      const { container } = await render(
+        onSurface(
+          <Alert tone={tone} title="t" onDismiss={() => {}}>
+            本文
+          </Alert>,
+        ),
+      );
+      const body = container.querySelector('[data-sg-component="alert-body"]');
+      const button = container.querySelector('[data-sg-component="alert-dismiss"]');
+      if (!body || !button) throw new Error('描画されていません');
+      await expect
+        .poll(() => getComputedStyle(button).color)
+        .toBe(getComputedStyle(body).color);
+    }
+  });
+
+  it('中立でも枠の前景を継ぐ', async () => {
+    const { container } = await render(
+      onSurface(
+        <Alert title="t" onDismiss={() => {}}>
+          本文
+        </Alert>,
+      ),
+    );
+    const body = container.querySelector('[data-sg-component="alert-body"]');
+    const button = container.querySelector('[data-sg-component="alert-dismiss"]');
+    if (!body || !button) throw new Error('描画されていません');
+    await expect.poll(() => getComputedStyle(button).color).toBe(getComputedStyle(body).color);
   });
 });

@@ -28,6 +28,25 @@
  * その場に最初からあるものは文書の順に読まれる。領域にすると二重になる。
  * **後から出したときだけ `live` を渡す。**
  *
+ * ## 閉じる釦に Button を使わない
+ *
+ * **色の保証が届かない。** 淡い塗りの上で読めることが保証されているのは
+ * `on-{ランプ}-subtle` だけである。実測（暗色）はこうなっている。
+ *
+ * |    | on-{ランプ}-subtle | ghost の既定（accent） | ランプを揃えた場合 |
+ * |---|---|---|---|
+ * | 最小 | 5.78 | 4.32 | **3.95** |
+ * | 最大 | 6.42 | 4.58 | 4.57 |
+ *
+ * Button は `ghost` でも `text-accent` を書く。**淡い塗りの上に置くと、
+ * 本文より薄い字が並ぶ。** ランプを揃えても下がるだけである。
+ *
+ * だから**色を1つも書かない釦**を自分で持ち、枠の前景を継ぐ。
+ * 線（focus-visible）は Button と同じものを書き下している。
+ *
+ * **hover で色を変えない。** 変えるとまた保証の外の段を指すことになる。
+ * 押せることは形（cursor）と線で伝える。
+ *
  * ## 見出しは段落であって見出しではない
  *
  * `h2` などにすると**見出しの階層に入る**が、何段目が正しいかは
@@ -42,11 +61,20 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import { useId } from 'react';
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
-import { Button } from '../button/button.tsx';
 import { IconX } from '../icon/icon.tsx';
 
 /** 中立のときに宣言する面。**1箇所だけに書く** */
 const NEUTRAL_SURFACE = 'inset';
+
+/**
+ * 閉じる釦。**色を1つも書かない。**
+ *
+ * 枠の前景を継ぐ。線は Button と同じものである——写しだが、
+ * **色を持たない釦**が Button に無いので、ここだけ書き下している。
+ */
+const dismiss =
+  'shrink-0 cursor-pointer rounded-sm p-1 focus-visible:outline-solid ' +
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus';
 
 /**
  * その場に残る知らせ。
@@ -205,15 +233,20 @@ export function Alert({
         ) : null}
       </div>
       {onDismiss ? (
-        <Button
-          variant="ghost"
-          iconOnly
+        <button
+          type="button"
+          data-sg-component="alert-dismiss"
+          // **図案だけでは何の釦か読めない**
           aria-label={dismissLabel}
           onClick={onDismiss}
-          className="shrink-0"
+          /*
+            **色を1つも書かない。** 枠の前景（`on-{ランプ}-subtle` か面の段）を継ぐ。
+            ここで色を書くと、淡い塗りの上で読めることが保証されていない段を指す。
+          */
+          className={dismiss}
         >
           <IconX />
-        </Button>
+        </button>
       ) : null}
     </div>
   );
