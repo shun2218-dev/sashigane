@@ -14,6 +14,12 @@ export {
 } from './accordion/index.ts';
 export { Badge, type BadgeProps } from './badge/index.ts';
 export {
+  Breadcrumb,
+  type BreadcrumbProps,
+  BreadcrumbItem,
+  type BreadcrumbItemProps,
+} from './breadcrumb/index.ts';
+export {
   Carousel,
   type CarouselProps,
   type CarouselOptions,

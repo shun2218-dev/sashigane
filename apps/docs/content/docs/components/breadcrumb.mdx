@@ -1,0 +1,71 @@
+---
+title: Breadcrumb
+description: いま居る場所と、そこへ至る道。区切りと現在地は器が付ける
+---
+
+```tsx
+<Breadcrumb>
+  <BreadcrumbItem href="/">ホーム</BreadcrumbItem>
+  <BreadcrumbItem href="/docs">ドキュメント</BreadcrumbItem>
+  <BreadcrumbItem>はじめに</BreadcrumbItem>
+</Breadcrumb>
+```
+
+## 区切りは書きません
+
+**器が項目のあいだに入れます。** 書く必要はありません。
+
+自分で `<BreadcrumbSeparator />` を並べる形にしていないのは、
+**読み上げから隠す指定を付け忘れられる**からです。忘れても見た目は変わらないので、
+読み上げが「スラッシュ」を項目の数だけ読む状態が黙って残ります。
+
+形だけは変えられます。
+
+```tsx
+<Breadcrumb separator="›">…</Breadcrumb>
+```
+
+**先頭には出ません。** あいだにしか入らないので、記号が浮くことがありません。
+
+## いま居る場所も書きません
+
+**末尾がいま居る場所です。** パンくずの形がそう決めているので、
+`aria-current="page"` は器が付けます。
+
+書かせる形にすると、**道筋を組み替えたときに付け替え忘れます。**
+見た目には出ないので、そのまま残ります。
+
+```tsx
+<BreadcrumbItem href="/docs">ドキュメント</BreadcrumbItem>
+<BreadcrumbItem>はじめに</BreadcrumbItem>       {/* ← ここに付きます */}
+```
+
+末尾に `href` を渡してもかまいません。**リンクのまま現在地を名乗ります。**
+
+## 行き先が無ければリンクになりません
+
+`href` を渡さなかった項目は文字だけになります。
+**押せるように見えて何も起きないものを作りません。**
+
+## 長いときは折り返します
+
+**畳みません。** `…` で途中を省く形は持っていません。
+
+省くとなると、**どれを畳むかを器が決める**ことになります。道筋の中で
+どれが要らないかは、その道筋を作った側にしか分かりません。
+畳んだ先を開く仕掛けも要ります。
+
+幅が足りないときは折り返します。
+
+## 自分のリンクに差し替えられます
+
+`Link` を使っているときは `asChild` を渡してください。
+**枠を1つも作らず、名乗りと現在地の申告が子へ移ります。**
+
+```tsx
+<BreadcrumbItem asChild>
+  <Link href="/docs">ドキュメント</Link>
+</BreadcrumbItem>
+```
+
+<ComponentDemo name="breadcrumb" />
