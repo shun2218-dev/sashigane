@@ -488,6 +488,42 @@ describe('編集後の検査（決定5-1）', () => {
     const warnings = verifyPalette(broken);
     expect(warnings.some((w) => w.code === 'contrast-below-target')).toBe(true);
   });
+
+  /**
+   * **塗りだけを編集するとずれる**（決定5-16 改訂）。
+   *
+   * 塗りと文字が同じランプだった頃は、片方だけずらすことが原理的にできなかった。
+   * ランプを分けたので、**この状態が新しく作れるようになっている。**
+   *
+   * ## この検査が見ていないこと（教訓5）
+   *
+   * **段は編集後の塗りに対して解き直される。** 塗りを少し動かしただけなら、
+   * 解が1段深い側へ移って 4.5 を満たしたままになる——**警告は出ないが、
+   * 出ないことが正しい。**出ている色はその段だからである。
+   *
+   * ここが捕まえるのは、**どの段を持ってきても載らない塗り**に編集された場合である。
+   * 解が尽きて最後の段へ落ちる経路（`?? outward[outward.length - 1]`）を見ている。
+   */
+  it('どの段も載らない淡い塗りに書き換えると警告が出る', () => {
+    const pal = generatePalette({ L: 0.6, C: 0.1, H: 200 });
+    const r = surfaceRolesFor(pal, 'light')[0]!;
+    const broken: Palette = {
+      ...pal,
+      subtle: {
+        ...pal.subtle,
+        danger: {
+          ...pal.subtle.danger,
+          byStep: {
+            ...pal.subtle.danger.byStep,
+            // 中ほどの明度。**濃い側にも淡い側にも逃げ場が無い**
+            [r.colorSubtle]: { L: 0.45, C: 0, H: 17 },
+          },
+        },
+      },
+    };
+    const warnings = verifyPalette(broken);
+    expect(warnings.some((w) => w.code === 'subtle-fill-below-target')).toBe(true);
+  });
 });
 
 describe('入力の再現性を警告する（決定5-1）', () => {
@@ -748,5 +784,70 @@ describe('識別色の上限（決定5-5）', () => {
     expect(best, `色相だけで ${n} 色を分けられてしまった（最良 ${best.toFixed(3)}）`).toBeLessThan(
       cfg.categorical.minDistance,
     );
+  });
+});
+
+/**
+ * 淡い塗りの彩度（決定5-16 改訂）。**塗りは専用のランプから来る。**
+ *
+ * 4.5:1 そのものは `fill-state.test.ts` が測っている。ここで測るのは**揃っていること**——
+ * 保証は前から成立していたのに、明るい端で彩度が3.5倍ばらついて緑だけ蛍光に見えた
+ * （Issue #232）。**対比の検査は、この崩れについて何も言わない。**
+ *
+ * なお `fill-state.test.ts` は塗りを `p.status[n]` の同じ段から読んでいた。
+ * 塗りを別のランプへ移しても**生成物に出ていない色を測り続けて通る**状態だったので、
+ * 対で読む形に直してある。
+ */
+describe('淡い塗りの彩度（決定5-16）', () => {
+  const gSubtle = tokens.color.guarantees;
+  const fillNames = ['primary', ...statusNames] as const;
+  /** 文字のランプ（単独で彩度を取る側） */
+  const textRamp = (p: Palette, n: (typeof fillNames)[number]) =>
+    n === 'primary' ? p.primary : p.status[n];
+
+  for (const mode of ['light', 'dark'] as const) {
+    const surfaces = mode === 'light' ? gSubtle.surfaces.light : gSubtle.surfaces.dark;
+
+    it(`${mode}: 淡い塗りの彩度がランプをまたいで揃っている`, () => {
+      for (const { H, pal } of palettes) {
+        surfaces.forEach((surfaceStep, depth) => {
+          const r = surfaceRolesFor(pal, mode)[depth]!;
+          const cs = fillNames.map((n) => pal.subtle[n].byStep[r.colorSubtle]!.C);
+          expect(
+            Math.max(...cs) - Math.min(...cs),
+            `primary=${H}° / ${mode} 面${surfaceStep}`,
+          ).toBeLessThan(1e-9);
+        });
+      }
+    });
+  }
+
+  /**
+   * **測っている相手が本当に塗りのランプであることを確かめる**（教訓2）。
+   *
+   * 上の2件は、塗りが文字と同じランプから来ていても通りうる——同じランプなら
+   * 彩度は当然揃っている。**2本が別物であること**をここで押さえる。
+   */
+  it('淡い塗りのランプは、文字のランプとは別物である', () => {
+    for (const { H, pal } of palettes) {
+      const differs = fillNames.some((n) =>
+        steps.some(
+          (s) => Math.abs(pal.subtle[n].byStep[s]!.C - textRamp(pal, n).byStep[s]!.C) > 1e-6,
+        ),
+      );
+      expect(differs, `primary=${H}°: 塗りと文字の彩度が全段で一致した`).toBe(true);
+    }
+  });
+
+  /**
+   * **揃える理由のほうを測る。** 揃えなければどうなるかを残しておく。
+   * sRGB は L=0.88 で緑に 0.2 を許し、青には 0.06 しか許さない。
+   * ばらつかなくなったら、専用のランプを持つ理由が消えている。
+   */
+  it('揃えないランプは、明るい端で彩度が2倍以上ばらつく', () => {
+    for (const { H, pal } of palettes) {
+      const cs = fillNames.map((n) => textRamp(pal, n).byStep[100]!.C);
+      expect(Math.max(...cs) / Math.min(...cs), `primary=${H}°`).toBeGreaterThan(2);
+    }
   });
 });
