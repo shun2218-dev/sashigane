@@ -134,7 +134,7 @@ export function Card({
   // 静的解析の検査が読み切れずに落ちる
   const classes = card({ surface, elevation });
   const shared = {
-    // **自分が何であるかを名乗る。** 見た目は持たない
+    // **自分が何であるかを示す。** 見た目は持たない
     'data-sg-component': 'card',
     'data-sg-surface': surface ?? DEFAULT_SURFACE,
     'data-sg-interactive': interactive ? '' : undefined,

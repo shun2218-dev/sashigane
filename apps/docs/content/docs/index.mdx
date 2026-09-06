@@ -54,16 +54,16 @@ npx shadcn@latest add @sashigane/button
 
 ### React が要らない使い方もできる
 
-トークンだけを入れれば、**素の CSS で使えます。** 面の宣言・塗り・覆い・
+トークンだけを入れれば、**素の CSS で使えます。** 面の宣言・塗り・オーバーレイ・
 スケルトンの動きまで CSS に入っているので、React 以外でも動きます。
 
 ```bash
 npx shadcn@latest add @sashigane/tokens
 ```
 
-### 部品は自分の名前を名乗る
+### コンポーネントは自分の名前を持つ
 
-すべての部品が `data-sg-component` で自分の名前を出します。**見た目は持ちません。**
+すべてのコンポーネントが `data-sg-component` に自分の名前を出します。**見た目は持ちません。**
 
 ```html
 <button data-sg-component="button" class="…">
@@ -76,7 +76,7 @@ npx shadcn@latest add @sashigane/tokens
 [data-sg-component="card"] { /* … */ }
 ```
 
-`asChild` で要素を差し替えても**名乗りは子へ移ります**。枠が変わっても、
+`asChild` で要素を差し替えても**`data-sg-component` は子へ移ります**。要素が変わっても、
 何であるかは変わりません。
 
 ## AI に読ませる

@@ -101,7 +101,7 @@ export const frameClass = (state: ControlState) => `${ring({ state })} flex w-fu
  * ## 誤りは自分で決めない
  *
  * `aria-invalid` が付くと線が変わる。**付けるのは Field である**——
- * ここで決めると、Field を使わない書き方だけが誤りを名乗れることになる。
+ * ここで決めると、Field を使わない書き方だけが誤りを示せることになる。
  */
 export function Input({ valid, className, ...props }: InputProps) {
   // 式の中で組み立てない。cva の呼び出しを補間の中へ直接置くと、

@@ -19,26 +19,26 @@
  *   利用側に `current` を書かせる —— 道筋を組み替えたときに付け替え忘れる。
  *   見た目には出ないので、そのまま残る
  *
- * ## 区切りは器が入れる
+ * ## 区切りは Breadcrumb が入れる
  *
  * 利用側に `<BreadcrumbSeparator />` を書かせる形にすると、
  * **`aria-hidden` を付け忘れられる。** 忘れても見た目は変わらないので、
  * 読み上げが「スラッシュ」を項目の数だけ読む状態が黙って残る。
  *
- * **忘れられる道を作らない。** 器が `Children.toArray` で数え、あいだに入れる。
+ * **書き忘れる余地を作らない。** Breadcrumb が `Children.toArray` で数え、あいだに入れる。
  * `ol` の子は `li` しか置けないので、**区切りも `li` で包む。**
  *
  * ## 末尾が「いま居る場所」である
  *
  * パンくずの形がそう決めているので、利用側に `current` を書かせない。
- * 器が末尾を知り、文脈で子へ渡す。
+ * Breadcrumb が末尾を知り、文脈で子へ渡す。
  *
  * **`cloneElement` で属性を差し込まない。** 子が `BreadcrumbItem` とは限らず
- * （包んだものが来うる）、差し込み先を器が決められない。
+ * （包んだものが来うる）、差し込み先をBreadcrumb が決められない。
  *
  * ## 畳まない
  *
- * 長いときは折り返す。省略（`…`）を持つと、**どれを畳むかを器が決める**ことになり、
+ * 長いときは折り返す。省略（`…`）を持つと、**どれを畳むかをBreadcrumb が決める**ことになり、
  * 畳んだ先を開く仕掛けまで要る。畳む必要が実際に出てから考える。
  * ─────────────────────────────────────────────
  */
@@ -46,7 +46,7 @@ import { Children, createContext, isValidElement, useContext } from 'react';
 import type { AnchorHTMLAttributes, HTMLAttributes, ReactNode, Ref } from 'react';
 import { Slot } from '../internal/slot.tsx';
 
-/** 末尾かどうか。**器だけが知っている** */
+/** 末尾かどうか。**Breadcrumb だけが知っている** */
 const LastCtx = createContext(false);
 
 export interface BreadcrumbProps extends Omit<HTMLAttributes<HTMLElement>, 'children'> {
@@ -79,11 +79,11 @@ export interface BreadcrumbProps extends Omit<HTMLAttributes<HTMLElement>, 'chil
  *
  * ## 区切りは書かない
  *
- * 器が項目のあいだに入れる。**読み上げには出ない。**
+ * Breadcrumb が項目のあいだに入れる。**読み上げには出ない。**
  *
  * ## 末尾がいま居る場所になる
  *
- * `aria-current="page"` は器が付ける。**書き忘れる余地を残さない。**
+ * `aria-current="page"` はBreadcrumb が付ける。**書き忘れる余地を残さない。**
  *
  * ## 長いときは折り返す
  *
@@ -107,7 +107,7 @@ export function Breadcrumb({
   const classes = 'text-body';
   return (
     <nav
-      // **自分が何であるかを名乗る。** 見た目は持たない
+      // **自分が何であるかを示す。** 見た目は持たない
       data-sg-component="breadcrumb"
       aria-label={label}
       className={className ? `${classes} ${className}` : classes}
@@ -137,7 +137,7 @@ export function Breadcrumb({
 }
 
 /**
- * `aria-current` は受け取らない。**末尾かどうかは器が決める。**
+ * `aria-current` は受け取らない。**末尾かどうかはBreadcrumb が決める。**
  */
 type ItemBase = Omit<AnchorHTMLAttributes<HTMLElement>, 'aria-current' | 'href'>;
 
@@ -180,7 +180,7 @@ export type BreadcrumbItemProps =
 /**
  * 道筋の1つ。
  *
- * **末尾かどうかは自分で決めない。** 器が知っていて、文脈で届く。
+ * **末尾かどうかは自分で決めない。** Breadcrumb が知っていて、文脈で届く。
  *
  * `href` があればリンクになり、無ければ文字だけになる。
  */
@@ -228,6 +228,6 @@ export function BreadcrumbItem({
     <span {...(loose as HTMLAttributes<HTMLSpanElement>)}>{children}</span>
   );
 
-  // **`li` は器が要求する。** `ol` の子は `li` しか置けない
+  // **`li` はBreadcrumb が要求する。** `ol` の子は `li` しか置けない
   return <li className="flex items-center">{inner}</li>;
 }

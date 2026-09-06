@@ -10,7 +10,7 @@ import { Input } from '../../input/input.tsx';
 import { Form, FormActions } from '../form.tsx';
 
 /**
- * 通常。**欄を束ねて、操作を並べる。**
+ * 通常。**入力をまとめて、操作を並べる。**
  *
  * バリデーションは持たない。走らせるのは利用側である。
  */

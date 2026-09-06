@@ -40,11 +40,11 @@ type Named =
 export type SpinnerProps = SpinnerBase & Named;
 
 /**
- * 待っていることを表す、回り続ける輪。
+ * 処理中であることを示す。読み込みや送信のあいだ出す。
  *
  * ## 動きだけで状態を伝えない
  *
- * 動きを減らす設定では**止まる。** 止まった輪からは進行が読み取れないので、
+ * 動きを減らす設定では**止まる。** 止まったスピナーからは進行が読み取れないので、
  * 名前を型で必須にしてある。周りに文字を出せるなら、そちらも出す。
  *
  * ## 大きさは行の高さに合わせてある
@@ -60,7 +60,7 @@ export function Spinner({ className, ...props }: SpinnerProps) {
     'inline-block size-6 shrink-0 rounded-full border-2 border-current border-t-transparent';
   return (
     <span
-      // **自分が何であるかを名乗る。** 見た目は持たない
+      // **自分が何であるかを示す。** 見た目は持たない
       data-sg-component="spinner"
       data-sg-spinner
       className={className ? `${classes} ${className}` : classes}

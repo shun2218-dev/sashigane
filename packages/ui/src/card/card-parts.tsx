@@ -41,8 +41,8 @@ interface PartProps extends HTMLAttributes<HTMLElement> {
 /**
  * セクションを1つ作る。**同じ形が4つあるので、ここ1箇所で組み立てる。**
  *
- * `name` は**自分が何であるかを名乗る**ためのもので、見た目は持たない。
- * `asChild` のときは子へ移るので、**差し替えても名乗りは残る。**
+ * `name` は**自分が何であるかを示す**ためのもので、見た目は持たない。
+ * `asChild` のときは子へ移るので、**差し替えても残る。**
  */
 const part =
   (Tag: 'div' | 'h3' | 'p', name: string, base: string) =>
