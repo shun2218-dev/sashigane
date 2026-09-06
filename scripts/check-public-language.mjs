@@ -38,9 +38,13 @@
  *
  * ## 何を見ないか（教訓5）
  *
- *   - **JSDoc でない普通のコメント**（`/* … *␘/` と `//`）。
+ *   - **配布されないファイルの、JSDoc でない普通のコメント**（`/* … *␘/` と `//`）。
  *     維持する側への覚書はここに書く。**型表には出ない**ので利用者に届かない。
  *     サイトの実装とデモページでも同じで、**コメントは落としてから見る**
+ *
+ *     **`packages/ui` は違う。** レジストリでソースごとコピーされるので、
+ *     普通のコメントも行コメントも**利用者の手元に残る。**
+ *     当初版はここも JSDoc だけを見ており、**11 箇所が配られていた**（Issue #244）
  *   - `scripts/` と `docs/`。**維持する側が読むもので、番号の定義がある場所である**
  *   - **テスト。** 利用者に届かない。設計の根拠を書く場所としてはむしろ適している
  *   - **番号を使わずに書かれた不親切な文章。** 「読んで分かるか」は機械では見えない
@@ -80,7 +84,43 @@ const INTERNAL_REF = /(?:決定|保留)\s?\d+-\d+|教訓\s?\d+|原則\s?\d+|Phas
  */
 const REPO_PATH = /(?<!https:\/\/[^\s)]{0,200})\b(?:\.\.\/)*docs\/[a-z-]+\.md\b/g;
 
-/** JSDoc だけを取り出す。普通のコメントは維持する側のものなので見ない */
+/**
+ * **唯一性の主張**（Issue #252）。
+ *
+ * 「この系で唯一、外のライブラリに乗っている部品です」と書いてあったが、
+ * Calendar も Icon も外のライブラリを使っている。
+ * 「唯一、クライアント側でしか描けない部品です」も、`'use client'` を持つのは 10 個だった。
+ *
+ * **どちらも書いた時点では合っていたのだろう。** コンポーネントが増えても、
+ * 文だけ古いまま残る。**読む側には嘘だと分からない。**
+ *
+ * 数えれば分かることは**数えて書く**（「`'use client'` を持つのは10個です」）。
+ * 数えずに「唯一」と書けるということは、**根拠を持っていないということである。**
+ */
+const ONLY_CLAIM = /唯一/g;
+
+/**
+ * 通してよい唯一性の主張。**理由と一緒に並べる**（教訓5）。
+ *
+ * 通す条件は**根拠を持っていること**である。設計の原則そのものか、
+ * 検査が不変条件として持っているか、どちらかでなければならない。
+ *
+ * 「唯一、外のライブラリに乗っている部品です」が通らないのは、
+ * **数えれば分かるのに数えていない**からである。
+ */
+const ONLY_ALLOWED = [
+  { phrase: '唯一の正', why: '設計の原則そのもの。コンポーネントの数え上げではない' },
+  { phrase: '唯一の根本定数', why: '値の話（root = 16px）。スケールの検査が不変条件として持つ' },
+  { phrase: '透過を持つ唯一', why: 'elevation.test.ts が「影の色は透過を持つ唯一のプリミティブ」を測る' },
+  { phrase: '唯一、透過を持つ色', why: '同上。生成物のコメントに出る側の書き方' },
+];
+
+/**
+ * JSDoc だけを取り出す。
+ *
+ * **配布されないもの**にだけ使う。`packages/ui` のソースはコピーされるので、
+ * 普通のコメントも利用者の手元に残る——そちらは全体を見る。
+ */
 const JSDOC = /\/\*\*[\s\S]*?\*\//g;
 
 /**
@@ -110,19 +150,39 @@ const inspect = (path, text) => {
   // **コメントを落とした残りが画面に出る**もの
   const rendered = /^apps\/docs\/(app|components)\/.*\.tsx?$/.test(path) || /^apps\/docs\/src\/.*\.html$/.test(path);
 
-  // 例・MDX・生成物は**全体が利用者に届く。** 画面に出る文はコメントを落とす。
-  // それ以外は JSDoc だけ
-  const targets = whole
-    ? [text]
-    : rendered
-      ? [stripComments(text)]
-      : [...text.matchAll(JSDOC)].map((m) => m[0]);
+  /*
+    **配布されるものは、ファイル全体が利用者の手元に残る。**
+
+    `packages/ui` のソースはレジストリでコピーされる。JSDoc も、普通のコメントも、
+    行コメントも、**そのまま相手のリポジトリに置かれる。**
+
+    > **当初版は JSDoc だけを見ていた。** すぐ下にある「配布されるものは
+    > ファイル全体を見る」という扱いは、**リポジトリ相対パスにしか当たっていなかった。**
+    > 決定番号は普通のコメントに書けば素通りし、実際に 11 箇所が配られていた。
+    > 利用者の指摘で見つかった（Issue #244）。
+    >
+    > **規則より検査の範囲が狭く、狭いことに緑である限り気づけない**（教訓5）。
+  */
+  const shipped = path.startsWith('packages/ui/');
+
+  // 例・MDX・生成物・配布されるソースは**全体が利用者に届く。**
+  // 画面に出る文はコメントを落とす。それ以外は JSDoc だけ
+  const targets =
+    whole || shipped
+      ? [text]
+      : rendered
+        ? [stripComments(text)]
+        : [...text.matchAll(JSDOC)].map((m) => m[0]);
 
   for (const chunk of targets) {
     for (const m of chunk.matchAll(INTERNAL_REF)) found.push({ path, kind: 'ref', what: m[0] });
+    for (const m of chunk.matchAll(ONLY_CLAIM)) {
+      const around = chunk.slice(Math.max(0, m.index - 12), m.index + 14);
+      if (ONLY_ALLOWED.some((a) => around.includes(a.phrase))) continue;
+      found.push({ path, kind: 'only', what: around.replace(/\s+/g, ' ').trim() });
+    }
   }
-  // 配布されるものは、ファイル全体を見る（普通のコメントに書いてもコピー先で壊れる）
-  if (path.startsWith('packages/ui/')) {
+  if (shipped) {
     for (const m of text.matchAll(REPO_PATH)) found.push({ path, kind: 'repo-path', what: m[0] });
   }
   return found;
@@ -133,12 +193,22 @@ const inspect = (path, text) => {
    ============================================================ */
 
 const failures = [];
+/*
+  **件数は数える。書かない。**
+
+  ベタ書きにしていたので、対照を足したときに**数だけ古いまま**になった。
+  「対照 19 件」と出しながら実際は 20 件を当てていた。
+  数が合っていないことは、**出力を読んでも分からない。**
+*/
+const counted = { fire: 0, pass: 0 };
 const expectFire = (name, path, text, kind) => {
+  counted.fire += 1;
   if (!inspect(path, text).some((f) => f.kind === kind)) {
     failures.push(`陰性対照が発火しない: ${name}`);
   }
 };
 const expectPass = (name, path, text) => {
+  counted.pass += 1;
   const found = inspect(path, text);
   if (found.length) failures.push(`陽性対照が落ちた: ${name}（${found.map((f) => f.what).join(' ')}）`);
 };
@@ -166,15 +236,51 @@ expectFire(
   'repo-path',
 );
 
-expectPass(
-  'JSDoc でない普通のコメントの中の番号',
+expectFire(
+  '配布されるファイルの、JSDoc でない普通のコメントの中の番号',
   'packages/ui/src/card/card.tsx',
+  '/*\n * 維持する側への覚書。決定5-13 の経緯はリポジトリにある\n */\nexport const a = 1;',
+  'ref',
+);
+expectFire(
+  '配布されるファイルの行コメントの中の番号',
+  'packages/ui/src/card/card.tsx',
+  '// 面の段は深くならない（決定5-12）\nexport const a = 1;',
+  'ref',
+);
+// **配布されないものは、普通のコメントを見ない。** 番号の定義がある側で読まれる
+expectPass(
+  '配布されないファイルの普通のコメントの中の番号',
+  'apps/docs/components/preview.tsx',
   '/*\n * 維持する側への覚書。決定5-13 の経緯はリポジトリにある\n */\nexport const a = 1;',
 );
 expectPass(
   '平文で理由が書かれた JSDoc',
   'packages/ui/src/card/card.tsx',
   '/**\n * 面の種類。凹んだ面は別の役割なので持たない。\n */\nexport const a = 1;',
+);
+expectFire(
+  '唯一性の主張',
+  'apps/docs/content/docs/components/select.mdx',
+  'このライブラリで唯一、クライアント側でしか描けない部品です。',
+  'only',
+);
+// **数えて書いたものは通す。** 根拠を持っているので古くなれば検査が落ちる
+expectPass(
+  '数えて書いた主張',
+  'apps/docs/content/docs/components/select.mdx',
+  "`'use client'` を持つのは10個です。",
+);
+// 「唯一の根本定数」は値の話で、コンポーネントの数え上げではない
+expectPass(
+  '唯一の根本定数',
+  'packages/ui/src/accordion/examples/default.tsx',
+  '唯一の根本定数は 16px です。',
+);
+expectPass(
+  '根拠のある唯一性（設計の原則）',
+  'README.md',
+  'トークンを唯一の正とするデザインシステム。',
 );
 expectPass('絶対 URL', 'packages/ui/src/card/card.tsx', '/* https://example.com/docs/decisions.md */');
 // 段取りでない「Phase」は落とさない。**語そのものを禁じているのではない**
@@ -263,9 +369,25 @@ const files = [...tracked, ...DIST_FILES];
 
 const violations = files.flatMap((f) => inspect(f, readFileSync(f, 'utf8')));
 
-if (violations.length) {
+const only = violations.filter((v) => v.kind === 'only');
+const refs = violations.filter((v) => v.kind !== 'only');
+
+if (only.length) {
+  console.error('利用者に届く文面に、確かめられない唯一性の主張があります（Issue #252）。\n');
+  for (const v of only) console.error(`  ✗ ${v.path}  ${v.what}`);
+  console.error(
+    '\n**書いた時点では合っていても、増えれば静かに嘘になります。**' +
+      '\n実際、「唯一、外のライブラリに乗っている部品です」と書いてあるあいだに' +
+      '\nCalendar と Icon が外のライブラリを使うようになっていました。' +
+      '\n\n数えれば分かることは**数えて書いてください**' +
+      '\n（「`\'use client\'` を持つのは10個です」のように）。',
+  );
+  process.exit(1);
+}
+
+if (refs.length) {
   console.error('利用者に届く文面に、内部の参照が入っています（決定6-8）。\n');
-  for (const v of violations) {
+  for (const v of refs) {
     console.error(`  ✗ ${v.path}  ${v.what}`);
   }
   console.error(
@@ -284,5 +406,8 @@ if (files.length === 0) {
   process.exit(1);
 }
 
-console.log('✓ 対照 19 件が期待どおり（発火 11・通過 8）');
+console.log(
+  `✓ 対照 ${counted.fire + counted.pass} 件が期待どおり` +
+    `（発火 ${counted.fire}・通過 ${counted.pass}）`,
+);
 console.log(`✓ 利用者に届く ${files.length} ファイルに内部の参照なし`);

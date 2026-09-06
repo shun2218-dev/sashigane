@@ -231,6 +231,15 @@ const marginFor = (
     const i = cfg.steps.indexOf(req.step as Step);
     // 各ランプを**実際に使う彩度**で評価する。
     // 共通彩度で評価していた時期があり、彩度の決め方を変えた瞬間に保証が破れた
+    /*
+      **ここでは丸めない。**
+
+      端点を 8bit で解く形も試したが、**段の選び方（`meets`）を丸めで見れば
+      それだけで足りる。** 端点まで動かすと、要件を満たすために全体をわずかに
+      濃くすることになり、**最悪値はむしろ下がった**（4.5003 → 4.5000）。
+
+      段は面ごとに選び直せるが、端点は全部を一度に動かす。**細いほうで直す。**
+    */
     const check = (H: number, C: number) => {
       margin = Math.min(margin, contrastBetween({ L: lightness[i]!, C, H }, surface) - req.min);
     };
@@ -657,13 +666,31 @@ export interface SurfaceRoles {
 const awayFromSurface = (mode: 'light' | 'dark'): number[] =>
   mode === 'light' ? [...cfg.steps] : [...cfg.steps].reverse();
 
-/** ランプのどれか1つでも要件を割ったら不合格。最悪ケースで判定する */
+/**
+ * **8bit に落とした色。** 画面はここで描かれる。
+ *
+ * `oklch()` のまま解いた対比は、**丸めで上下どちらにも動く。**
+ * 要件ちょうどまで解いた段は、落ちる側に転ぶことがある。
+ */
+export const rounded = (c: Oklch): Oklch => hexToOklch(toHex(c));
+
+/**
+ * ランプのどれか1つでも要件を割ったら不合格。最悪ケースで判定する。
+ *
+ * **そのままの値と 8bit に落とした値の両方で見る。** 片方だけにしない——
+ * 丸めた側だけを見ると、丸めがたまたま上へ動かした組を通してしまう。
+ */
 const meets = (
   step: number,
   surface: Oklch,
   min: number,
   ramps: readonly Ramp[],
-): boolean => ramps.every((r) => contrastBetween(r.byStep[step]!, surface) >= min);
+): boolean =>
+  ramps.every(
+    (r) =>
+      contrastBetween(r.byStep[step]!, surface) >= min &&
+      contrastBetween(rounded(r.byStep[step]!), rounded(surface)) >= min,
+  );
 
 /**
  * 面ごとの割り当ては、系列色の順列（5! = 120通り）を面の数だけ解く。
@@ -776,7 +803,6 @@ const solveSurfaceRoles = (
        * **片方だけにしない。** 丸めた側だけを見ると、丸めがたまたま上へ動かした
        * 組を通してしまう（`oklch()` で 4.48 の組が実際に通った）。
        */
-      const rounded = (c: Oklch): Oklch => hexToOklch(toHex(c));
       const meetsOnSubtle = (step: number): boolean =>
         subtlePairs.every(
           ({ text, fill }) =>

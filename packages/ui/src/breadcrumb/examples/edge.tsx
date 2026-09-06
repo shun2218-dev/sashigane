@@ -1,15 +1,15 @@
 import { Breadcrumb, BreadcrumbItem } from '../breadcrumb.tsx';
 
 /**
- * エッジケース。**長い道筋・区切りの差し替え・要素の差し替え。**
+ * エッジケース。**階層が深いとき・区切り記号の差し替え・要素の差し替え。**
  *
  * 長いときは折り返す。**畳まない**——どれを畳むかは、
- * 道筋を作った側にしか決められない。
+ * 階層を作った側にしか決められない。
  */
 export default function Edge() {
   return (
     <div style={{ display: 'grid', gap: 24, maxWidth: 320 }}>
-      <Breadcrumb label="長い道筋">
+      <Breadcrumb label="階層が深いパンくずリスト">
         <BreadcrumbItem href="/">ホーム</BreadcrumbItem>
         <BreadcrumbItem href="/a">設定</BreadcrumbItem>
         <BreadcrumbItem href="/a/b">アカウント</BreadcrumbItem>
@@ -17,13 +17,13 @@ export default function Edge() {
         <BreadcrumbItem>メールで知らせる条件</BreadcrumbItem>
       </Breadcrumb>
 
-      <Breadcrumb label="区切りを変えた道筋" separator="›">
+      <Breadcrumb label="区切り記号を変えたパンくずリスト" separator="›">
         <BreadcrumbItem href="/">ホーム</BreadcrumbItem>
         <BreadcrumbItem href="/docs">ドキュメント</BreadcrumbItem>
         <BreadcrumbItem>導入する</BreadcrumbItem>
       </Breadcrumb>
 
-      <Breadcrumb label="要素を差し替えた道筋">
+      <Breadcrumb label="要素を差し替えたパンくずリスト">
         <BreadcrumbItem asChild>
           <a href="/" data-router="next">
             ホーム

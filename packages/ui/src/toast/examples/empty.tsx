@@ -1,7 +1,7 @@
 'use client';
 
 /*
-  **例そのものをクライアント側にする。** Toaster はクライアント側の部品である。
+  **例そのものをクライアント側にする。** Toaster はクライアント側のコンポーネントである。
 */
 import { Toaster } from '../toast.tsx';
 

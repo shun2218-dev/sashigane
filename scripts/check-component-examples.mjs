@@ -596,6 +596,89 @@ console.log(
     'トークン読み込み2件・asChild 6件・名乗り7件・プレビューの器2件）',
 );
 console.log(`✓ プレビューの器は ${PREVIEW_HOST} だけが持ち、not-prose を伴っている`);
+/* ---------- Field の配線を測る表（Issue #242） ---------- */
+
+/**
+ * **Field の子になりうる部品が、統合テストの表に載っていること。**
+ *
+ * Field は `id` / `aria-describedby` / `aria-invalid` / `required` / `valid` を
+ * Slot で子へ移す。**受け取った側が読み上げの届く要素まで運ばないと、
+ * 見た目は正常なまま結びつきだけが切れる。**
+ *
+ * 表に載せ忘れても、**残りが通るので緑のままになる。** 実際にそうなっていた——
+ * 部品が6つあるのに、測っていたのは `Input` だけだった。
+ *
+ * ## 誰が「Field の子になりうる」か
+ *
+ * **`valid` を受け取る部品**である。この prop は Field が渡すためだけにあり、
+ * 利用側が直接書くものではない。**受け取る宣言があること自体が、
+ * 「Field の下に置かれる」という申告である。**
+ *
+ * ## この検査が見落とす範囲（教訓5）
+ *
+ * **`valid` を受けない Field の子が将来出てきたら漏れる。**
+ * 満たしている印を出さない入力部品があれば、それに当たる。
+ * そのときは、この検査ではなく**部品の側が申告する形**を考えること。
+ */
+const FIELD_TEST = `${UI}/field/field-integration.test.tsx`;
+const VALID_PROP = /^\s+valid\?:/m;
+
+/**
+ * `valid` を受けるが、Field の子ではないもの。**理由と一緒に列挙する**（教訓5）。
+ *
+ * 広い性質で落とすと、意図していないものが黙って落ちる。
+ */
+const NOT_FIELD_CHILD = {
+  field: 'Field 自身。渡す側であって受け取る側ではない',
+  radio: 'RadioGroup の中に置く。Field の子になるのはグループのほう',
+};
+
+const fieldTestSource = existsSync(FIELD_TEST) ? readFileSync(FIELD_TEST, 'utf8') : '';
+if (!fieldTestSource) {
+  console.error(`${FIELD_TEST} がありません。Field の配線を測る表の在り処です。`);
+  process.exit(1);
+}
+
+/** 表に載っている部品。`name: 'Input'` の形で書いてある */
+const inFieldTable = new Set(
+  [...fieldTestSource.matchAll(/name:\s*'([A-Za-z]+)'/g)].map((m) => m[1]),
+);
+
+// 対照。**発火することを確かめてから 0 件と言う**（教訓2）
+if (inFieldTable.has('存在しない部品')) {
+  console.error('陽性対照が落ちた: 表の読み取りが壊れている');
+  process.exit(1);
+}
+if (!inFieldTable.has('Input')) {
+  console.error('陰性対照が発火した: 表から Input を読めていない');
+  process.exit(1);
+}
+
+/** `input` → `Input`、`password-input` → `PasswordInput` */
+const pascal = (name) => name.split('-').map((p) => p[0].toUpperCase() + p.slice(1)).join('');
+
+const fieldProblems = [];
+const fieldChildren = [];
+for (const name of components) {
+  const file = `${UI}/${name}/${name}.tsx`;
+  if (!existsSync(file) || !VALID_PROP.test(readFileSync(file, 'utf8'))) continue;
+  if (NOT_FIELD_CHILD[name]) continue;
+  fieldChildren.push(name);
+  if (!inFieldTable.has(pascal(name))) {
+    fieldProblems.push(
+      `${name} が ${FIELD_TEST} の表にありません。\n` +
+        '    valid を受ける部品は Field の子になりうるので、配線が届くことを測ってください。\n' +
+        `    Field の子でないなら NOT_FIELD_CHILD に理由と一緒に並べてください。`,
+    );
+  }
+}
+
+if (fieldProblems.length) {
+  console.error('Field の配線を測る表に漏れがあります（Issue #242）。\n');
+  for (const p of fieldProblems) console.error(`  ✗ ${p}`);
+  process.exit(1);
+}
+
 console.log(
   `✓ コンポーネント ${components.length} 件（${components.join(' ')}）に ` +
     `${REQUIRED.join(' / ')} が揃っている`,
@@ -612,6 +695,10 @@ const marked = components.flatMap((name) =>
     .flatMap((f) => exportedComponents(readFileSync(f, 'utf8'))),
 );
 console.log(`✓ export した ${marked.length} 個の部品が、すべて自分の名前を名乗っている`);
+console.log(
+  `✓ Field の子になりうる ${fieldChildren.length} 件（${fieldChildren.join(' ')}）が、` +
+    '配線を測る表に載っている（対照 2 件が期待どおり）',
+);
 console.log('✓ 型表の説明が印を解いてから渡されている');
 console.log('✓ prop の説明にコードの塊が無い（対照 2 件が期待どおり）');
 console.log(

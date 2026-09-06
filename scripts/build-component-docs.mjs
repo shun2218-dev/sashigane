@@ -79,7 +79,40 @@ const rank = (file) => {
 };
 const byState = (a, b) => rank(a) - rank(b) || a.localeCompare(b);
 
+/**
+ * 例の JSDoc から最初の段落を取る。
+ *
+ * **最初の JSDoc を取る。** ファイルの先頭に来る維持する側への覚書は
+ * `/*` で書いてあるので、JSDoc とは区別が付く。
+ *
+ * 取り出したあと、強調（`**`）だけ解く。型表と同じ扱いである——
+ * **解かないと記号がそのまま画面に出る。**
+ */
+const summaryOf = (source) => {
+  // **最初の JSDoc を取る。** 維持する側への覚書は `/*` で書くので混ざらない
+  const m = /\/\*\*([\s\S]*?)\*\//.exec(source);
+  if (!m) return '';
+  const body = m[1]
+    .split('\n')
+    .map((l) => l.replace(/^\s*\*ic?/, '').replace(/^\s*\*/, '').trim())
+    .join('\n')
+    .trim();
+  const first = body.split(/\n\s*\n/)[0] ?? '';
+  return first.replace(/\s*\n\s*/g, ' ').replace(/\*\*/g, '').trim();
+};
+
 const sources = {};
+/**
+ * 例が何を見せているか。**例の JSDoc の先頭の1文**である。
+ *
+ * 見出しは「エッジケース」としか出ていなかった。**どんな場合なのかは
+ * 例の JSDoc に書いてあるのに、生成データへ入れていなかったので画面に出ない。**
+ * 書いてあるものを使う。
+ *
+ * 取るのは**最初の段落だけ**である。以降は維持する側への説明で、
+ * 利用者に向けて書かれていない。
+ */
+const summaries = {};
 const props = {};
 const imports = [];
 const entries = [];
@@ -95,7 +128,10 @@ for (const name of components) {
   for (const file of files) {
     const state = file.replace(/\.tsx$/, '');
     const ident = `${name}_${state}`.replace(/[^A-Za-z0-9_]/g, '_');
-    sources[name][state] = readFileSync(join(exampleDir, file), 'utf8');
+    const raw = readFileSync(join(exampleDir, file), 'utf8');
+    sources[name][state] = raw;
+    const summary = summaryOf(raw);
+    if (summary) (summaries[name] ??= {})[state] = summary;
     imports.push(
       `import ${ident} from '${relative(OUT, join(exampleDir, file)).replace(/\\/g, '/')}';`,
     );
@@ -134,6 +170,7 @@ writeFileSync(
     `${entries.join('\n')}\n};\n`,
 );
 writeFileSync(join(OUT, 'sources.json'), `${JSON.stringify(sources, null, 2)}\n`);
+writeFileSync(join(OUT, 'summaries.json'), `${JSON.stringify(summaries, null, 2)}\n`);
 writeFileSync(join(OUT, 'props.json'), `${JSON.stringify(props, null, 2)}\n`);
 
 const exampleCount = Object.values(sources).reduce((n, s) => n + Object.keys(s).length, 0);

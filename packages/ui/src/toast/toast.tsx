@@ -30,7 +30,7 @@
  * ## 止め方は「残り時間を覚える」ではなく「入れ直す」
  *
  * ポインタが乗っている間は消さない。離れたら**もう一度はじめから**数える。
- * 残り時間を持つと、**時計が2箇所（この部品と置き場）に増える。**
+ * 残り時間を持つと、**時計が2箇所（このコンポーネントと置き場）に増える。**
  * 長く出る側へ倒れるので、読み終わる前に消えることはない。
  * ─────────────────────────────────────────────
  */
@@ -48,7 +48,7 @@ import {
 import { useToast } from './use-toast.ts';
 
 /*
-  既定の滞在時間を JS で読むのをやめた（決定6-47）。
+  既定の滞在時間を JS で読むのをやめた。
 
   以前はここで `--sg-duration-notice` を読み、ミリ秒に直して `setTimeout` に渡していた。
   **CSS の時間は `4000ms` が `4s` として返る**ので、数だけを読むと 4 になる——
@@ -240,7 +240,7 @@ export function Toaster() {
             data-sg-toast-id={toast.id}
             data-sg-surface="overlay"
             data-sg-tone={toast.tone}
-            /* 出入りの動き（決定6-47）。**消えかけは外す前の状態である** */
+            /* 表示と消去のアニメーションは属性で表す。**消えかけは外す前の状態である** */
             data-sg-appear=""
             data-sg-leaving={toast.leaving ? '' : undefined}
             className={
@@ -248,7 +248,7 @@ export function Toaster() {
               `pointer-events-auto relative flex max-w-full items-start gap-2 overflow-hidden ` +
               `rounded-sm p-3 shadow-overlay ` +
               `outline-solid outline-offset-0 outline-2 ${TONE_CLASS[toast.tone]} ` +
-              // 出入りの動きは宣言で表す（決定6-47）。クラスでは書けない
+              // 表示と消去のアニメーションは属性が持つ。クラスでは書けない
               `opacity-100`
             }
           >
@@ -262,7 +262,7 @@ export function Toaster() {
               <IconX />
             </Button>
             {/*
-              残り時間のゲージ（決定6-46）。**消えないものには出さない。**
+              残り時間のゲージ。**消えないものには出さない。**
 
               **読み上げには出さない。** 時間の経過は `aria-live` で読み上げる
               ようなものではなく、読ませると文言が繰り返し流れる。

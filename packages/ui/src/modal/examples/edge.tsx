@@ -1,8 +1,8 @@
 'use client';
 
 /*
-  **例そのものをクライアント側にする。** Modal はクライアント側の部品なので、
-  サーバ側から開け閉めの処理（関数）を渡せない。
+  **例そのものをクライアント側にする。** Modal はクライアント側のコンポーネントなので、
+  サーバ側から開閉の処理（関数）を渡せない。
 */
 import { Button } from '../../button/button.tsx';
 import { Field } from '../../field/field.tsx';
