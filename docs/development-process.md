@@ -117,7 +117,7 @@ pnpm check:docs-llms          # AI が読む形とページの絵が出ている
                               # apps/docs のビルドが先に要る
 pnpm docs:data                # 例・ソース・型表を生成する（決定6-4。typecheck より前に要る）
 pnpm build:registry           # 配信 JSON を作る（生成物はコミットしない）
-pnpm check:registry           # 配信物が落ちた先で成立すること（原則6）。
+pnpm check:registry           # 配信物がコピー先で成立すること（原則6）。
                               # 1件ずつの依存の閉じと、全部入りの型。build:registry が先に要る
 pnpm check:component-classes  # コンポーネントが書いたクラスを生成 CSS の側から見る（決定6-2）と
                               # 書いたのに生成されないクラスが無いこと（決定6-3）と

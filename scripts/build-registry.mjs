@@ -6,9 +6,9 @@
  *
  * **生成物なのでコミットしない**（原則1）。`.gitignore` に入れてある。
  *
- * ## 落ちた先での置き場所
+ * ## コピー先での置き場所
  *
- * shadcn の慣例に合わせる。**利用側の `@/` に落ちる。**
+ * shadcn の慣例に合わせる。**利用側の `@/` にコピーされる。**
  *
  *   registry:ui   → components/ui/<file>
  *   registry:lib  → lib/<file>
@@ -17,7 +17,7 @@
  * ## import の書き換え
  *
  * ソースは相対パス（`../internal/slot.tsx`）で書いてある。
- * **落ちた先では階層が変わる**ので、置き場所から `@/` の形へ書き換える。
+ * **コピー先では階層が変わる**ので、置き場所から `@/` の形へ書き換える。
  *
  * 決定4-2 は「パッケージ内を `@sashigane/ui/...` に統一して置換する」形だったが、
  * 相対パスは**設定ゼロでどこでも解決する**（テスト・Next・tsc の3つ）。
@@ -48,7 +48,7 @@ const UI = join(ROOT, 'packages/ui/src');
 const OUT = join(ROOT, 'apps/docs/public/r');
 const TOKENS = join(ROOT, 'packages/tokens/dist');
 
-/** 落ちた先の置き場所。**型ごとに決まる** */
+/** コピー先の置き場所。**型ごとに決まる** */
 const TARGET_DIR = {
   'registry:ui': 'components/ui',
   'registry:lib': 'lib',
@@ -64,7 +64,7 @@ const LIB_ITEMS = {
   'internal/focus.ts': 'focus',
 };
 
-/** 落ちた先が持っていないもの。**react は利用側が既に持っている** */
+/** コピー先が持っていないもの。**react は利用側が既に持っている** */
 const SKIP_DEPENDENCIES = new Set(['react', 'react-dom']);
 
 /*
@@ -98,13 +98,13 @@ for (const file of sources) {
   const rel = relative(UI, file);
   /*
     **`internal/` の中は1つずつ並べる。** 並べ忘れると `internal` という
-    名前の部品が黙ってできて、`components/ui/` に落ちる。
-    共有物は `lib/` に落ちるものなので、置き場所が変わってしまう。
+    名前の部品が黙ってできて、`components/ui/` にコピーされる。
+    共有物は `lib/` にコピーされるものなので、置き場所が変わってしまう。
   */
   if (rel.startsWith('internal/') && !LIB_ITEMS[rel]) {
     console.error(
       `${rel} が LIB_ITEMS に並んでいません。\n` +
-        '共有物は1つずつ item にします。並べないと components/ui へ落ちます。',
+        '共有物は1つずつ item にします。並べないと components/ui へコピーされます。',
     );
     process.exit(1);
   }
@@ -114,7 +114,7 @@ for (const file of sources) {
 /** item 名 → 型 */
 const typeOf = (name) => (Object.values(LIB_ITEMS).includes(name) ? 'registry:lib' : 'registry:ui');
 
-/** 落ちた先での import の書き方。**拡張子は落とす** */
+/** コピー先での import の書き方。**拡張子は落とす** */
 const importPathFor = (rel) => {
   const item = itemOf.get(rel);
   const base = rel.split('/').pop().replace(/\.tsx?$/, '');
@@ -128,7 +128,7 @@ const IMPORT = /from '([^']+)'/g;
  *
  * 説明の中の `import ... from '...'` を依存として数えていた。
  * **`react-day-picker/locale` が npm の依存として配信物に載り**、
- * 落とした利用者のところで `npm install` が落ちる形になっていた。
+ * 入れた利用者のところで `npm install` が落ちる形になっていた。
  *
  * 行コメントは `://` を避ける——URL の中の `//` を落とすと、
  * その行の残りごと消えて**見逃す側に倒れる**（check-component-examples と同じ）。
@@ -145,7 +145,7 @@ const convert = (file) => {
 
   /*
     **npm の依存は実装から数える。** 説明に書いた import の例を
-    依存として配ると、落とした先で `npm install` が落ちる。
+    依存として配ると、コピー先で `npm install` が落ちる。
   */
   for (const [, spec] of withoutComments(raw).matchAll(IMPORT)) {
     if (!spec.startsWith('.') && !SKIP_DEPENDENCIES.has(spec)) dependencies.add(spec);
