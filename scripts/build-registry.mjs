@@ -61,6 +61,7 @@ const TARGET_DIR = {
 const LIB_ITEMS = {
   'internal/slot.tsx': 'slot',
   'internal/ring.ts': 'ring',
+  'internal/focus.ts': 'focus',
 };
 
 /** 落ちた先が持っていないもの。**react は利用側が既に持っている** */
@@ -122,6 +123,19 @@ const importPathFor = (rel) => {
 
 const IMPORT = /from '([^']+)'/g;
 
+/**
+ * コメントを落とす。**残りが実装である。**
+ *
+ * 説明の中の `import ... from '...'` を依存として数えていた。
+ * **`react-day-picker/locale` が npm の依存として配信物に載り**、
+ * 落とした利用者のところで `npm install` が落ちる形になっていた。
+ *
+ * 行コメントは `://` を避ける——URL の中の `//` を落とすと、
+ * その行の残りごと消えて**見逃す側に倒れる**（check-component-examples と同じ）。
+ */
+const withoutComments = (source) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(?<!:)\/\/[^\n]*/g, '');
+
 /** 1ファイル分の中身と、そこから見えた依存 */
 const convert = (file) => {
   const rel = relative(UI, file);
@@ -129,9 +143,16 @@ const convert = (file) => {
   const registryDependencies = new Set();
   const dependencies = new Set();
 
+  /*
+    **npm の依存は実装から数える。** 説明に書いた import の例を
+    依存として配ると、落とした先で `npm install` が落ちる。
+  */
+  for (const [, spec] of withoutComments(raw).matchAll(IMPORT)) {
+    if (!spec.startsWith('.') && !SKIP_DEPENDENCIES.has(spec)) dependencies.add(spec);
+  }
+
   const content = raw.replace(IMPORT, (whole, spec) => {
     if (!spec.startsWith('.')) {
-      if (!SKIP_DEPENDENCIES.has(spec)) dependencies.add(spec);
       return whole;
     }
     const target = relative(UI, resolve(dirname(file), spec));

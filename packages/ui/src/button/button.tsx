@@ -40,6 +40,7 @@
  */
 import { cva, type VariantProps } from 'class-variance-authority';
 import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
+import { FOCUS_RING } from '../internal/focus.ts';
 import { Slot } from '../internal/slot.tsx';
 import { Spinner } from '../spinner/spinner.tsx';
 
@@ -108,8 +109,8 @@ const button = cva(
     // 計算値も遷移前の値になる（実ブラウザのテストが捕まえた）。
     // このシステムは動きをほとんど持たない方針なので、全部を動かすのは行き過ぎである
     'transition-colors duration-200 ' +
-    'focus-visible:outline-solid focus-visible:outline-2 ' +
-    'focus-visible:outline-offset-2 focus-visible:outline-border-focus',
+    // 線は1箇所に置いてある。**写しを作ると、片方だけ直したときにずれる**
+    FOCUS_RING,
   {
     variants: {
       /**

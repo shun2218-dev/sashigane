@@ -12,7 +12,15 @@ export {
   AccordionContent,
   type AccordionContentProps,
 } from './accordion/index.ts';
+export { Alert, type AlertProps } from './alert/index.ts';
 export { Badge, type BadgeProps } from './badge/index.ts';
+export { Calendar, type CalendarProps } from './calendar/index.ts';
+export {
+  Breadcrumb,
+  type BreadcrumbProps,
+  BreadcrumbItem,
+  type BreadcrumbItemProps,
+} from './breadcrumb/index.ts';
 export {
   Carousel,
   type CarouselProps,

@@ -29,7 +29,7 @@ export default function Default() {
         <CardHeader>
           <CardTitle>浮かせた面</CardTitle>
         </CardHeader>
-        <p>明色では影が、暗色では1段深い輪郭が出ます。</p>
+        <p>ライトモードでは影が、ダークモードでは1段深い輪郭が出ます。</p>
         </Card>
     </>
   );
