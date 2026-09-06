@@ -81,6 +81,23 @@ const monotonicityViolations = (
 /** 全色相を試す。特定の1色で通ることに意味はない（決定5-1） */
 const HUES = Array.from({ length: 36 }, (_, i) => i * 10);
 
+/**
+ * **器はテストの外で作る。**
+ *
+ * `generatePalette` は端点を二分探索で解き、その中で色相ごとの彩度上限をまた
+ * 二分探索する。**1枚で数十ミリ秒**かかるので、36枚を本体で作ると、
+ * 5秒の枠のほとんどを器の用意が食う。
+ *
+ * 手元では 1.4 秒で収まっていたが、**CI は3倍以上遅い。** 実際に落ちた
+ * （Issue #247）。**手元で緑は「速さが違えば別」を含まない**（教訓4）。
+ *
+ * **枠を伸ばして直さない。** 伸ばすと、測っているものが本当に遅くなったときに
+ * 気づけなくなる。枠は測りたいものに与える。
+ *
+ * `color.test.ts` も360枚を外で作っている。**同じファイルの中で作り方を変えない。**
+ */
+const PALETTES = HUES.map((H) => ({ H, pal: generatePalette({ L: 0.6, C: 0.1, H }) }));
+
 describe('連続値の色帯', () => {
   const palette = generatePalette({ L: 0.6, C: 0.1, H: 220 });
 
@@ -161,10 +178,11 @@ describe('連続値の色帯', () => {
 
   it('知覚明度が単調である — 全色相・全視覚型・両モード', () => {
     const broken: string[] = [];
-    for (const H of HUES) {
-      const p = generatePalette({ L: 0.6, C: 0.1, H });
+    for (const { H, pal } of PALETTES) {
       for (const mode of ['light', 'dark'] as const) {
-        broken.push(...monotonicityViolations(band(mode, p), mode).map((v) => `H=${H} ${mode} ${v}`));
+        broken.push(
+          ...monotonicityViolations(band(mode, pal), mode).map((v) => `H=${H} ${mode} ${v}`),
+        );
       }
     }
     expect(broken).toEqual([]);
