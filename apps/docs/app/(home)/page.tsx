@@ -18,7 +18,10 @@ export default function Page() {
             テーマビルダー
           </Link>
           <Link className="text-fd-primary underline" href="/demo">
-            デモページ
+            デモ（素の HTML）
+          </Link>
+          <Link className="text-fd-primary underline" href="/demo/shop">
+            デモ（コンポーネント）
           </Link>
         </div>
       </main>

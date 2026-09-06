@@ -70,7 +70,7 @@
  */
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 /** 決定6-4。**この3つは必須。追加は自由** */
 const REQUIRED = ['default', 'empty', 'edge'];
@@ -591,11 +591,89 @@ if (strayHosts.length) {
   process.exit(1);
 }
 
+/* ---------- 器を使うページは preview.css を読んでいること（Issue #255） ---------- */
+
+/**
+ * **`previewProps()` を使うページは、`preview.css` を `<link>` していること。**
+ *
+ * プレビューの CSS は出力を `[data-sg-preview]` の中へ限定してある。
+ * 器だけ置いて `<link>` を書かないと、**ユーティリティが1つも当たらない。**
+ *
+ * **エラーは出ない。** 面や淡い塗りは属性で塗るので `tokens.css` から来る——
+ * **一部だけ効いて、残りが素のまま出る。** 画面を見るまで気づけない。
+ * 実際、コンポーネントのデモを足したときにこの状態から始まった。
+ *
+ * ## 見ているのは木ではなく、同じ経路のファイルである（教訓5）
+ *
+ * `<link>` はレイアウトに置き、器はその下のページに置いてもよい。
+ * **React の木を辿らずに、`app/` の親子で判定している。**
+ * 別の経路（`_components/` に切り出すなど）で置かれたら見逃す。
+ */
+const PREVIEW_CSS_LINK = /href=["']\/preview\.css["']/;
+const USES_HOST = /previewProps\(/;
+
+/*
+  **`tracked` は `packages/ui/src` しか見ていない。** ここはサイト側を見るので、
+  別に集める。片方を使い回すと**対象が0件のまま緑になる**——実際にそうなった。
+*/
+const siteFiles = execSync('git ls-files apps/docs/app', { encoding: 'utf8' })
+  .split('\n')
+  .filter((f) => f.endsWith('.tsx') && existsSync(f));
+
+const linkedDirs = new Set(
+  siteFiles
+    .filter((f) => PREVIEW_CSS_LINK.test(readFileSync(f, 'utf8')))
+    .map((f) => dirname(f)),
+);
+/** そのファイルか、`app/` までの親のどこかが `<link>` を持っているか */
+const isLinked = (file) => {
+  let dir = dirname(file);
+  while (dir.startsWith('apps/docs/app')) {
+    if (linkedDirs.has(dir)) return true;
+    dir = dirname(dir);
+  }
+  return false;
+};
+
+// 対照（教訓2）
+if (!PREVIEW_CSS_LINK.test('<link rel="stylesheet" href="/preview.css" />')) {
+  console.error('陽性対照が落ちた: link の検出が壊れている');
+  process.exit(1);
+}
+if (PREVIEW_CSS_LINK.test('<link rel="stylesheet" href="/tokens.css" />')) {
+  console.error('陰性対照が発火した: 別の CSS を preview.css と報告した');
+  process.exit(1);
+}
+
+const unlinked = siteFiles
+  .filter((f) => USES_HOST.test(readFileSync(f, 'utf8')))
+  .filter((f) => !isLinked(f));
+
+// **対象が0件なら、検査は何も見ていない**（教訓2）
+if (siteFiles.filter((f) => USES_HOST.test(readFileSync(f, 'utf8'))).length === 0) {
+  console.error('プレビューの器を使っているページが1件もありません。対象が消えています。');
+  process.exit(1);
+}
+
+if (unlinked.length) {
+  console.error('プレビューの器を使っているのに、preview.css を読んでいません（Issue #255）。\n');
+  for (const f of unlinked) console.error(`  ✗ ${f}`);
+  console.error(
+    '\n**ユーティリティが1つも当たりません。**' +
+      '\n面や淡い塗りは属性で塗るので `tokens.css` から来ます——' +
+      '\n**一部だけ効いて、残りが素のまま出ます。** エラーは出ません。' +
+      '\n\nそのページか、`app/` までの親のレイアウトに' +
+      '\n`<link rel="stylesheet" href="/preview.css" />` を置いてください。',
+  );
+  process.exit(1);
+}
+
 console.log(
   '✓ 対照 20 件が期待どおり（欠落・既定エクスポート無し・揃っている形・' +
     'トークン読み込み2件・asChild 6件・名乗り7件・プレビューの器2件）',
 );
 console.log(`✓ プレビューの器は ${PREVIEW_HOST} だけが持ち、not-prose を伴っている`);
+console.log('✓ 器を使うページは preview.css を読んでいる（対照 2 件が期待どおり）');
 /* ---------- Field の配線を測る表（Issue #242） ---------- */
 
 /**
