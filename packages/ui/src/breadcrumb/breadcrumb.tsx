@@ -16,7 +16,7 @@
  *   `cloneElement` で末尾に属性を差し込む —— `asChild` を持つコンポーネントが
  *   自前で要素を複製すると、移し方が2つになる。検査が塞いでいる
  *
- *   利用側に `current` を書かせる —— 道筋を組み替えたときに付け替え忘れる。
+ *   利用側に `current` を書かせる —— 階層を組み替えたときに付け替え忘れる。
  *   見た目には出ないので、そのまま残る
  *
  * ## 区切りは Breadcrumb が入れる
@@ -51,7 +51,7 @@ const LastCtx = createContext(false);
 
 export interface BreadcrumbProps extends Omit<HTMLAttributes<HTMLElement>, 'children'> {
   /**
-   * この道筋の名前。**同じ画面に2つ置いたとき、読み上げが区別できるようにする。**
+   * このパンくずリストの名前。**同じ画面に2つ置いたとき、読み上げが区別できるようにする。**
    *
    * 既定は「現在地」。
    */
@@ -67,7 +67,7 @@ export interface BreadcrumbProps extends Omit<HTMLAttributes<HTMLElement>, 'chil
 }
 
 /**
- * パンくずリスト。**いま居る場所と、そこへ至る道を示す。**
+ * パンくずリスト。**いまいる場所と、そこまでの階層を示す。**
  *
  * ```tsx
  * <Breadcrumb>
@@ -87,7 +87,7 @@ export interface BreadcrumbProps extends Omit<HTMLAttributes<HTMLElement>, 'chil
  *
  * ## 長いときは折り返す
  *
- * 畳まない。**どれを畳むかは、道筋を作った側にしか決められない。**
+ * 畳まない。**どれを畳むかは、階層を作った側にしか決められない。**
  */
 export function Breadcrumb({
   label = '現在地',
@@ -99,7 +99,7 @@ export function Breadcrumb({
   /*
     **要素だけを数える。** `Children.toArray` は null と真偽値を落とすが、
     **文字列と数は残す。** 残したまま数えると、書き間違えて混ざった文字に
-    区切りが付き、**道筋が1つ増えたように見える。**
+    区切りが付き、**階層が1つ増えたように見える。**
   */
   const items = Children.toArray(children).filter(isValidElement);
   const last = items.length - 1;
@@ -178,7 +178,7 @@ export type BreadcrumbItemProps =
     });
 
 /**
- * 道筋の1つ。
+ * パンくずリストの項目1つ。
  *
  * **末尾かどうかは自分で決めない。** Breadcrumb が知っていて、コンテキストで届く。
  *
@@ -194,7 +194,7 @@ export function BreadcrumbItem({
   const last = useContext(LastCtx);
   /*
     **末尾だけが「いま居る場所」である。** 付けるのはここ1箇所——
-    利用側に書かせると、道筋を組み替えたときに付け替え忘れる。
+    利用側に書かせると、階層を組み替えたときに付け替え忘れる。
   */
   const current = last ? ('page' as const) : undefined;
 
