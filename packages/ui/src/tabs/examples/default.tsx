@@ -3,7 +3,7 @@ import { Tabs, TabsList, TabsPanel, TabsTrigger } from '../tabs.tsx';
 /**
  * 通常。**矢印で移ると、移った先がすぐ開く。**
  *
- * 焦点が入るのは選ばれているものだけである。**全部が tab 順に入ると、
+ * フォーカスが入るのは選ばれているものだけである。**全部が tab 順に入ると、
  * タブの数だけ Tab キーを押すことになる。**
  */
 export default function Default() {

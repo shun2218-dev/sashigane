@@ -5,9 +5,9 @@
  *
  * **依存は持たない。** 素の HTML にタブは無いが、
  * 作るのに要るのはブラウザが持っているものだけである——
- * `button` と、焦点の移動と、キーボードの操作。
+ * `button` と、フォーカスの移動と、キーボードの操作。
  *
- * ## 焦点が入るのは1つだけ（roving tabindex）
+ * ## フォーカスが入るのは1つだけ（roving tabindex）
  *
  * 全部が tab 順に入ると、**タブの数だけ Tab キーを押すことになる。**
  * 選ばれているものだけを `tabIndex=0` にし、**中の移動は矢印で行う。**
@@ -281,7 +281,7 @@ export function TabsPanel({ value, className, ...props }: TabsPanelProps) {
       aria-labelledby={idOf(value, 'tab')}
       hidden={!on}
       /*
-        **中身に焦点を入れられるようにする。** 中に押せるものが無いとき、
+        **中身にフォーカスを入れられるようにする。** 中に押せるものが無いとき、
         キーボードだけの利用者は中身を読む場所へ行けない。
       */
       tabIndex={on ? 0 : undefined}
