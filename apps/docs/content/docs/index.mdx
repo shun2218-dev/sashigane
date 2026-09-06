@@ -49,10 +49,10 @@ npx shadcn@latest add @sashigane/button
 背景だけを塗る方法は用意していません。塗れてしまうと前景が浅いまま残り、
 **読みにくい組み合わせができても何も起きない**からです。
 
-### 寸法も名前で書ける
+### サイズも名前で書ける
 
 余白・字の大きさ・角丸・影は、`root = 16px` を基点に**1つの規則から作られています。**
-値を選ぶ場面がないので、別々に作った画面でも寸法が揃います。
+値を選ぶ場面がないので、別々に作った画面でもサイズが揃います。
 
 ### React が要らない使い方もできる
 
@@ -72,7 +72,7 @@ npx shadcn@latest add @sashigane/tokens
 <div data-sg-component="card" data-sg-surface="surface" class="…">
 ```
 
-組み立てられたクラス名に頼らずに、**CSS からもテストからも部品を狙えます。**
+組み立てられたクラス名に頼らずに、**CSS からもテストからもコンポーネントを狙えます。**
 
 ```css
 [data-sg-component="card"] { /* … */ }
@@ -95,7 +95,7 @@ npx shadcn@latest add @sashigane/tokens
 | **トーン** | どの意味の色を使うか。`accent` / `danger` / `warning` / `success` / `info`。コンポーネントでは `tone` で渡します |
 | **動きを減らす設定** | OS の「視差効果を減らす」「アニメーションを減らす」設定。CSS からは `prefers-reduced-motion: reduce` として見えます。**このシステムのアニメーションは、この設定を自動で尊重します** |
 
-## AI に読ませる
+## AI エージェント向けの Markdown も配信しています
 
 人が読む URL の**末尾に `.md` を足すだけ**で、同じページが素の Markdown で返ります。
 

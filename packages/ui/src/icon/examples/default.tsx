@@ -3,7 +3,7 @@ import { IconPlus, IconX } from '../icon.tsx';
 /**
  * 通常。**アイコンは lucide から来る。**
  *
- * 寸法は行の高さに合わせてある。文字やボタンと横に並べたときに揃う。
+ * サイズは行の高さに合わせてある。文字やボタンと横に並べたときに揃う。
  * 色は継承する——置いた場所の前景に従う。
  */
 export default function Default() {

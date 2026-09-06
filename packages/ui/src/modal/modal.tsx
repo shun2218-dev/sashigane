@@ -107,7 +107,7 @@ export function Modal({
   const dialogRef = useRef<HTMLDialogElement>(null);
   /*
    * 見出しの `id`。**乱数では作れない**——サーバ側と手元で値が食い違い、
-   * 描き直しになる。この部品はクライアント側なので `useId` を使える。
+   * 描き直しになる。このコンポーネントはクライアント側なので `useId` を使える。
    */
   const titleId = useId();
 

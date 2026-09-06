@@ -53,7 +53,7 @@ export interface RadioProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
  * ## `name` は利用側が渡す
  *
  * グループから配っていない。**配るにはコンテキストが要り、
- * この部品がクライアント側になる。** いまはどの部品もサーバ側で描ける。
+ * このコンポーネントがクライアント側になる。** いまはどのコンポーネントもサーバ側で描ける。
  */
 export function Radio({ valid, className, ...props }: RadioProps) {
   const state = stateOf(valid, props['aria-invalid']);

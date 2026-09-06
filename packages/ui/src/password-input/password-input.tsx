@@ -48,7 +48,7 @@ export interface PasswordInputProps
  *
  * ## `type` を入れ替える
  *
- * `type` は CSS では変えられない。**この部品は状態を持つ**ので、
+ * `type` は CSS では変えられない。**このコンポーネントは状態を持つ**ので、
  * サーバ側では描けない。
  *
  * 入れ替えるのは同じ要素の属性だけである。枠ごと差し替えると、
@@ -61,7 +61,7 @@ export interface PasswordInputProps
  *
  * ## 中身は覚えない
  *
- * 値は利用側が持つ。**この部品が覚えるのは「見せているかどうか」だけ**である。
+ * 値は利用側が持つ。**このコンポーネントが覚えるのは「見せているかどうか」だけ**である。
  * 切り替えはフォームを送らない（`type="button"`）。
  */
 export function PasswordInput({

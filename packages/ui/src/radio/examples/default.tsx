@@ -7,7 +7,7 @@ import { RadioGroup } from '../radio-group.tsx';
  *
  * 1つずつのラベルだけでは、**何についての選択なのかが読み上げに出ない。**
  * `name` は利用側が渡す——グループから配るにはコンテキストが要り、
- * この部品がクライアント側になる。
+ * このコンポーネントがクライアント側になる。
  */
 export default function Default() {
   return (

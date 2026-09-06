@@ -9,7 +9,7 @@
  * `input` の中に要素は置けないので、印は兄弟に置いて重ねる。
  * 出し入れは `peer-checked:` である——**状態を持たない。**
  *
- * 状態を持つと、この部品がクライアント側になり、
+ * 状態を持つと、このコンポーネントがクライアント側になり、
  * **素のフォームでも `register()` でも、値の出どころが2つになる。**
  * いまは値を持つのは `input` だけである。
  *
@@ -53,7 +53,7 @@ export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement
  *
  * ## 値を持つのは input だけ
  *
- * 入った印は `peer-checked:` で出している。**この部品は状態を持たない**ので、
+ * 入った印は `peer-checked:` で出している。**このコンポーネントは状態を持たない**ので、
  * サーバ側で描けるし、素のフォームでも `register()` でもそのまま載る。
  */
 export function Checkbox({ valid, className, ...props }: CheckboxProps) {

@@ -8,7 +8,7 @@
  * 境界は色だけで測らない——幅 0 の境界にも色が付く。
  *
  * **`thead` と `tbody` は包まない。** 当てるものが無いので、
- * 枠だけの部品になる。中身の無い部品は置かない。
+ * 枠だけのコンポーネントになる。中身の無いコンポーネントは置かない。
  *
  * **説明でクラス名に触れるときは `{}` で囲む。**
  * ─────────────────────────────────────────────
@@ -23,7 +23,7 @@ import type { HTMLAttributes, ReactNode, Ref, TdHTMLAttributes, ThHTMLAttributes
  *
  * ## `thead` と `tbody` は素のまま書く
  *
- * どちらにも当てるものが無い。**中身の無い部品は置かない。**
+ * どちらにも当てるものが無い。**中身の無いコンポーネントは置かない。**
  */
 export interface TableProps extends HTMLAttributes<HTMLTableElement> {
   /** 外側の枠ではなく、表そのものに付く */
