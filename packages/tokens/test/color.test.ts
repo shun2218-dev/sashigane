@@ -25,6 +25,7 @@ import {
   steps,
   surfaceNames as surfaceNamesAll,
   surfaceRolesFor,
+  toHex,
   verifyPalette,
   type Palette,
 } from '../src/index.ts';
@@ -848,6 +849,73 @@ describe('淡い塗りの彩度（決定5-16）', () => {
     for (const { H, pal } of palettes) {
       const cs = fillNames.map((n) => textRamp(pal, n).byStep[100]!.C);
       expect(Math.max(...cs) / Math.min(...cs), `primary=${H}°`).toBeGreaterThan(2);
+    }
+  });
+});
+
+/**
+ * **8bit に落としても保証が成立する**（Issue #234）。
+ *
+ * 端点は要件ちょうどまで解かれるので、**余裕はゼロである。**
+ * `oklch()` で 4.500 でも、**画面は 8bit で描かれる**ので丸めが落ちる側へ
+ * 転ばせることがある。実測で `colorText` が 4.456、中間色の文字が 4.493 だった。
+ *
+ * `--sg-color-*` の丸め対策は**ページ地に対する要件しか見ない**ので、
+ * 深い面（`surface` / `inset`）の組には届かない。
+ * `tokens.css` は `oklch()` をそのまま出すので寄せる先も無い。
+ *
+ * だから**段を解くときに、両方の値で判定する。**
+ */
+describe('8bit に落としても保証が成立する', () => {
+  const g8 = tokens.color.guarantees;
+  const r8 = (c: Parameters<typeof contrastBetween>[0]) => hexToOklch(toHex(c));
+
+  for (const mode of ['light', 'dark'] as const) {
+    const surfaces = mode === 'light' ? g8.surfaces.light : g8.surfaces.dark;
+
+    it(`${mode}: 色の文字と中間色の文字が、8bit でも ${g8.textMin}:1 を満たす`, () => {
+      for (const { H, pal } of palettes) {
+        surfaces.forEach((surfaceStep, depth) => {
+          const r = surfaceRolesFor(pal, mode)[depth]!;
+          const bg = pal.neutral.byStep[r.surface]!;
+          const where = `primary=${H}° / ${mode} 面${surfaceStep}`;
+          for (const ramp of allRamps(pal).slice(0, 1 + statusNames.length)) {
+            expect(
+              contrastBetween(r8(ramp.byStep[r.colorText]!), r8(bg)),
+              `${where}: 色の文字`,
+            ).toBeGreaterThanOrEqual(g8.textMin);
+          }
+          for (const k of ['default', 'muted', 'faint'] as const) {
+            expect(
+              contrastBetween(r8(pal.neutral.byStep[r.text[k]]!), r8(bg)),
+              `${where}: text-${k}`,
+            ).toBeGreaterThanOrEqual(g8.textMin);
+          }
+        });
+      }
+    });
+  }
+
+  /**
+   * **丸めた側だけを見ると通ってしまう組がある。**
+   *
+   * 丸めは対比を上下どちらにも動かす。8bit だけで判定すると、
+   * `oklch()` では割っている組を「上に動いたから」で通す。
+   * **両方で見ていることを、ここで押さえる。**
+   */
+  it('そのままの値でも満たしている（丸めた側だけで通していない）', () => {
+    for (const { H, pal } of palettes) {
+      for (const mode of ['light', 'dark'] as const) {
+        const surfaces = mode === 'light' ? g8.surfaces.light : g8.surfaces.dark;
+        surfaces.forEach((_s, depth) => {
+          const r = surfaceRolesFor(pal, mode)[depth]!;
+          const bg = pal.neutral.byStep[r.surface]!;
+          expect(
+            contrastBetween(pal.primary.byStep[r.colorText]!, bg),
+            `primary=${H}° / ${mode} 深さ${depth}`,
+          ).toBeGreaterThanOrEqual(g8.textMin);
+        });
+      }
     }
   });
 });
