@@ -85,6 +85,37 @@ const INTERNAL_REF = /(?:決定|保留)\s?\d+-\d+|教訓\s?\d+|原則\s?\d+|Phas
 const REPO_PATH = /(?<!https:\/\/[^\s)]{0,200})\b(?:\.\.\/)*docs\/[a-z-]+\.md\b/g;
 
 /**
+ * **唯一性の主張**（Issue #252）。
+ *
+ * 「この系で唯一、外のライブラリに乗っている部品です」と書いてあったが、
+ * Calendar も Icon も外のライブラリを使っている。
+ * 「唯一、クライアント側でしか描けない部品です」も、`'use client'` を持つのは 10 個だった。
+ *
+ * **どちらも書いた時点では合っていたのだろう。** コンポーネントが増えても、
+ * 文だけ古いまま残る。**読む側には嘘だと分からない。**
+ *
+ * 数えれば分かることは**数えて書く**（「`'use client'` を持つのは10個です」）。
+ * 数えずに「唯一」と書けるということは、**根拠を持っていないということである。**
+ */
+const ONLY_CLAIM = /唯一/g;
+
+/**
+ * 通してよい唯一性の主張。**理由と一緒に並べる**（教訓5）。
+ *
+ * 通す条件は**根拠を持っていること**である。設計の原則そのものか、
+ * 検査が不変条件として持っているか、どちらかでなければならない。
+ *
+ * 「唯一、外のライブラリに乗っている部品です」が通らないのは、
+ * **数えれば分かるのに数えていない**からである。
+ */
+const ONLY_ALLOWED = [
+  { phrase: '唯一の正', why: '設計の原則そのもの。コンポーネントの数え上げではない' },
+  { phrase: '唯一の根本定数', why: '値の話（root = 16px）。スケールの検査が不変条件として持つ' },
+  { phrase: '透過を持つ唯一', why: 'elevation.test.ts が「影の色は透過を持つ唯一のプリミティブ」を測る' },
+  { phrase: '唯一、透過を持つ色', why: '同上。生成物のコメントに出る側の書き方' },
+];
+
+/**
  * JSDoc だけを取り出す。
  *
  * **配布されないもの**にだけ使う。`packages/ui` のソースはコピーされるので、
@@ -145,6 +176,11 @@ const inspect = (path, text) => {
 
   for (const chunk of targets) {
     for (const m of chunk.matchAll(INTERNAL_REF)) found.push({ path, kind: 'ref', what: m[0] });
+    for (const m of chunk.matchAll(ONLY_CLAIM)) {
+      const around = chunk.slice(Math.max(0, m.index - 12), m.index + 14);
+      if (ONLY_ALLOWED.some((a) => around.includes(a.phrase))) continue;
+      found.push({ path, kind: 'only', what: around.replace(/\s+/g, ' ').trim() });
+    }
   }
   if (shipped) {
     for (const m of text.matchAll(REPO_PATH)) found.push({ path, kind: 'repo-path', what: m[0] });
@@ -222,6 +258,29 @@ expectPass(
   '平文で理由が書かれた JSDoc',
   'packages/ui/src/card/card.tsx',
   '/**\n * 面の種類。凹んだ面は別の役割なので持たない。\n */\nexport const a = 1;',
+);
+expectFire(
+  '唯一性の主張',
+  'apps/docs/content/docs/components/select.mdx',
+  'このライブラリで唯一、クライアント側でしか描けない部品です。',
+  'only',
+);
+// **数えて書いたものは通す。** 根拠を持っているので古くなれば検査が落ちる
+expectPass(
+  '数えて書いた主張',
+  'apps/docs/content/docs/components/select.mdx',
+  "`'use client'` を持つのは10個です。",
+);
+// 「唯一の根本定数」は値の話で、コンポーネントの数え上げではない
+expectPass(
+  '唯一の根本定数',
+  'packages/ui/src/accordion/examples/default.tsx',
+  '唯一の根本定数は 16px です。',
+);
+expectPass(
+  '根拠のある唯一性（設計の原則）',
+  'README.md',
+  'トークンを唯一の正とするデザインシステム。',
 );
 expectPass('絶対 URL', 'packages/ui/src/card/card.tsx', '/* https://example.com/docs/decisions.md */');
 // 段取りでない「Phase」は落とさない。**語そのものを禁じているのではない**
@@ -310,9 +369,25 @@ const files = [...tracked, ...DIST_FILES];
 
 const violations = files.flatMap((f) => inspect(f, readFileSync(f, 'utf8')));
 
-if (violations.length) {
+const only = violations.filter((v) => v.kind === 'only');
+const refs = violations.filter((v) => v.kind !== 'only');
+
+if (only.length) {
+  console.error('利用者に届く文面に、確かめられない唯一性の主張があります（Issue #252）。\n');
+  for (const v of only) console.error(`  ✗ ${v.path}  ${v.what}`);
+  console.error(
+    '\n**書いた時点では合っていても、増えれば静かに嘘になります。**' +
+      '\n実際、「唯一、外のライブラリに乗っている部品です」と書いてあるあいだに' +
+      '\nCalendar と Icon が外のライブラリを使うようになっていました。' +
+      '\n\n数えれば分かることは**数えて書いてください**' +
+      '\n（「`\'use client\'` を持つのは10個です」のように）。',
+  );
+  process.exit(1);
+}
+
+if (refs.length) {
   console.error('利用者に届く文面に、内部の参照が入っています（決定6-8）。\n');
-  for (const v of violations) {
+  for (const v of refs) {
     console.error(`  ✗ ${v.path}  ${v.what}`);
   }
   console.error(
