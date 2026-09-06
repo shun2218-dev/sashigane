@@ -13,7 +13,7 @@ import { Calendar } from '../calendar.tsx';
  *
  * 範囲の端は濃く、あいだは淡い。**同じ濃さにすると端が読めない。**
  *
- * 選べない日は沈める。**押せるように見えて何も起きないものを作らない。**
+ * 選べない日は暗くする。**押せるように見えて何も起きないものを作らない。**
  */
 export default function Edge() {
   const [range, setRange] = useState<DateRange | undefined>({

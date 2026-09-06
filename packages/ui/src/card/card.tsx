@@ -88,7 +88,7 @@ const card = cva('flex flex-col gap-surface p-surface rounded-sm border-1 border
   /*
    * `overlay` は `surface` と同じ深さに置いてあるので、浮きが無いとダークモードで下地と同化する。
    * そのため「浮きを付けられる」ではなく「**浮き無しでは組み立てられない**」形にしてある。
-   * `elevation` を明示すれば上書きできるが、省略したときに沈むことは無い。
+   * `elevation` を明示すれば上書きできるが、省略したときに暗くなることは無い。
    */
   compoundVariants: [{ surface: 'overlay', elevation: 'none', class: 'shadow-overlay' }],
   defaultVariants: { surface: DEFAULT_SURFACE, elevation: 'none' },

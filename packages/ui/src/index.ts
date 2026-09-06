@@ -1,6 +1,6 @@
 /*
   コンポーネントの入口。Card → Button → Badge → Separator → Table の順に足していく。
-  Spinner はその順序の外で足した。ボタンの読み込み中の表示に要る。
+  Spinner はその順序の外で足した。ボタンのローディング表示に要る。
 */
 export {
   Accordion,
