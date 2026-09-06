@@ -70,7 +70,17 @@ const classNames = {
   month_caption: 'flex h-8 items-center justify-center',
   caption_label: 'text-label font-emphasis text-default',
   nav: 'flex items-center justify-between gap-1',
-  month_grid: 'border-collapse',
+  /*
+    **升の折り重ねを使わない。** `border-collapse` は隣り合う辺を1本にまとめ、
+    **幅も様式も同じなら上／左の升を勝たせる。**
+
+    全部の升が `border-transparent` を持つので、今日の升の上辺は
+    **1つ上の升の透明な下辺に負けて消える。** 実際そうなっていた——
+    月の頭が隠れた升（`invisible`）でも、境界の勝敗には参加する。
+
+    `getComputedStyle` は宣言した色を返すので、**色を測るテストは通っていた。**
+  */
+  month_grid: 'border-separate border-spacing-0',
   weekday: 'size-8 text-caption font-body text-muted',
   day: DAY,
   day_button: DAY_BUTTON,
