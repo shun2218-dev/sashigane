@@ -30,6 +30,7 @@ import {
   useToast,
 } from '@sashigane/ui';
 import { PRODUCTS, yen } from '../data';
+import { ShopWidth } from '../shop-chrome';
 import { ShopImage } from '../product-image';
 
 /** 最初から入っているもの。**デモなので固定である** */
@@ -64,13 +65,13 @@ export default function Cart() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <ShopWidth className="flex flex-col gap-8 py-12">
       <Breadcrumb label="いまいる場所">
         <BreadcrumbItem href="/demo/shop">トップ</BreadcrumbItem>
         <BreadcrumbItem>カート</BreadcrumbItem>
       </Breadcrumb>
 
-      <h1 className="text-heading font-emphasis">カート</h1>
+      <h1 className="text-heading-2 font-emphasis">カート</h1>
 
       {rows.length === 0 ? (
         <Card surface="surface">
@@ -183,7 +184,7 @@ export default function Cart() {
               </ListItem>
             </List>
             <Separator />
-            <p className="flex justify-between gap-4 text-heading font-emphasis">
+            <p className="flex justify-between gap-4 text-heading-2 font-emphasis">
               <span>合計</span>
               <span className="font-numeric">{yen(total)}</span>
             </p>
@@ -193,6 +194,6 @@ export default function Cart() {
           </Card>
         </div>
       )}
-    </div>
+    </ShopWidth>
   );
 }

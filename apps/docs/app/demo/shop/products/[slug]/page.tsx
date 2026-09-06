@@ -46,6 +46,7 @@ import {
   useToast,
 } from '@sashigane/ui';
 import { PRODUCTS, bySlug, stockLabel, stockTone, yen } from '../../data';
+import { ShopWidth } from '../../shop-chrome';
 import { ShopImage } from '../../product-image';
 
 const GRINDS = [
@@ -82,7 +83,7 @@ export default function ProductDetail() {
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <ShopWidth className="flex flex-col gap-12 py-12">
       <Breadcrumb label="いまいる場所">
         <BreadcrumbItem href="/demo/shop">トップ</BreadcrumbItem>
         <BreadcrumbItem href="/demo/shop/products">商品一覧</BreadcrumbItem>
@@ -95,7 +96,7 @@ export default function ProductDetail() {
         </Alert>
       ) : null}
 
-      <section className="grid gap-8 md:grid-cols-2">
+      <section className="grid gap-12 md:grid-cols-2">
         {/*
           **写真は1枚である。** 同じ商品の別角度を持っていないので、
           カルーセルにすると同じ絵が並ぶ。**枠だけ用意して中身を水増ししない。**
@@ -106,14 +107,18 @@ export default function ProductDetail() {
           className="aspect-square w-full rounded-lg object-cover"
         />
 
-        <div className="flex flex-col gap-4">
+        {/*
+          **情報の列は上に貼り付ける。** 写真が長いので、下まで送ると
+          買う操作が画面の外に出る。
+        */}
+        <div className="flex h-fit flex-col gap-4 md:sticky md:top-16">
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={stockTone(product.stock)}>{stockLabel(product.stock)}</Badge>
             <Badge tone="neutral">{product.roast}</Badge>
             {product.isNew ? <Badge tone="accent">新着</Badge> : null}
           </div>
 
-          <h1 className="text-heading font-emphasis">{product.name}</h1>
+          <h1 className="text-display font-emphasis">{product.name}</h1>
           <p className="text-body text-muted">{product.body}</p>
 
           <div className="flex flex-wrap gap-1">
@@ -266,9 +271,9 @@ export default function ProductDetail() {
 
       <Separator />
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-heading font-emphasis">似ている豆</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
+      <section className="flex flex-col gap-8">
+        <h2 className="text-heading-2 font-emphasis">似ている豆</h2>
+        <ul className="grid gap-8 sm:grid-cols-3">
           {PRODUCTS.filter((p) => p.roast === product.roast && p.slug !== product.slug)
             .slice(0, 3)
             .map((p) => (
@@ -277,7 +282,7 @@ export default function ProductDetail() {
                   <ShopImage
                     seed={p.slug}
                     alt={p.name}
-                    className="aspect-video w-full rounded-sm"
+                    className="aspect-16/9 w-full rounded-sm"
                   />
                   <CardHeader>
                     <CardTitle>{p.name}</CardTitle>
@@ -286,8 +291,8 @@ export default function ProductDetail() {
                 </Link>
               </Card>
             ))}
-        </div>
+        </ul>
       </section>
-    </div>
+    </ShopWidth>
   );
 }

@@ -25,6 +25,7 @@ import {
   Switch,
 } from '@sashigane/ui';
 import { PRODUCTS, stockLabel, stockTone, yen } from '../data';
+import { ShopWidth } from '../shop-chrome';
 import { ShopImage } from '../product-image';
 
 const ROASTS = ['浅煎り', '中煎り', '中深煎り', '深煎り'] as const;
@@ -52,13 +53,13 @@ export default function ProductList() {
     });
 
   return (
-    <div className="flex flex-col gap-6">
+    <ShopWidth className="flex flex-col gap-8 py-12">
       <Breadcrumb label="いまいる場所">
         <BreadcrumbItem href="/demo/shop">トップ</BreadcrumbItem>
         <BreadcrumbItem>商品一覧</BreadcrumbItem>
       </Breadcrumb>
 
-      <h1 className="text-heading font-emphasis">商品一覧</h1>
+      <h1 className="text-heading-2 font-emphasis">商品一覧</h1>
 
       <div className="grid gap-8 md:grid-cols-4">
         <aside data-sg-surface="surface" className="flex h-fit flex-col gap-4 rounded-lg p-4 md:col-span-1">
@@ -114,38 +115,37 @@ export default function ProductList() {
               </CardFooter>
             </Card>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            /*
+              **枠を持たせない。** 写真そのものが区切りになるので、
+              カードで囲むと1つずつが重くなり、並びとして読めなくなる。
+            */
+            <ul className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
               {shown.map((p) => (
-                <Card key={p.slug} surface="surface" interactive asChild>
-                  <Link href={`/demo/shop/products/${p.slug}`}>
+                <li key={p.slug}>
+                  <Link href={`/demo/shop/products/${p.slug}`} className="flex flex-col gap-3">
                     <ShopImage
                       seed={p.slug}
                       alt={p.name}
-                      className="aspect-video w-full rounded-sm"
+                      className="aspect-square w-full rounded-sm object-cover"
                     />
-                    <CardHeader>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge tone={stockTone(p.stock)} size="sm">
-                          {stockLabel(p.stock)}
-                        </Badge>
-                        <Badge tone="neutral" size="sm">
-                          {p.roast}
-                        </Badge>
-                      </div>
-                      <CardTitle>{p.name}</CardTitle>
-                      <CardDescription>{p.origin}</CardDescription>
-                    </CardHeader>
-                    <CardFooter>
-                      <span className="text-label font-numeric font-emphasis">{yen(p.price)}</span>
-                      <span className="text-caption text-muted">200g / 税込</span>
-                    </CardFooter>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={stockTone(p.stock)} size="sm">
+                        {stockLabel(p.stock)}
+                      </Badge>
+                      <Badge tone="neutral" size="sm">
+                        {p.roast}
+                      </Badge>
+                    </div>
+                    <p className="text-label font-emphasis">{p.name}</p>
+                    <p className="text-caption text-muted">{p.origin}</p>
+                    <p className="text-label font-numeric">{yen(p.price)}</p>
                   </Link>
-                </Card>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </section>
       </div>
-    </div>
+    </ShopWidth>
   );
 }
