@@ -240,7 +240,7 @@ export function Toaster() {
             data-sg-toast-id={toast.id}
             data-sg-surface="overlay"
             data-sg-tone={toast.tone}
-            /* 出入りの動きは属性で表す。**消えかけは外す前の状態である** */
+            /* 表示と消去のアニメーションは属性で表す。**消えかけは外す前の状態である** */
             data-sg-appear=""
             data-sg-leaving={toast.leaving ? '' : undefined}
             className={
@@ -248,7 +248,7 @@ export function Toaster() {
               `pointer-events-auto relative flex max-w-full items-start gap-2 overflow-hidden ` +
               `rounded-sm p-3 shadow-overlay ` +
               `outline-solid outline-offset-0 outline-2 ${TONE_CLASS[toast.tone]} ` +
-              // 出入りの動きは属性が持つ。クラスでは書けない
+              // 表示と消去のアニメーションは属性が持つ。クラスでは書けない
               `opacity-100`
             }
           >
