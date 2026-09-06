@@ -488,6 +488,42 @@ describe('編集後の検査（決定5-1）', () => {
     const warnings = verifyPalette(broken);
     expect(warnings.some((w) => w.code === 'contrast-below-target')).toBe(true);
   });
+
+  /**
+   * **塗りだけを編集するとずれる**（決定5-16 改訂）。
+   *
+   * 塗りと文字が同じランプだった頃は、片方だけずらすことが原理的にできなかった。
+   * ランプを分けたので、**この状態が新しく作れるようになっている。**
+   *
+   * ## この検査が見ていないこと（教訓5）
+   *
+   * **段は編集後の塗りに対して解き直される。** 塗りを少し動かしただけなら、
+   * 解が1段深い側へ移って 4.5 を満たしたままになる——**警告は出ないが、
+   * 出ないことが正しい。**出ている色はその段だからである。
+   *
+   * ここが捕まえるのは、**どの段を持ってきても載らない塗り**に編集された場合である。
+   * 解が尽きて最後の段へ落ちる経路（`?? outward[outward.length - 1]`）を見ている。
+   */
+  it('どの段も載らない淡い塗りに書き換えると警告が出る', () => {
+    const pal = generatePalette({ L: 0.6, C: 0.1, H: 200 });
+    const r = surfaceRolesFor(pal, 'light')[0]!;
+    const broken: Palette = {
+      ...pal,
+      subtle: {
+        ...pal.subtle,
+        danger: {
+          ...pal.subtle.danger,
+          byStep: {
+            ...pal.subtle.danger.byStep,
+            // 中ほどの明度。**濃い側にも淡い側にも逃げ場が無い**
+            [r.colorSubtle]: { L: 0.45, C: 0, H: 17 },
+          },
+        },
+      },
+    };
+    const warnings = verifyPalette(broken);
+    expect(warnings.some((w) => w.code === 'subtle-fill-below-target')).toBe(true);
+  });
 });
 
 describe('入力の再現性を警告する（決定5-1）', () => {

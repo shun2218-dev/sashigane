@@ -34,7 +34,8 @@ export interface Warning {
     | 'primary-chroma-unreachable'
     | 'primary-lightness-shifted'
     | 'status-too-close-to-primary'
-    | 'contrast-below-target';
+    | 'contrast-below-target'
+    | 'subtle-fill-below-target';
   message: string;
   detail?: Record<string, number | string>;
 }
@@ -455,6 +456,49 @@ export const verifyPalette = (palette: Palette): Warning[] => {
         }
       }
     }
+  }
+
+  /*
+   * **淡い塗りの組も見る**（決定5-16 改訂）。
+   *
+   * 塗りは文字とは別のランプから来るので、**片方だけ編集するとずれる。**
+   * 同じランプだった頃は原理的に起こらなかった状態なので、
+   * ランプを分けたときに一緒に見る側も足している。
+   *
+   * 面に対する要件の表（`cfg.guarantees.light` / `.dark`）はページ地しか見ないので、
+   * この組はそこに現れない。**塗りを地として、面の深さごとに測る。**
+   */
+  for (const [side, mode] of [
+    ['明色', 'light'],
+    ['暗色', 'dark'],
+  ] as const) {
+    surfaceRolesFor(palette, mode).forEach((r, depth) => {
+      for (const [name, text, fill] of [
+        ['primary', palette.primary, palette.subtle.primary] as const,
+        ...statusNames.map((n) => [n, palette.status[n], palette.subtle[n]] as const),
+      ]) {
+        const fg = text.byStep[r.onSubtle];
+        const bg = fill.byStep[r.colorSubtle];
+        if (!fg || !bg) continue;
+        const ratio = contrastBetween(fg, bg);
+        if (ratio < cfg.guarantees.textMin) {
+          warnings.push({
+            code: 'subtle-fill-below-target',
+            message:
+              `${name} の淡い塗りの上で、その色自身が${side}の面${depth} に対して ` +
+              `${ratio.toFixed(2)}:1 しかありません（必要: ${cfg.guarantees.textMin}:1）。` +
+              '淡い塗りと、その上の文字が別々に動いていないか確かめてください。',
+            detail: {
+              ramp: name,
+              fillStep: r.colorSubtle,
+              textStep: r.onSubtle,
+              ratio,
+              required: cfg.guarantees.textMin,
+            },
+          });
+        }
+      }
+    });
   }
   return warnings;
 };

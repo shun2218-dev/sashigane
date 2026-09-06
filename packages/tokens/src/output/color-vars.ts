@@ -8,7 +8,7 @@
  *   プリミティブ   --sg-{category}-{数字}   参照禁止
  *   セマンティック --sg-{category}-{単語}   参照可
  */
-import type { Palette, Ramp, SurfaceRoles } from '../color/palette.ts';
+import type { Palette, Ramp, StatusName, SurfaceRoles } from '../color/palette.ts';
 import { shadowInkFor, statusNames, steps, surfaceRolesFor } from '../color/palette.ts';
 import {
   elevationGeometry,
@@ -29,9 +29,9 @@ import { toCss } from '../color/oklch.ts';
  *
  * **中間色は入らない。** 面そのものであって塗りではない。
  */
-export const fillRamps: readonly { role: string; ramp: string }[] = [
+export const fillRamps: readonly { role: string; ramp: 'primary' | StatusName }[] = [
   { role: 'accent', ramp: 'primary' },
-  ...statusNames.map((n) => ({ role: n as string, ramp: n as string })),
+  ...statusNames.map((n) => ({ role: n as string, ramp: n })),
 ];
 export const fillRampNames: readonly string[] = fillRamps.map((f) => f.role);
 
@@ -52,7 +52,7 @@ export const colorPrimitiveVars = (p: Palette): string[] => {
     '     揃えないと、sRGB が明るい端で許す彩度の差がそのまま出て、緑だけ蛍光に見える。',
     '     文字は上のランプを使う。塗りのために文字を濁らせない */',
     ...fillRamps.flatMap(({ ramp }) =>
-      rampVars(`${ramp}-subtle`, p.subtle[ramp as 'primary']),
+      rampVars(`${ramp}-subtle`, p.subtle[ramp]),
     ),
     '',
     '  /* 影の色。**唯一、透過を持つ色である。**',
