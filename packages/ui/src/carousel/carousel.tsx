@@ -3,10 +3,10 @@
 /*
  * ── 維持する側への覚書 ───────────────────────────────
  *
- * **送りの仕組みは Embla に任せている。** 依存を1つ持つ。
+ * **スクロールの仕組みは Embla に任せている。**
  *
- * 素の `scroll-snap` でも送りと吸着はできるが、**掴んで引く操作**と
- * **端で折り返す送り**は自分で書くことになる。どちらもサイトやアプリで普通に使われる。
+ * 素の `scroll-snap` でもスクロールと吸着はできるが、**掴んで引く操作**と
+ * **端で折り返すスクロール**は自分で書くことになる。どちらもサイトやアプリで普通に使われる。
  * `::scroll-button()` と `::scroll-marker` は Chromium にしか無いので、
  * **前後のボタンと位置の印は自分で描く**——乗せると他のブラウザで操作手段が消える。
  *
@@ -15,12 +15,12 @@
  *
  * ## コンテキストで配っている
  *
- * この系の部品はほとんど状態を持たないが、**送りの状態は前後のボタンと印が共有する。**
+ * この系の部品はほとんど状態を持たないが、**スクロールの状態は前後のボタンと位置表示が共有する。**
  * props で降ろすと、利用側が関連付けを書くことになる。
  *
  * ## 動きを減らす設定を尊重する
  *
- * Embla の送りは時間をかけて動く。**減らす設定のときは飛ばす**——
+ * Embla のスクロールは時間をかけて動く。**減らす設定のときは飛ばす**——
  * 利用側の責務にしない。
  * ─────────────────────────────────────────────
  */
@@ -44,19 +44,19 @@ import { IconChevronLeft, IconChevronRight, IconPause, IconPlay } from '../icon/
 type EmblaApi = ReturnType<typeof useEmblaCarousel>[1];
 
 /**
- * 送りの設定。**Embla のものをそのまま受ける。**
+ * スクロールの設定。**Embla のものをそのまま受ける。**
  *
  * 型は `useEmblaCarousel` の引数から取っている——**import を増やさない**ためで、
  * Embla が設定を足したり変えたりすれば、こちらは何もせずに追随する。
  *
- * **`duration` だけ外している。** 送りの速さは動きを減らす設定から決めており、
+ * **`duration` だけ外している。** スクロールの速さは動きを減らす設定から決めており、
  * 渡せるようにすると**利用側がその設定を打ち消せてしまう。**
  * 尊重するのは利用側の責務ではない。
  */
 export type CarouselOptions = Omit<NonNullable<Parameters<typeof useEmblaCarousel>[0]>, 'duration'>;
 
 /**
- * 自動で送る間隔の既定。
+ * 自動スクロールの間隔の既定。
  *
  * **選んだ値である。導いていない。** 滞在の段の `dwell-2` と同じ数だが、
  * そこから解いているわけではない——**偶然そろっているだけ**である。
@@ -70,7 +70,7 @@ export type CarouselOptions = Omit<NonNullable<Parameters<typeof useEmblaCarouse
 export const AUTOPLAY_DELAY = 4000;
 
 interface CarouselState {
-  /** 送り枠に付ける ref。**枠は CarouselSlides が描く** */
+  /** スクロールする枠に付ける ref。**枠は CarouselSlides が描く** */
   viewportRef: ReturnType<typeof useEmblaCarousel>[0];
   api: EmblaApi;
   /** いま見えている枚目（0 始まり） */
@@ -79,9 +79,9 @@ interface CarouselState {
   count: number;
   canPrev: boolean;
   canNext: boolean;
-  /** 自動で送る設定になっているか */
+  /** 自動スクロールが設定されているか */
   autoplay: boolean;
-  /** いま自動で送っているか。**止めているあいだは偽** */
+  /** いま自動スクロール中か。**止めているあいだは偽** */
   playing: boolean;
   toggle: () => void;
   /**
@@ -103,7 +103,7 @@ const useCarousel = (): CarouselState => {
 
 export interface CarouselProps extends HTMLAttributes<HTMLDivElement> {
   /**
-   * 自動で送る。**既定は送らない。**
+   * 自動でスクロールする。**既定では動かさない。**
    *
    * **`CarouselPlayPause` を一緒に置かないと落ちる**（WCAG 2.2.2）——
    * 自動で動くものには、止める手段が無ければならない。
@@ -112,14 +112,14 @@ export interface CarouselProps extends HTMLAttributes<HTMLDivElement> {
    */
   autoplay?: boolean | { delay?: number };
   /**
-   * 送りの設定。**Embla のものをそのまま渡す**（`loop` `align` `slidesToScroll` など）。
+   * スクロールの設定。**Embla のものをそのまま渡す**（`loop` `align` `slidesToScroll` など）。
    *
    * よく使うのは `loop`（端で折り返す）である。
    * **順番に意味が無いときだけ入れる**——写真や広告のように、
    * どこから見ても構わないもの。
    * **手順や記事の並びには入れない。** 折り返すと「最後まで来た」が分からなくなる。
    *
-   * **`duration` は受けない。** 送りの速さは動きを減らす設定から決めている。
+   * **`duration` は受けない。** スクロールの速さは動きを減らす設定から決めている。
    */
   options?: CarouselOptions;
   /**
@@ -173,7 +173,7 @@ export function Carousel({
   }, []);
 
   /*
-    **自動で送るのは頼んだときだけ。** 動きを減らす設定のときは、
+    **自動でスクロールするのは頼んだときだけ。** 動きを減らす設定のときは、
     止まった状態で始める——**再生は利用者が選ぶ。**
     黙って動かさないが、動かす手段は残す。
   */
@@ -298,7 +298,7 @@ export function Carousel({
         {...props}
       >
         {/*
-          **送り枠で包まない。** 前後のボタンや印まで包むと、
+          **スクロールする枠で包まない。** 前後のボタンや印まで包むと、
           それらが送られて画面の外へ出る。枠を描くのは CarouselSlides である。
         */}
         {children}
@@ -313,7 +313,7 @@ export interface CarouselSlidesProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * 送り枠と、その中で横に並ぶスライド。
+ * スクロールする枠と、その中で横に並ぶスライド。
  *
  * **枠はここが描く。** 前後のボタンや印を包まないためである——
  * 包むと、それらが一緒に送られて画面の外へ出る。
@@ -446,7 +446,7 @@ export function CarouselMarkers({
 }
 
 /**
- * 自動で送るのを止める／再生する。**`autoplay` を使うときは必須である。**
+ * 自動でスクロールするのを止める／再生する。**`autoplay` を使うときは必須である。**
  *
  * WCAG 2.2.2 は、自動で動くものに**止める手段**を求めている。
  * 置かれていないと `Carousel` が落ちる——**黙って動き続けるほうが害が大きい。**
@@ -454,8 +454,8 @@ export function CarouselMarkers({
  * 動きを減らす設定のときは**止まった状態で始まる。** ここから再生できる。
  */
 export function CarouselPlayPause({
-  playLabel = '自動で送る',
-  pauseLabel = '自動で送るのを止める',
+  playLabel = '自動でスクロールする',
+  pauseLabel = '自動でスクロールするのを止める',
   className,
 }: {
   playLabel?: string;
