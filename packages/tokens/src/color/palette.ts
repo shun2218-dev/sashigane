@@ -11,11 +11,13 @@ import tokens from '../tokens.json' with { type: 'json' };
 import { minPerceptualDistance } from './cvd.ts';
 import {
   contrastRatio,
+  hexToOklch,
   hueDistance,
   inSrgbGamut,
   oklchToLinearRgb,
   relativeLuminance,
   shortestHueDelta,
+  toHex,
   type Oklch,
 } from './oklch.ts';
 
@@ -194,6 +196,17 @@ const resolveChroma = (lightness: readonly number[], hues: HueSets) => {
     shared,
     sharedHues: hues.shared,
     neutral: chromaFor(hues.all).map((c) => c * cfg.chroma.neutralRatio),
+    /**
+     * **淡い塗り専用の彩度**（決定5-16 改訂）。塗りに使う全色相で共通の上限を取る。
+     *
+     * 単独で取ると、明るい端で**色相ごとに3.5倍ばらつく**——sRGB は L=0.88 で
+     * 緑に 0.203 を許し、青には 0.058 しか許さない。並べると緑だけ蛍光に見える。
+     * **gamut の縁は設計意図ではない。**
+     *
+     * 文字に同じことをすると danger が濁る（`#a84b53`）。一度やって戻してある
+     * （上記 HueSets の覚書、決定5-3 の再改訂）。**塗りにだけ当てる。**
+     */
+    fill: chromaFor(hues.solo),
   };
 };
 
@@ -301,6 +314,16 @@ export interface Palette {
   neutral: Ramp;
   status: Record<StatusName, Ramp>;
   categorical: Ramp[];
+  /**
+   * **淡い塗りだけが使うランプ**（決定5-16 改訂）。明度の梯子は同じで、彩度だけ違う。
+   *
+   * 段そのものの彩度は落とせない。**段は明暗で役割が入れ替わる**ためである——
+   * 段100 は明色では淡い塗りだが、暗色では `inset` の文字である。
+   * 段を落とすと文字まで一緒に落ちる。だから**別のランプとして持つ。**
+   *
+   * `neutral` が既に同じ作り（全色相の共通上限に比率をかける）である。
+   */
+  subtle: Record<'primary' | StatusName, Ramp>;
   warnings: Warning[];
 }
 
@@ -381,6 +404,12 @@ export const generatePalette = (primary: Oklch): Palette => {
     status: Object.fromEntries(
       statusNames.map((n) => [n, buildRamp(statusHues[n], lightnesses, soloChroma(statusHues[n]))]),
     ) as Record<StatusName, Ramp>,
+    // 塗りは色相をまたいで揃える。文字（上の3本）は単独のまま
+    subtle: Object.fromEntries(
+      [['primary', primary.H] as const, ...statusNames.map((n) => [n, statusHues[n]] as const)].map(
+        ([name, hue]) => [name, buildRamp(hue, lightnesses, chroma.fill)],
+      ),
+    ) as Record<'primary' | StatusName, Ramp>,
     categorical: categoricalRamps,
     categoricalSteps: {
       light: bestStepAssignment(categoricalRamps, cfg.categorical.lightSteps),
@@ -619,6 +648,16 @@ const solveSurfaceRoles = (
   const surfaces = mode === 'light' ? g.surfaces.light : g.surfaces.dark;
   const order = awayFromSurface(mode);
   const colored: Ramp[] = [palette.primary, ...statusNames.map((n) => palette.status[n])];
+  /**
+   * 文字のランプと、その文字が載る**淡い塗りのランプ**の対（決定5-16 改訂）。
+   *
+   * 塗りは別のランプになったので、`colored` の同じ段を地として読むと**存在しない色を
+   * 測る**ことになる。対で持って、地は必ず塗りの側から取る。
+   */
+  const subtlePairs: { text: Ramp; fill: Ramp }[] = [
+    { text: palette.primary, fill: palette.subtle.primary },
+    ...statusNames.map((n) => ({ text: palette.status[n], fill: palette.subtle[n] })),
+  ];
   const neutral = [palette.neutral];
   const baseSeries =
     mode === 'light' ? cfg.categorical.lightSteps : cfg.categorical.darkSteps;
@@ -677,9 +716,29 @@ const solveSurfaceRoles = (
      */
     const onSubtle = (() => {
       const after = outward.indexOf(justOutside) + 1;
+      /**
+       * **そのままの値と、8bit に落とした値の両方で測る**（決定5-16 改訂）。
+       *
+       * ここだけ丸めを通すのは、**この組の余裕が構造的に薄い**からである。
+       * 面に対する要件は端点を解いて作るので余裕を持てるが、淡い塗りの上の文字は
+       * 「4.5 を満たす最も浅い段」なので、**選んだ時点で必ず境界のすぐ上**にいる。
+       *
+       * `oklch()` で 4.50 でも、**画面は 8bit で描かれる。** 丸めは上下どちらにも
+       * 動くので、境界のすぐ上にいる組は落ちる側に転ぶことがある——塗りの彩度を
+       * 揃えた直後、実測で 4.492 まで落ちた（Issue #232）。
+       * `--sg-color-*` の丸め対策（決定2-6 改訂）はページ地に対する要件しか
+       * 見ないので、この組には届かない。
+       *
+       * **片方だけにしない。** 丸めた側だけを見ると、丸めがたまたま上へ動かした
+       * 組を通してしまう（`oklch()` で 4.48 の組が実際に通った）。
+       */
+      const rounded = (c: Oklch): Oklch => hexToOklch(toHex(c));
       const meetsOnSubtle = (step: number): boolean =>
-        colored.every(
-          (r) => contrastBetween(r.byStep[step]!, r.byStep[justOutside]!) >= g.textMin,
+        subtlePairs.every(
+          ({ text, fill }) =>
+            contrastBetween(text.byStep[step]!, fill.byStep[justOutside]!) >= g.textMin &&
+            contrastBetween(rounded(text.byStep[step]!), rounded(fill.byStep[justOutside]!)) >=
+              g.textMin,
         );
       return outward.slice(after).find(meetsOnSubtle) ?? outward[outward.length - 1]!;
     })();

@@ -48,6 +48,13 @@ export const colorPrimitiveVars = (p: Palette): string[] => {
     ...statusNames.flatMap((n) => rampVars(n, p.status[n])),
     ...p.categorical.flatMap((r, i) => rampVars(`series-${i + 1}`, r)),
     '',
+    '  /* 淡い塗りだけが使うランプ。明度は上と同じで、彩度だけ色相をまたいで揃えてある。',
+    '     揃えないと、sRGB が明るい端で許す彩度の差がそのまま出て、緑だけ蛍光に見える。',
+    '     文字は上のランプを使う。塗りのために文字を濁らせない */',
+    ...fillRamps.flatMap(({ ramp }) =>
+      rampVars(`${ramp}-subtle`, p.subtle[ramp as 'primary']),
+    ),
+    '',
     '  /* 影の色。**唯一、透過を持つ色である。**',
     '     中間色ランプの暗端に、面の梯子1段分になるアルファを解いて足したもの。',
     '     色相は primary から来るので、純黒の影にはならない。',
@@ -134,9 +141,12 @@ const semanticFor = (
      * **アイコンにも同じ段を使う。** 文字の段は 3:1 も必ず満たす。
      * 決定5-7 がマークを1段明るい側に置いたのはチャート系列を見分けるためで、
      * 帯の中のアイコンには当てはまらない。
+     *
+     * **塗りと文字で参照するランプが違う**（決定5-16 改訂）。塗りは色相をまたいで
+     * 彩度を揃えた `-subtle` ランプ、文字は単独で彩度を取ったランプである。
      */
     ...fillRamps.flatMap(({ role, ramp }) => [
-      `  --sg-color-${role}-subtle: var(--sg-${ramp}-${roles.colorSubtle});`,
+      `  --sg-color-${role}-subtle: var(--sg-${ramp}-subtle-${roles.colorSubtle});`,
       `  --sg-color-on-${role}-subtle: var(--sg-${ramp}-${roles.onSubtle});`,
     ]),
     `  --sg-color-border-focus: var(--sg-primary-${roles.colorMark});`,

@@ -12,15 +12,18 @@ import {
   depthOf,
   generatePalette,
   hexToOklch,
+  toHex,
   oklchToLinearRgb,
   relativeLuminance,
   fillRampNames,
+  fillRamps,
   statusNames,
   steps,
   surfaceNames,
   surfaceRolesFor,
   toTokensCss,
   type Oklch,
+  type Palette,
 } from '../src/index.ts';
 
 const g = tokens.color.guarantees;
@@ -30,6 +33,17 @@ const palettes = Array.from({ length: 360 }, (_, H) =>
 );
 const sample = generatePalette(hexToOklch('#3b82f6'));
 const namedDepths = [...new Set(surfaceNames.map(depthOf))].sort();
+
+/**
+ * 文字のランプと、その文字が載る**淡い塗りのランプ**の対（決定5-16 改訂）。
+ *
+ * **塗りは文字と別のランプから来る。** ここを `p.status[n]` の同じ段で読むと、
+ * **生成物に出ていない色を測る**ことになる——通ってしまうので気づけない。
+ */
+const subtlePairs = (p: Palette) => [
+  { text: p.primary, fill: p.subtle.primary },
+  ...statusNames.map((n) => ({ text: p.status[n]!, fill: p.subtle[n]! })),
+];
 
 /** 要素に opacity をかけると、前景も背景も同じ率で下地へ寄る */
 const faded = (fg: number, bg: number, alpha: number) => alpha * fg + (1 - alpha) * bg;
@@ -98,10 +112,36 @@ describe('淡い塗り（決定5-16）', () => {
       for (const p of palettes) {
         for (const d of namedDepths) {
           const r = surfaceRolesFor(p, mode)[d]!;
-          for (const ramp of [p.primary, ...statusNames.map((n) => p.status[n]!)]) {
-            const fill = ramp.byStep[r.colorSubtle]!;
+          for (const { text, fill } of subtlePairs(p)) {
             expect(
-              contrastBetween(ramp.byStep[r.onSubtle]!, fill),
+              contrastBetween(text.byStep[r.onSubtle]!, fill.byStep[r.colorSubtle]!),
+              `${mode} depth${d}`,
+            ).toBeGreaterThanOrEqual(g.textMin);
+          }
+        }
+      }
+    }
+  });
+
+  /**
+   * **画面は 8bit で描かれる**（決定5-16 改訂、Issue #232）。
+   *
+   * この組は「4.5 を満たす最も浅い段」なので、選んだ時点で必ず境界のすぐ上にいる。
+   * `oklch()` で満たしていても、**丸めが落ちる側へ転ばせることがある。**
+   * `--sg-color-*` の丸め対策（決定2-6 改訂）はページ地に対する要件しか見ない。
+   */
+  it('8bit に落としても 4.5:1 を満たす', () => {
+    const rounded = (c: Oklch) => hexToOklch(toHex(c));
+    for (const mode of ['light', 'dark'] as const) {
+      for (const p of palettes) {
+        for (const d of namedDepths) {
+          const r = surfaceRolesFor(p, mode)[d]!;
+          for (const { text, fill } of subtlePairs(p)) {
+            expect(
+              contrastBetween(
+                rounded(text.byStep[r.onSubtle]!),
+                rounded(fill.byStep[r.colorSubtle]!),
+              ),
               `${mode} depth${d}`,
             ).toBeGreaterThanOrEqual(g.textMin);
           }
@@ -118,10 +158,10 @@ describe('淡い塗り（決定5-16）', () => {
     let worst = Infinity;
     for (const p of palettes) {
       const r = surfaceRolesFor(p, 'light')[0]!;
-      for (const ramp of [p.primary, ...statusNames.map((n) => p.status[n]!)]) {
+      for (const { text, fill } of subtlePairs(p)) {
         worst = Math.min(
           worst,
-          contrastBetween(ramp.byStep[r.colorText]!, ramp.byStep[r.colorSubtle]!),
+          contrastBetween(text.byStep[r.colorText]!, fill.byStep[r.colorSubtle]!),
         );
       }
     }
@@ -135,15 +175,15 @@ describe('淡い塗り（決定5-16）', () => {
       for (const p of palettes) {
         for (const d of namedDepths) {
           const r = surfaceRolesFor(p, mode)[d]!;
-          for (const ramp of [p.primary, ...statusNames.map((n) => p.status[n]!)]) {
-            const fill = ramp.byStep[r.colorSubtle]!;
+          for (const { fill } of subtlePairs(p)) {
+            const bg = fill.byStep[r.colorSubtle]!;
             worstDefault = Math.min(
               worstDefault,
-              contrastBetween(p.neutral.byStep[r.text.default]!, fill),
+              contrastBetween(p.neutral.byStep[r.text.default]!, bg),
             );
             worstMuted = Math.min(
               worstMuted,
-              contrastBetween(p.neutral.byStep[r.text.muted]!, fill),
+              contrastBetween(p.neutral.byStep[r.text.muted]!, bg),
             );
           }
         }
@@ -172,9 +212,15 @@ describe('淡い塗り（決定5-16）', () => {
 
   it('塗りを持つランプすべてに出る', () => {
     const css = toTokensCss(sample);
-    for (const r of fillRampNames) {
-      expect(css, `--sg-color-${r}-subtle`).toContain(`--sg-color-${r}-subtle:`);
-      expect(css, `--sg-color-on-${r}-subtle`).toContain(`--sg-color-on-${r}-subtle:`);
+    for (const { role, ramp } of fillRamps) {
+      // **塗りは専用のランプを指す。** 文字のランプを指したら彩度が揃わない
+      expect(css, `--sg-color-${role}-subtle`).toMatch(
+        new RegExp(`--sg-color-${role}-subtle: var\\(--sg-${ramp}-subtle-\\d+\\);`),
+      );
+      // **文字は専用のランプを指さない。** 指すと danger の赤が濁る（決定5-3 の再改訂）
+      expect(css, `--sg-color-on-${role}-subtle`).toMatch(
+        new RegExp(`--sg-color-on-${role}-subtle: var\\(--sg-${ramp}-\\d+\\);`),
+      );
     }
     expect(css).not.toContain('--sg-color-neutral-subtle:');
   });
