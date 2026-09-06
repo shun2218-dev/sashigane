@@ -16,16 +16,20 @@ description: ライトモードとダークモードをどう切り替えるか
 
 付けなければ OS に従い、付ければその値で固定されます。
 
-## next-themes を使うとき
+## [next-themes](https://github.com/pacocoursey/next-themes) と組み合わせるとき
 
-**`attribute` に `data-theme` を含めてください。** 既定では `class` しか付かないため、
-`class="dark"` は切り替わるのに**色が変わらない**という状態になります。
+**そのままで動きます。** next-themes は既定で `<html>` に `data-theme` を付けるので、
+このシステムが見ている属性と一致します。
+
+`attribute="class"` に変えている場合だけ注意が要ります。`class="dark"` は
+切り替わるのに**色が変わりません。** そのときは**両方**を出してください。
 
 ```tsx
 <ThemeProvider attribute={['class', 'data-theme']}>
 ```
 
-サイトの見た目を `class` で組んでいる場合は、上のように**両方**を出すのが確実です。
+**next-themes は Next.js 専用ではありません。** peerDependencies は React と React DOM
+だけなので、Vite など他の React 環境でも使えます（README の例は Next.js で書かれています）。
 
 ## 面ごとの深さ
 

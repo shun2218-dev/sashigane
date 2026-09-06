@@ -19,7 +19,7 @@ npm のパッケージではなく、**コードが手元のリポジトリに�
 ```
 
 **これが無いと動きません。** 名前空間を付けずに `slot` などと書くと、
-CLI は**shadcn 自身のレジストリ**を探しに行きます。
+CLI は**[shadcn](https://ui.shadcn.com/) 自身のレジストリ**を探しに行きます。
 
 ## 3つの深さ
 
@@ -67,7 +67,8 @@ npx shadcn@latest add @sashigane/use-toast
 コンポーネントの中の参照は `@/components/ui/...`・`@/hooks/...`・`@/lib/...` に
 書き換わってコピーされます。
 
-必要な npm の依存（`class-variance-authority` / `lucide-react`）は、
+必要な npm の依存（[`class-variance-authority`](https://cva.style/) /
+[`lucide-react`](https://lucide.dev/)）は、
 CLI が一緒に入れます。
 
 ## トークンだけでも動きます
@@ -82,7 +83,7 @@ CLI が一緒に入れます。
 @import './styles/sashigane-tokens.css';
 ```
 
-Tailwind から役割名（`text-body` `bg-accent-subtle` `max-w-32rem` など）を
+[Tailwind](https://tailwindcss.com/) から役割名（`text-body` `bg-accent-subtle` `max-w-32rem` など）を
 使いたいときは、アダプタも読み込みます。
 
 ```css
