@@ -1,14 +1,14 @@
 /**
- * 配信 JSON が**落ちた先で成立する**ことを検査する（原則6）。
+ * 配信 JSON が**コピー先で成立する**ことを検査する（原則6）。
  *
  * 見るのは2つである。
  *
- *   **依存の閉じ**  1件ずつ落としたとき、参照先が全部揃うか
- *   **型の成立**    全部落とした木が、そのままコンパイルできるか
+ *   **依存の閉じ**  1件ずつ入れたとき、参照先が全部揃うか
+ *   **型の成立**    全部入れた木が、そのままコンパイルできるか
  *
  * ## なぜ1件ずつと全部の両方を見るのか
  *
- * 全部落として1回コンパイルするだけだと、**依存の書き漏れが隠れる。**
+ * 全部入れて1回コンパイルするだけだと、**依存の書き漏れが隠れる。**
  * 他の item が持ってきたファイルで解決してしまうためである。
  *
  * 逆に閉じだけを見ると、**型が合っているかは分からない。**
@@ -31,7 +31,7 @@ const OUT = join(ROOT, 'apps/docs/public/r');
   作業場は **packages/ui の下**に置く。依存（react の型・cva・lucide）を
   解決できる場所である必要があり、pnpm では根の node_modules に無い。
 
-  落ちた先も同じ状態である——`shadcn add` は item の dependencies を
+  コピー先も同じ状態である——`shadcn add` は item の dependencies を
   入れてから置くので、**同じ依存が揃った場所でコンパイルできるか**を見ている。
 */
 const WORK = join(ROOT, 'packages/ui/.registry-check');
@@ -99,7 +99,7 @@ for (const [name, item] of items) {
 
 /* ---------- 依存の閉じ ---------- */
 
-/** その item を落としたときに置かれるファイルの一覧（依存を辿って集める） */
+/** その item を入れたときに置かれるファイルの一覧（依存を辿って集める） */
 const closureOf = (name, seen = new Set()) => {
   if (seen.has(name)) return new Map();
   seen.add(name);
@@ -194,7 +194,7 @@ try {
 } catch (e) {
   typeOk = false;
   errors.push(
-    '落ちた先の木がコンパイルできません:\n' +
+    'コピー先の木がコンパイルできません:\n' +
       `${e.stdout?.toString() ?? ''}${e.stderr?.toString() ?? ''}`,
   );
 }
@@ -204,7 +204,7 @@ try {
    ============================================================ */
 
 /**
- * `dependencies` は落ちた先で **`npm install` に渡る。**
+ * `dependencies` はコピー先で **`npm install` に渡る。**
  * 副経路（`react-day-picker/locale`）を書くと**そこで落ちる。**
  *
  * 実際に一度載った。生成器が**説明の中の import まで数えていた**ためで、
@@ -241,7 +241,7 @@ for (const bad of badNames) {
 /* ---------- 結果 ---------- */
 
 if (errors.length) {
-  console.error('レジストリの配信物が落ちた先で成立しません。\n');
+  console.error('レジストリの配信物がコピー先で成立しません。\n');
   for (const e of errors) console.error(`  ✗ ${e}`);
   console.error(
     '\n参照先が足りない場合は registryDependencies の書き漏れです。' +
@@ -252,7 +252,7 @@ if (errors.length) {
 
 console.log('✓ 対照 6 件が期待どおり（参照先の欠け・揃っている閉じ・依存の名前 4 件）');
 console.log('✓ npm の依存がすべて、そのまま入れられる名前である（副経路が混ざっていない）');
-console.log(`✓ ${items.size} 件それぞれについて、単体で落としたときの参照先が揃っている`);
+console.log(`✓ ${items.size} 件それぞれについて、単体で入れたときの参照先が揃っている`);
 console.log(
-  typeOk ? `✓ 全部落とした木（${files.size} ファイル）がそのままコンパイルできる` : '',
+  typeOk ? `✓ 全部入れた木（${files.size} ファイル）がそのままコンパイルできる` : '',
 );

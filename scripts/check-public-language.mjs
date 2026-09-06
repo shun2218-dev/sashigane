@@ -57,9 +57,9 @@
  *
  * ## 配布先で壊れる参照も見る
  *
- * `packages/ui/src` はレジストリ配信で**利用側リポジトリへ落ちる。**
+ * `packages/ui/src` はレジストリ配信で**利用側リポジトリへコピーされる。**
  * そこに `docs/decisions.md` のような**リポジトリ相対のパス**を書くと、
- * 落ちた先には存在しないので必ず壊れる。
+ * コピー先には存在しないので必ず壊れる。
  *
  * 生成物のヘッダで一度踏んだ穴と同じである（そちらは絶対 URL で解いてある）。
  */
@@ -76,7 +76,7 @@ const INTERNAL_REF = /(?:決定|保留)\s?\d+-\d+|教訓\s?\d+|原則\s?\d+|Phas
 
 /**
  * 配布先で壊れるパス。**リポジトリ相対の文書参照**を落とす。
- * URL（`https://`）は落とさない——落ちた先でも開ける。
+ * URL（`https://`）は落とさない——コピー先でも開ける。
  */
 const REPO_PATH = /(?<!https:\/\/[^\s)]{0,200})\b(?:\.\.\/)*docs\/[a-z-]+\.md\b/g;
 
@@ -121,7 +121,7 @@ const inspect = (path, text) => {
   for (const chunk of targets) {
     for (const m of chunk.matchAll(INTERNAL_REF)) found.push({ path, kind: 'ref', what: m[0] });
   }
-  // 配布されるものは、ファイル全体を見る（普通のコメントに書いても落ちた先で壊れる）
+  // 配布されるものは、ファイル全体を見る（普通のコメントに書いてもコピー先で壊れる）
   if (path.startsWith('packages/ui/')) {
     for (const m of text.matchAll(REPO_PATH)) found.push({ path, kind: 'repo-path', what: m[0] });
   }
@@ -274,7 +274,7 @@ if (violations.length) {
       '\n番号の定義はこのリポジトリの docs/ にあり、コードを受け取った利用者は持っていません。' +
       '\n\n**理由を平文で書いてください。** 設計の経緯を残すなら、' +
       '\nJSDoc ではない普通のコメント（型表に出ません）か、docs/ に書きます。' +
-      '\n\nリポジトリ相対のパスも同じ理由で書けません。落ちた先に docs/ はありません。',
+      '\n\nリポジトリ相対のパスも同じ理由で書けません。コピー先に docs/ はありません。',
   );
   process.exit(1);
 }

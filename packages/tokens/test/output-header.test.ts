@@ -57,7 +57,7 @@ describe('生成物のヘッダ', () => {
     expect(docsUrl(UNRELEASED)).toContain('/tree/HEAD/docs');
   });
 
-  it('すべての生成物がバージョンを書く（落ちた先で分かる唯一の手がかり）', () => {
+  it('すべての生成物がバージョンを書く（コピー先で分かる唯一の手がかり）', () => {
     for (const [name, gen] of Object.entries(OUTPUTS)) {
       expect(gen(palette).slice(0, 800), name).toContain(producedBy());
     }

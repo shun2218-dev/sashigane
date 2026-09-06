@@ -14,7 +14,8 @@ import '../../test/tokens.css';
  *   **部位ごとにクラスが当たっていること** — 差し忘れた部位は素のまま出る。
  *     向こうの CSS を読み込んでいないので、当たらなければ**色も寸法も無い**
  *   **範囲の端と中で濃さが違うこと** — 同じにすると端が読めない
- *   **今日の印が見えること** — 幅だけを測ると、透明のままでも通る
+ *   **今日の印が見えること** — 幅だけを測ると、透明のままでも通る。
+ *     **色だけでも足りない**——折り重ねた境界は、宣言と塗られた結果がずれる
  *   **月送りが名前を名乗ること** — 図案だけでは何の釦か読めない
  *   **言語が渡ったものになること** — 既定を持たない
  */
@@ -94,6 +95,29 @@ describe('今日', () => {
       .poll(() => getComputedStyle(cell).borderTopColor)
       .not.toBe(getComputedStyle(plain).borderTopColor);
     expect(getComputedStyle(cell).borderTopColor).not.toBe('rgba(0, 0, 0, 0)');
+  });
+
+  it('升の境界を折り重ねない', async () => {
+    const { container } = await render(
+      onSurface(<Calendar mode="single" locale={ja} defaultMonth={SEPT} />),
+    );
+    await expect.poll(() => dayButtons(container).length).toBeGreaterThan(27);
+    const grid = root(container).querySelector('table');
+    if (!grid) throw new Error('升目が見つかりません');
+    /*
+      **`border-collapse` は隣り合う辺を1本にまとめ、幅も様式も同じなら
+      上／左の升を勝たせる。** 升は全部 `border-transparent` を持つので、
+      月の頭の隠れた升（`invisible`）の下辺が今日の升の上辺に勝ち、
+      **今日の印の上辺だけが消えていた。**
+
+      **上の「印が見える」テストはこれを通した。** `getComputedStyle` は
+      宣言した色を返すだけで、折り重ねの勝敗は返さない——
+      **塗られた結果は、この経路からは見えない。**
+
+      見えないものは測れないので、**見えなくする仕組みのほうを測る。**
+      折り重ねていなければ、各升は宣言どおりの辺を自分で塗る。
+    */
+    expect(getComputedStyle(grid).borderCollapse).toBe('separate');
   });
 });
 
