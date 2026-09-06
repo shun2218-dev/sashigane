@@ -48,7 +48,7 @@ import {
 import { useToast } from './use-toast.ts';
 
 /*
-  既定の滞在時間を JS で読むのをやめた（決定6-47）。
+  既定の滞在時間を JS で読むのをやめた。
 
   以前はここで `--sg-duration-notice` を読み、ミリ秒に直して `setTimeout` に渡していた。
   **CSS の時間は `4000ms` が `4s` として返る**ので、数だけを読むと 4 になる——
@@ -240,7 +240,7 @@ export function Toaster() {
             data-sg-toast-id={toast.id}
             data-sg-surface="overlay"
             data-sg-tone={toast.tone}
-            /* 出入りの動き（決定6-47）。**消えかけは外す前の状態である** */
+            /* 出入りの動きは属性で表す。**消えかけは外す前の状態である** */
             data-sg-appear=""
             data-sg-leaving={toast.leaving ? '' : undefined}
             className={
@@ -248,7 +248,7 @@ export function Toaster() {
               `pointer-events-auto relative flex max-w-full items-start gap-2 overflow-hidden ` +
               `rounded-sm p-3 shadow-overlay ` +
               `outline-solid outline-offset-0 outline-2 ${TONE_CLASS[toast.tone]} ` +
-              // 出入りの動きは宣言で表す（決定6-47）。クラスでは書けない
+              // 出入りの動きは属性が持つ。クラスでは書けない
               `opacity-100`
             }
           >
@@ -262,7 +262,7 @@ export function Toaster() {
               <IconX />
             </Button>
             {/*
-              残り時間のゲージ（決定6-46）。**消えないものには出さない。**
+              残り時間のゲージ。**消えないものには出さない。**
 
               **読み上げには出さない。** 時間の経過は `aria-live` で読み上げる
               ようなものではなく、読ませると文言が繰り返し流れる。
