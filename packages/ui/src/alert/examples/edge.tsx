@@ -10,7 +10,7 @@ import { Button } from '../../button/button.tsx';
 /**
  * エッジケース。**閉じられるもの、長い文言、後から出すもの。**
  *
- * 閉じる釦は `onDismiss` を渡したときだけ出る。
+ * 閉じるボタンは `onDismiss` を渡したときだけ出る。
  * **渡さなければ閉じられない**——消してはいけない知らせがあるため。
  *
  * 後から出すものには `live` を渡す。**その場に最初からあるものには渡さない**——
@@ -24,7 +24,7 @@ export default function Edge() {
     <div style={{ display: 'grid', gap: 16, maxWidth: 480 }}>
       {kept ? (
         <Alert tone="info" title="閉じられる知らせ" onDismiss={() => setKept(false)}>
-          閉じる釦は、閉じたときの処理を渡したときだけ出ます。
+          閉じるボタンは、閉じたときの処理を渡したときだけ出ます。
         </Alert>
       ) : (
         <Button variant="outline" onClick={() => setKept(true)}>

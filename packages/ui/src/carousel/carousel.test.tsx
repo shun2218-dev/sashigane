@@ -134,7 +134,7 @@ describe('組み立て', () => {
   });
 });
 
-describe('自動で送る', () => {
+describe('自動スクロール', () => {
   const auto = (props: Record<string, unknown> = {}) => (
     <Carousel label="おすすめの写真" autoplay {...props}>
       <CarouselSlides>
@@ -192,11 +192,11 @@ describe('自動で送る', () => {
     const btn = () =>
       container.querySelector('[data-sg-component="carousel-play-pause"]') as HTMLButtonElement;
     // **札が状態を伝える。** 図案だけでは、いまどちらなのかが読み上げに出ない
-    await expect.poll(() => btn().getAttribute('aria-label')).toBe('自動で送るのを止める');
+    await expect.poll(() => btn().getAttribute('aria-label')).toBe('自動でスクロールするのを止める');
     await userEvent.click(btn());
-    await expect.poll(() => btn().getAttribute('aria-label')).toBe('自動で送る');
+    await expect.poll(() => btn().getAttribute('aria-label')).toBe('自動でスクロールする');
     await userEvent.click(btn());
-    await expect.poll(() => btn().getAttribute('aria-label')).toBe('自動で送るのを止める');
+    await expect.poll(() => btn().getAttribute('aria-label')).toBe('自動でスクロールするのを止める');
   });
 
 });
@@ -214,10 +214,10 @@ describe('例が教えている形', () => {
    *
    * 例が片方を落としたら落ちるようにする。
    */
-  it('自動で送る例が、送る器も止める器も両方見せている', async () => {
+  it('自動スクロールの例が、前後のボタンも停止ボタンも両方見せている', async () => {
     const { container } = await render(onSurface(<Edge />));
-    const auto = container.querySelector('[aria-label="自動で送るもの"]');
-    if (!auto) throw new Error('自動で送る例が描画されていません');
+    const auto = container.querySelector('[aria-label="自動でスクロールするもの"]');
+    if (!auto) throw new Error('自動スクロールの例が描画されていません');
 
     for (const [name, selector] of [
       ['前へ', '[data-sg-component="carousel-previous"]'],

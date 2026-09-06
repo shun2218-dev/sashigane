@@ -76,7 +76,7 @@ export function Separator({
   const classes = separator({ orientation });
   return (
     <div
-      // **自分が何であるかを名乗る。** 見た目は持たない
+      // **自分が何であるかを示す。** 見た目は持たない
       data-sg-component="separator"
       // **飾りは読み上げに出さない。** 出すと「区切り」が数えられるだけで意味が増えない
       role={decorative ? 'none' : 'separator'}

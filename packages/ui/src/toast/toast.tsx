@@ -30,7 +30,7 @@
  * ## 止め方は「残り時間を覚える」ではなく「入れ直す」
  *
  * ポインタが乗っている間は消さない。離れたら**もう一度はじめから**数える。
- * 残り時間を持つと、**時計が2箇所（この部品と置き場）に増える。**
+ * 残り時間を持つと、**時計が2箇所（このコンポーネントと置き場）に増える。**
  * 長く出る側へ倒れるので、読み終わる前に消えることはない。
  * ─────────────────────────────────────────────
  */
@@ -240,7 +240,7 @@ export function Toaster() {
             data-sg-toast-id={toast.id}
             data-sg-surface="overlay"
             data-sg-tone={toast.tone}
-            /* 出入りの動きは属性で表す。**消えかけは外す前の状態である** */
+            /* 表示と消去のアニメーションは属性で表す。**消えかけは外す前の状態である** */
             data-sg-appear=""
             data-sg-leaving={toast.leaving ? '' : undefined}
             className={
@@ -248,7 +248,7 @@ export function Toaster() {
               `pointer-events-auto relative flex max-w-full items-start gap-2 overflow-hidden ` +
               `rounded-sm p-3 shadow-overlay ` +
               `outline-solid outline-offset-0 outline-2 ${TONE_CLASS[toast.tone]} ` +
-              // 出入りの動きは属性が持つ。クラスでは書けない
+              // 表示と消去のアニメーションは属性が持つ。クラスでは書けない
               `opacity-100`
             }
           >

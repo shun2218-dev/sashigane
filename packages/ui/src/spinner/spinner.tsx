@@ -13,8 +13,8 @@
  *
  * ## `asChild` を持たない
  *
- * **渡す中身が無い。** この枠が持っているのは輪そのもの（境界で描いている）で、
- * 子へ移せる内容が存在しない。移すと輪が消える。
+ * **渡す中身が無い。** この枠が持っているのはスピナーそのもの（境界で描いている）で、
+ * 子へ移せる内容が存在しない。移すとスピナーが消える。
  *
  * 役割を変えたいだけなら props で足りる（`role="status"` など）。
  * 要素そのものを変えたい場合は、外側で包む。
@@ -40,11 +40,11 @@ type Named =
 export type SpinnerProps = SpinnerBase & Named;
 
 /**
- * 待っていることを表す、回り続ける輪。
+ * 処理中であることを示す。読み込みや送信のあいだ出す。
  *
  * ## 動きだけで状態を伝えない
  *
- * 動きを減らす設定では**止まる。** 止まった輪からは進行が読み取れないので、
+ * 動きを減らす設定では**止まる。** 止まったスピナーからは進行が読み取れないので、
  * 名前を型で必須にしてある。周りに文字を出せるなら、そちらも出す。
  *
  * ## 大きさは行の高さに合わせてある
@@ -53,14 +53,14 @@ export type SpinnerProps = SpinnerBase & Named;
  *
  * ## 色は継承する
  *
- * 輪の色は文字の色をそのまま使う。**塗りの上でも枠の中でも、置いた場所の前景に従う。**
+ * スピナーの色は文字の色をそのまま使う。**塗りの上でも枠の中でも、置いた場所の前景に従う。**
  */
 export function Spinner({ className, ...props }: SpinnerProps) {
   const classes =
     'inline-block size-6 shrink-0 rounded-full border-2 border-current border-t-transparent';
   return (
     <span
-      // **自分が何であるかを名乗る。** 見た目は持たない
+      // **自分が何であるかを示す。** 見た目は持たない
       data-sg-component="spinner"
       data-sg-spinner
       className={className ? `${classes} ${className}` : classes}

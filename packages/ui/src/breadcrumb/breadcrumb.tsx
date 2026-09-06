@@ -7,38 +7,38 @@
  *
  * ## `'use client'` が要る理由と、その代償
  *
- * 末尾を子へ伝えるのに文脈（`createContext`）を使っている。
- * **文脈はサーバコンポーネントでは作れない**ので、この木は client になる。
+ * 末尾を子へ伝えるのにコンテキスト（`createContext`）を使っている。
+ * **コンテキストはサーバコンポーネントでは作れない**ので、この木は client になる。
  *
- * **押すところが1つも無い部品に JS を配ることになる。** 代償は分かったうえで選んだ。
+ * **押すところが1つも無いコンポーネントに JS を配ることになる。** 代償は分かったうえで選んだ。
  * 逃げ道は2つあり、どちらも取らなかった。
  *
- *   `cloneElement` で末尾に属性を差し込む —— `asChild` を持つ部品が
+ *   `cloneElement` で末尾に属性を差し込む —— `asChild` を持つコンポーネントが
  *   自前で要素を複製すると、移し方が2つになる。検査が塞いでいる
  *
- *   利用側に `current` を書かせる —— 道筋を組み替えたときに付け替え忘れる。
+ *   利用側に `current` を書かせる —— 階層を組み替えたときに付け替え忘れる。
  *   見た目には出ないので、そのまま残る
  *
- * ## 区切りは器が入れる
+ * ## 区切りは Breadcrumb が入れる
  *
  * 利用側に `<BreadcrumbSeparator />` を書かせる形にすると、
  * **`aria-hidden` を付け忘れられる。** 忘れても見た目は変わらないので、
  * 読み上げが「スラッシュ」を項目の数だけ読む状態が黙って残る。
  *
- * **忘れられる道を作らない。** 器が `Children.toArray` で数え、あいだに入れる。
+ * **書き忘れる余地を作らない。** Breadcrumb が `Children.toArray` で数え、あいだに入れる。
  * `ol` の子は `li` しか置けないので、**区切りも `li` で包む。**
  *
  * ## 末尾が「いま居る場所」である
  *
  * パンくずの形がそう決めているので、利用側に `current` を書かせない。
- * 器が末尾を知り、文脈で子へ渡す。
+ * Breadcrumb が末尾を知り、コンテキストで子へ渡す。
  *
  * **`cloneElement` で属性を差し込まない。** 子が `BreadcrumbItem` とは限らず
- * （包んだものが来うる）、差し込み先を器が決められない。
+ * （包んだものが来うる）、差し込み先をBreadcrumb が決められない。
  *
  * ## 畳まない
  *
- * 長いときは折り返す。省略（`…`）を持つと、**どれを畳むかを器が決める**ことになり、
+ * 長いときは折り返す。省略（`…`）を持つと、**どれを畳むかをBreadcrumb が決める**ことになり、
  * 畳んだ先を開く仕掛けまで要る。畳む必要が実際に出てから考える。
  * ─────────────────────────────────────────────
  */
@@ -46,12 +46,12 @@ import { Children, createContext, isValidElement, useContext } from 'react';
 import type { AnchorHTMLAttributes, HTMLAttributes, ReactNode, Ref } from 'react';
 import { Slot } from '../internal/slot.tsx';
 
-/** 末尾かどうか。**器だけが知っている** */
+/** 末尾かどうか。**Breadcrumb だけが知っている** */
 const LastCtx = createContext(false);
 
 export interface BreadcrumbProps extends Omit<HTMLAttributes<HTMLElement>, 'children'> {
   /**
-   * この道筋の名前。**同じ画面に2つ置いたとき、読み上げが区別できるようにする。**
+   * このパンくずリストの名前。**同じ画面に2つ置いたとき、読み上げが区別できるようにする。**
    *
    * 既定は「現在地」。
    */
@@ -67,7 +67,7 @@ export interface BreadcrumbProps extends Omit<HTMLAttributes<HTMLElement>, 'chil
 }
 
 /**
- * パンくずリスト。**いま居る場所と、そこへ至る道を示す。**
+ * パンくずリスト。**いまいる場所と、そこまでの階層を示す。**
  *
  * ```tsx
  * <Breadcrumb>
@@ -79,15 +79,15 @@ export interface BreadcrumbProps extends Omit<HTMLAttributes<HTMLElement>, 'chil
  *
  * ## 区切りは書かない
  *
- * 器が項目のあいだに入れる。**読み上げには出ない。**
+ * Breadcrumb が項目のあいだに入れる。**読み上げには出ない。**
  *
  * ## 末尾がいま居る場所になる
  *
- * `aria-current="page"` は器が付ける。**書き忘れる余地を残さない。**
+ * `aria-current="page"` はBreadcrumb が付ける。**書き忘れる余地を残さない。**
  *
  * ## 長いときは折り返す
  *
- * 畳まない。**どれを畳むかは、道筋を作った側にしか決められない。**
+ * 畳まない。**どれを畳むかは、階層を作った側にしか決められない。**
  */
 export function Breadcrumb({
   label = '現在地',
@@ -99,7 +99,7 @@ export function Breadcrumb({
   /*
     **要素だけを数える。** `Children.toArray` は null と真偽値を落とすが、
     **文字列と数は残す。** 残したまま数えると、書き間違えて混ざった文字に
-    区切りが付き、**道筋が1つ増えたように見える。**
+    区切りが付き、**階層が1つ増えたように見える。**
   */
   const items = Children.toArray(children).filter(isValidElement);
   const last = items.length - 1;
@@ -107,7 +107,7 @@ export function Breadcrumb({
   const classes = 'text-body';
   return (
     <nav
-      // **自分が何であるかを名乗る。** 見た目は持たない
+      // **自分が何であるかを示す。** 見た目は持たない
       data-sg-component="breadcrumb"
       aria-label={label}
       className={className ? `${classes} ${className}` : classes}
@@ -137,7 +137,7 @@ export function Breadcrumb({
 }
 
 /**
- * `aria-current` は受け取らない。**末尾かどうかは器が決める。**
+ * `aria-current` は受け取らない。**末尾かどうかはBreadcrumb が決める。**
  */
 type ItemBase = Omit<AnchorHTMLAttributes<HTMLElement>, 'aria-current' | 'href'>;
 
@@ -178,9 +178,9 @@ export type BreadcrumbItemProps =
     });
 
 /**
- * 道筋の1つ。
+ * パンくずリストの項目1つ。
  *
- * **末尾かどうかは自分で決めない。** 器が知っていて、文脈で届く。
+ * **末尾かどうかは自分で決めない。** Breadcrumb が知っていて、コンテキストで届く。
  *
  * `href` があればリンクになり、無ければ文字だけになる。
  */
@@ -194,7 +194,7 @@ export function BreadcrumbItem({
   const last = useContext(LastCtx);
   /*
     **末尾だけが「いま居る場所」である。** 付けるのはここ1箇所——
-    利用側に書かせると、道筋を組み替えたときに付け替え忘れる。
+    利用側に書かせると、階層を組み替えたときに付け替え忘れる。
   */
   const current = last ? ('page' as const) : undefined;
 
@@ -228,6 +228,6 @@ export function BreadcrumbItem({
     <span {...(loose as HTMLAttributes<HTMLSpanElement>)}>{children}</span>
   );
 
-  // **`li` は器が要求する。** `ol` の子は `li` しか置けない
+  // **`li` はBreadcrumb が要求する。** `ol` の子は `li` しか置けない
   return <li className="flex items-center">{inner}</li>;
 }

@@ -4,6 +4,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { examples } from '../generated/examples';
 import props from '../generated/props.json';
 import sources from '../generated/sources.json';
+import summaries from '../generated/summaries.json';
 import { previewProps } from './preview.tsx';
 
 /**
@@ -78,6 +79,7 @@ export function ComponentDemo({ name }: { name: string }) {
   const list = examples[name];
   const doc = (props as Record<string, Doc>)[name];
   const source = (sources as Record<string, Record<string, string>>)[name];
+  const summary = (summaries as Record<string, Record<string, string>>)[name] ?? {};
   if (!list || !doc || !source) {
     // **黙って空を返さない。** 例が無いことは展示されないことを意味する（決定6-4）
     throw new Error(`${name} の例か型が生成されていません。pnpm prepare:docs-data を実行してください。`);
@@ -92,6 +94,14 @@ export function ComponentDemo({ name }: { name: string }) {
         {STATE_LABEL[state] ?? state}
         <code className="ms-2 text-xs">{state}.tsx</code>
       </h3>
+      {/*
+        **その例が何を見せているかを出す。** 見出しだけでは「エッジケース」としか
+        分からず、どんな場合なのかが伝わらない。文言は例の JSDoc から来る——
+        例を書いた人が既に書いているので、2箇所に持たない。
+      */}
+      {summary[state] ? (
+        <p className="-mt-2 text-sm text-fd-muted-foreground">{summary[state]}</p>
+      ) : null}
       {/*
         **表示とソースを並べず、切り替える。** 並べるとページが縦に伸び、
         例が増えるほど見比べにくくなる。

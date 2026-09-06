@@ -1,7 +1,7 @@
 'use client';
 
 /*
-  **例そのものをクライアント側にする。** Form はクライアント側の部品なので、
+  **例そのものをクライアント側にする。** Form はクライアント側のコンポーネントなので、
   サーバ側から送信処理（関数）を渡せない。
 */
 import { Button } from '../../button/button.tsx';
@@ -10,7 +10,7 @@ import { Input } from '../../input/input.tsx';
 import { Form, FormActions } from '../form.tsx';
 
 /**
- * 通常。**欄を束ねて、操作を並べる。**
+ * 通常。**入力をまとめて、操作を並べる。**
  *
  * バリデーションは持たない。走らせるのは利用側である。
  */

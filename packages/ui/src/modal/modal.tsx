@@ -71,7 +71,7 @@ export interface ModalProps
  * フォーカスの閉じ込め・後ろを触れなくすること・`Escape` で閉じること・
  * **閉じたときに元の場所へフォーカスが戻ること**は、すべてブラウザが持っています。
  *
- * ## 開閉は利用側が持ちます
+ * ## 開いているかどうかは利用側が持ちます
  *
  * ```tsx
  * const modal = useModal();
@@ -107,7 +107,7 @@ export function Modal({
   const dialogRef = useRef<HTMLDialogElement>(null);
   /*
    * 見出しの `id`。**乱数では作れない**——サーバ側と手元で値が食い違い、
-   * 描き直しになる。この部品はクライアント側なので `useId` を使える。
+   * 描き直しになる。このコンポーネントはクライアント側なので `useId` を使える。
    */
   const titleId = useId();
 

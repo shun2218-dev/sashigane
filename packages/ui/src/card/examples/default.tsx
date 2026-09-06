@@ -9,7 +9,7 @@ import { CardDescription, CardFooter, CardHeader, CardTitle } from '../card-part
  * 中のセクションは見出し・補足・本文・操作に分かれる。
  * **セクションは面も色も持たない**——面を宣言するのは枠だけである。
  *
- * 浮きの既定は `none`。影を使わない設計でもそのまま使えるようにしてある。
+ * 影の既定は `none`。影を使わない設計でもそのまま使えるようにしてある。
  */
 export default function Default() {
   return (

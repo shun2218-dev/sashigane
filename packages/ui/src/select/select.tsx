@@ -3,8 +3,8 @@
 /*
  * ── 維持する側への覚書 ───────────────────────────────
  *
- * **このリポジトリで唯一、クライアント側でしか描けない部品である。**
- * 素の `select` は一覧の見た目を OS が描くため、揃えられない。
+ * **クライアントコンポーネントである。** 素の `select` は一覧の見た目を OS が描くため、
+ * 揃えられない。
  * 揃える代わりに、キーボード・フォーカス・位置決めを全部こちらで持つことになった。
  *
  * ## 値の出どころは隠した `select` 1つだけ
@@ -15,7 +15,7 @@
  *
  * こうしないと、素のフォーム（`FormData`）と `register()` のどちらも動かない。
  *
- * ## フォーカスは引き金から動かさない
+ * ## フォーカスは開くボタンから動かさない
  *
  * 選択肢にフォーカスを移すと、開閉のたびにフォーカスの行き先を管理することになる。
  * フォーカスは `button` に置いたまま、**いまどれを指しているかは
@@ -30,12 +30,12 @@
  * 展示のプレビュー用 CSS（`[data-sg-preview]` の中だけに効く）からも外れる。
  *
  * 代償は、**`overflow` を持つ祖先があると切り取られる**ことである。
- * 実際、展示の枠（fumadocs の Tabs）が切っていた。
+ * 実際、デモを囲む要素（fumadocs の Tabs）が一覧を切り取っていた。
  *
  * ## 隠した `select` は読み上げから隠す
  *
  * 隠さないと、同じ選択肢が2回読まれる。
- * `tabIndex={-1}` も要る——**`Tab` で見えない部品に入ってしまう。**
+ * `tabIndex={-1}` も要る——**`Tab` で見えないコンポーネントに入ってしまう。**
  * ─────────────────────────────────────────────
  */
 import { useEffect, useId, useRef, useState } from 'react';
@@ -84,7 +84,7 @@ export interface SelectProps {
    * **満たしていることを表す属性は無い**ので、props で受け取るしかない。
    */
   valid?: boolean;
-  /** 引き金の `id`。**Field が渡す** */
+  /** 開くボタンの `id`。**Field が渡す** */
   id?: string;
   'aria-label'?: string;
   'aria-describedby'?: string;
@@ -267,7 +267,7 @@ export function Select({
   };
 
   /*
-   * 外を押したら閉じる。**引き金の {blur} では足りない**——
+   * 外を押したら閉じる。**開くボタンの {blur} では足りない**——
    * 選択肢を押すときはフォーカスを動かさないようにしてあるので、{blur} が来ない。
    */
   useEffect(() => {
@@ -308,7 +308,7 @@ export function Select({
           /*
             **隠した `select` の focusout として投げる。**
             `register()` の onBlur は `event.target.name` を読むので、
-            引き金の {blur} をそのまま渡すと名前が無い。
+            開くボタンの {blur} をそのまま渡すと名前が無い。
           */
           nativeRef.current?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
         }}
@@ -352,7 +352,7 @@ export function Select({
               aria-selected={option.value === selected}
               aria-disabled={option.disabled || undefined}
               /*
-                **いま指しているものを地の色で示す。** フォーカスは引き金にあるので、
+                **いま指しているものを地の色で示す。** フォーカスは開くボタンにあるので、
                 ブラウザは何も描いてくれない——印が無いと、
                 矢印キーで動かしても画面上は何も起きていないように見える。
 
@@ -366,7 +366,7 @@ export function Select({
                     ? 'cursor-pointer bg-accent-subtle px-3 py-2 text-body text-on-accent-subtle'
                     : 'cursor-pointer px-3 py-2 text-body'
               }
-              // **フォーカスを動かさない。** 動くと引き金から外れ、押す前に閉じる
+              // **フォーカスを動かさない。** 動くと開くボタンから外れ、押す前に閉じる
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => pick(index)}
               onMouseEnter={() => !option.disabled && setActive(index)}
@@ -379,7 +379,7 @@ export function Select({
 
       {/*
         値の出どころ。**読み上げからは隠す**——隠さないと選択肢が2回読まれる。
-        `tabIndex` も要る。無いと `Tab` で見えない部品に入る。
+        `tabIndex` も要る。無いと `Tab` で見えないコンポーネントに入る。
       */}
       <select
         ref={(node) => {

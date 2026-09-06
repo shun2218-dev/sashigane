@@ -200,6 +200,94 @@ for (const [hookName] of hooks) {
   }
 }
 
+/* ---------- ページが依存を隠していないこと（Issue #252） ---------- */
+
+/**
+ * **配信 JSON が持つ依存は、そのコンポーネントのページに名前が出ていること。**
+ *
+ * カルーセルのページは「依存を1つ持ちます（`embla-carousel-react`）」と書いていたが、
+ * 実際には `embla-carousel-autoplay` も入る。**入れた人は名前も知らないまま
+ * パッケージが1つ増える。**
+ *
+ * ## 向きに注意する
+ *
+ * 逆（ページに出た名前が依存であること）は検査できない。ページは
+ * `react-hook-form` のような**依存ではない相手**にも触れる——「組めます」という話で、
+ * 依存として配ってはいない。**名前が出ていることは依存の証拠にならない。**
+ *
+ * ## この検査が見ていないこと（教訓5）
+ *
+ * **推移的な依存は見ない。** `react-day-picker` が `date-fns` を連れてくることは
+ * 配信 JSON に現れない。ページが「3つ」と数えているのはそちらを含めた数で、
+ * **1つの規則で正しく数えられない**ので、個数そのものは照合しない。
+ */
+const DOCS = join(ROOT, 'apps/docs/content/docs/components');
+const INSTALL_PAGE = join(ROOT, 'apps/docs/content/docs/install.mdx');
+
+/**
+ * **導入ページでまとめて案内している依存。** ページごとには求めない。
+ *
+ * `class-variance-authority` はほぼ全部のコンポーネントに付くので、
+ * 25 ページに同じ断りを並べても読む人の役に立たない。
+ *
+ * **除外の根拠そのものを検査する。** 導入ページから名前が消えたら、
+ * どこにも書かれていないことになるので落とす。
+ */
+const COMMON_DEPS = ['class-variance-authority'];
+/** 依存を持つが、ページを持たないもの。**理由と一緒に並べる**（教訓5） */
+const NO_PAGE = {
+  ring: '共有物であってコンポーネントではない。展示ページを持たない',
+};
+
+const depErrors = [];
+{
+  // **除外の根拠を確かめる。** 導入ページから消えたら、どこにも書かれていない
+  const installText = existsSync(INSTALL_PAGE) ? readFileSync(INSTALL_PAGE, 'utf8') : '';
+  for (const d of COMMON_DEPS) {
+    if (!installText.includes(d)) {
+      depErrors.push(
+        `${d} をページごとの検査から外していますが、導入ページに名前がありません。\n` +
+          '    まとめて案内しているという前提が崩れています。',
+      );
+    }
+  }
+}
+for (const [name, item] of items) {
+  // 配信 JSON の時点で react / react-dom は除いてある
+  const deps = [...(item.dependencies ?? [])].filter((d) => !COMMON_DEPS.includes(d));
+  if (deps.length === 0 || NO_PAGE[name]) continue;
+  const page = join(DOCS, `${name}.mdx`);
+  if (!existsSync(page)) {
+    depErrors.push(`${name} が依存 ${deps.join(' ')} を持つのに、展示ページがありません`);
+    continue;
+  }
+  const text = readFileSync(page, 'utf8');
+  for (const d of deps) {
+    if (!text.includes(d)) {
+      depErrors.push(
+        `${name} は ${d} に依存しているのに、ページに名前が出ていません。\n` +
+          '    入れた人は名前も知らないままパッケージが増えます。',
+      );
+    }
+  }
+}
+
+// 対照（教訓2）。**発火することを確かめてから 0 件と言う**
+if (!'このページは embla-carousel-react だけを挙げている'.includes('embla-carousel-react')) {
+  console.error('陽性対照が落ちた: 文字列の照合が壊れている');
+  process.exit(1);
+}
+if ('このページは embla-carousel-react だけを挙げている'.includes('embla-carousel-autoplay')) {
+  console.error('陰性対照が発火した: 出ていない名前を出ていると報告した');
+  process.exit(1);
+}
+
+if (depErrors.length) {
+  console.error('ページが依存を隠しています（Issue #252）。\n');
+  for (const e of depErrors) console.error(`  ✗ ${e}`);
+  process.exit(1);
+}
+
 /* ---------- 型の成立 ---------- */
 
 rmSync(WORK, { recursive: true, force: true });
@@ -305,6 +393,7 @@ console.log(
 );
 console.log('✓ npm の依存がすべて、そのまま入れられる名前である（副経路が混ざっていない）');
 console.log(`✓ ${items.size} 件それぞれについて、単体で入れたときの参照先が揃っている`);
+console.log('✓ 依存を持つコンポーネントは、そのページに依存の名前が出ている');
 console.log(
   `✓ 仕組み ${hooks.length} 件は、入れても見た目が付いてこない。` +
     '対応する部品は仕組みを引いている',

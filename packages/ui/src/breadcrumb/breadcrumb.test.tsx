@@ -12,7 +12,7 @@ import '../../test/tokens.css';
  *   **末尾だけが「いま居る場所」を名乗ること** — 組み替えても付け替え忘れが起きない
  *   **`ol` の中に `li` 以外が出ないこと** — 区切りも `li` で包む必要がある
  *   **面の宣言が背景と前景を同時に変えること** — 塗るだけの道が残っていないこと
- *   **要素だけを数えること** — 混ざったものに区切りが付くと、道筋が増えて見える
+ *   **要素だけを数えること** — 混ざったものに区切りが付くと、階層が増えて見える
  */
 
 const onSurface = (node: React.ReactNode) => <div data-sg-surface="page">{node}</div>;
@@ -100,7 +100,7 @@ describe('いま居る場所', () => {
 });
 
 describe('組み立て', () => {
-  it('道筋が名前を名乗る', async () => {
+  it('パンくずリストが名前を持つ', async () => {
     const { container } = await render(onSurface(three({ label: '現在地' })));
     const nav = container.querySelector('[data-sg-component="breadcrumb"]');
     expect(nav?.tagName).toBe('NAV');
@@ -163,7 +163,7 @@ describe('面', () => {
     await expect.poll(deepText).not.toBe(shallowText());
   });
 
-  it('いま居る場所は、道筋の途中より濃い', async () => {
+  it('いまいる場所は、途中の階層より濃い', async () => {
     const { container } = await render(onSurface(three()));
     await expect.poll(() => items(container).length).toBe(3);
     const [first, , last] = items(container);
