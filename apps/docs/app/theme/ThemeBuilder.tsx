@@ -63,7 +63,7 @@ const InputPlacement = ({
   const { nearestStep, nearest: near, delta, modes } = describePrimaryInput(palette, input);
   const accentSteps = new Set(modes.map((m) => m.textStep));
   // 表示上の呼び方はこちらが持つ。トークン側は 'light' / 'dark' しか知らない
-  const label = (mode: 'light' | 'dark') => (mode === 'light' ? '明色' : '暗色');
+  const label = (mode: 'light' | 'dark') => (mode === 'light' ? 'ライトモード' : 'ダークモード');
 
   return (
     <section>
@@ -171,7 +171,7 @@ const GuaranteeTable = ({ palette }: { palette: Palette }) => {
           return g[side].map((req) => (
             <tr key={`${side}-${req.step}`}>
               <td>
-                {side === 'light' ? '明色' : '暗色'}の面({surfaceStep}) に 段{req.step}
+                {side === 'light' ? 'ライトモード' : 'ダークモード'}の面({surfaceStep}) に 段{req.step}
               </td>
               <td>{req.min}:1</td>
               {ramps.map(([n, r]) => {
@@ -364,8 +364,8 @@ export const ThemeBuilder = () => {
             テーマ
             <select value={theme} onChange={(e) => setTheme(e.target.value)}>
               <option value="">OS に従う</option>
-              <option value="light">明色に固定</option>
-              <option value="dark">暗色に固定</option>
+              <option value="light">ライトモードに固定</option>
+              <option value="dark">ダークモードに固定</option>
             </select>
           </label>
           <label>

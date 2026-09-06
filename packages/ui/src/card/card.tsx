@@ -75,7 +75,7 @@ const card = cva('flex flex-col gap-surface p-surface rounded-sm border-1 border
      * 浮き。**既定は `none`。**
      *
      * 影を既定にしていないのは、影と角丸を使わない設計が実在するためである。
-     * 暗色では影ではなく輪郭として出る——暗い地の上で影はほとんど見えないので、
+     * ダークモードでは影ではなく輪郭として出る——暗い地の上で影はほとんど見えないので、
      * 段の差で表している。
      */
     elevation: {
@@ -86,7 +86,7 @@ const card = cva('flex flex-col gap-surface p-surface rounded-sm border-1 border
     },
   },
   /*
-   * `overlay` は `surface` と同じ深さに置いてあるので、浮きが無いと暗色で下地と同化する。
+   * `overlay` は `surface` と同じ深さに置いてあるので、浮きが無いとダークモードで下地と同化する。
    * そのため「浮きを付けられる」ではなく「**浮き無しでは組み立てられない**」形にしてある。
    * `elevation` を明示すれば上書きできるが、省略したときに沈むことは無い。
    */
