@@ -15,7 +15,7 @@ export default function Edge() {
       <h3>面の中の面</h3>
       <p>Supercalifragilisticexpialidocious/長い識別子でも枠は破れません。</p>
       <Card surface="overlay" interactive>
-        <p>重なる面。hover すると1段深い文脈になります。</p>
+        <p>重なる面。hover すると面が1段深くなります。</p>
       </Card>
     </Card>
   );
