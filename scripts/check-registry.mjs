@@ -151,6 +151,55 @@ for (const [name] of items) {
   }
 }
 
+/* ---------- 仕組みは見た目を連れてこない（決定6-27 改訂） ---------- */
+
+/**
+ * **hook を入れたときに、部品が付いてこないこと。**
+ *
+ * hooks を切り出した理由は「見た目を使わずに仕組みだけ使う場面がある」である。
+ * hook から部品への import が1本入るだけで、**閉じに部品が混ざり、理由が消える。**
+ * 閉じは揃ったままなので、**依存の検査では捕まらない。**
+ *
+ * 置き場所で見る。`registry:hook` の閉じに `components/ui/` のファイルが
+ * 現れたら、そこで見た目を連れてきている。
+ */
+const dragsUi = (files) => [...files.keys()].filter((p) => p.startsWith('components/ui/'));
+
+// 対照（教訓2）
+if (dragsUi(new Map([['hooks/use-x.ts', ''], ['components/ui/x.tsx', '']])).length === 0) {
+  console.error('陽性対照が落ちた: 仕組みが見た目を連れているのを見逃した');
+  process.exit(1);
+}
+if (dragsUi(new Map([['hooks/use-x.ts', ''], ['lib/store.ts', '']])).length > 0) {
+  console.error('陰性対照が発火した: 見た目を連れていない閉じを連れていると報告した');
+  process.exit(1);
+}
+
+const hooks = [...items].filter(([, i]) => i.type === 'registry:hook');
+for (const [name] of hooks) {
+  for (const p of dragsUi(closureOf(name))) {
+    errors.push(`${name} を入れると見た目が付いてきます: ${p}`);
+  }
+}
+
+/* ---------- 部品は自分の仕組みを引く（決定6-27 改訂） ---------- */
+
+/**
+ * **`modal.tsx` は `use-modal.ts` を import していない。**
+ * 依存を import から数えているので、放っておくと部品から hook が消える。
+ *
+ * 例も型表も `useModal` で書いてあるので、**部品だけ入れた利用者は
+ * 書いてあるとおりに書けない。** 明示的に引いていることをここで見る。
+ */
+for (const [hookName] of hooks) {
+  const owner = hookName.replace(/^use-/, '');
+  if (!items.has(owner)) continue;
+  const deps = (items.get(owner).registryDependencies ?? []).map(localName);
+  if (!deps.includes(hookName)) {
+    errors.push(`${owner} が ${hookName} を引いていません（部品だけ入れると仕組みが来ません）`);
+  }
+}
+
 /* ---------- 型の成立 ---------- */
 
 rmSync(WORK, { recursive: true, force: true });
@@ -250,9 +299,16 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('✓ 対照 6 件が期待どおり（参照先の欠け・揃っている閉じ・依存の名前 4 件）');
+console.log(
+  '✓ 対照 8 件が期待どおり（参照先の欠け・揃っている閉じ・依存の名前 4 件・' +
+    '仕組みが連れる／連れない 2 件）',
+);
 console.log('✓ npm の依存がすべて、そのまま入れられる名前である（副経路が混ざっていない）');
 console.log(`✓ ${items.size} 件それぞれについて、単体で入れたときの参照先が揃っている`);
+console.log(
+  `✓ 仕組み ${hooks.length} 件は、入れても見た目が付いてこない。` +
+    '対応する部品は仕組みを引いている',
+);
 console.log(
   typeOk ? `✓ 全部入れた木（${files.size} ファイル）がそのままコンパイルできる` : '',
 );

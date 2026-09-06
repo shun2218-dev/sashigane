@@ -6018,10 +6018,60 @@ lucide は `displayName` を持っている（`X` / `ChevronDown`）ので、そ
 | モーダル | 面・浮き・重なり | 開閉、フォーカスの行き先と戻し先、`Esc`、背景の固定 |
 | トースト | 面・塗り・出現 | 待ち行列、寿命、重ね順、読み上げへの通知 |
 
-#### 決めていないこと
+#### 改訂: hooks はそれ自身が配信物になる
 
-**hooks をどう配るか。** レジストリ配信ではコンポーネント単位で入れるので、
-**hooks だけを落とす形があるか**を決めていない。着手時に決める。
+> **「着手時に決める」と書いたまま、着手が終わっていた。**
+> モーダルもトーストも作り終えたあと、配信物を見たら hooks は部品の中の
+> ファイルとして一緒に配られているだけだった——**hooks だけを落とす道が無い。**
+>
+> 決定6-27 が hooks を切り出した理由は「**見た目を使わずに仕組みだけ使う場面がある**」
+> である。**配信の側でそれができないと、理由が半分しか果たされていない。**
+>
+> しかも共有の内部ファイル（`slot`・`ring`・`focus`）は単独の配信物になっていた。
+> **同じ「部品から切り出したもの」なのに扱いが違う**（教訓7 の非対称）。
+
+```
+--sg 以外の話。レジストリの item として
+
+  registry:ui    → components/ui/    部品
+  registry:hook  → hooks/            仕組み
+  registry:lib   → lib/              共有物
+```
+
+`use-` で始まるファイルは、**それ自身が item になる。**
+
+| item | 型 | 依存 |
+|---|---|---|
+| `use-modal` | `registry:hook` | なし |
+| `use-toast` | `registry:hook` | `toast-store` |
+| `modal` | `registry:ui` | `button` `icon` **`use-modal`** |
+| `toast` | `registry:ui` | `button` `icon` `toast-store` **`use-toast`** |
+
+##### 仕組みの側から見た側へ依存させない
+
+`use-toast` は `toast-store` を参照する。**store を部品の item に残すと、
+`use-toast` が `toast` に依存する**ことになり、仕組みだけ入れたつもりで
+見た目まで付いてくる。**それでは分けた意味が無い。**
+
+だから `toast-store.ts` を単独の `registry:lib` にした。
+**部品と hook の両方から参照されるファイルは、どちらにも属さない。**
+
+##### 部品は hook を引く。import には現れない
+
+`modal.tsx` は `use-modal.ts` を **import していない**（`open` と `onClose` を受け取る）。
+依存を import から数えているので、**放っておくと部品から hook が消える。**
+
+消してはいけない。**例も型表も `useModal` で書いてある**ので、
+部品だけ入れた利用者は書いてあるとおりに書けない。
+`hooksOfComponent` として明示的に引いている。
+
+##### 退けた案: store を hook の item に同梱する
+
+`use-toast` が `toast-store.ts` を持つ形。item は1つ減るが、
+**`toast.tsx` が `@/hooks/toast-store` を参照する**ことになる。
+hook でないものが `hooks/` に置かれる。
+
+置き場所は型が決めているので、**型と中身が食い違う置き方を作らない。**
 
 
 ---
