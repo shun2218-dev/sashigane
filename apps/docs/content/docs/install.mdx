@@ -40,15 +40,32 @@ npx shadcn@latest add @sashigane/button
 npx shadcn@latest add @sashigane/base
 ```
 
+## 見た目を使わずに、仕組みだけ入れる
+
+モーダルの開け閉めとトーストの待ち行列は、**部品とは別に入れられます。**
+
+```bash
+# 開け閉めだけ。モーダルの見た目は入りません
+npx shadcn@latest add @sashigane/use-modal
+
+# 待ち行列と寿命だけ。トーストの見た目は入りません
+npx shadcn@latest add @sashigane/use-toast
+```
+
+自前の見た目を書きたいときに使ってください。
+**部品のほうを入れると、対応する仕組みは一緒に来ます。**
+
 ## コピー先
 
 | 種類 | コピー先 |
 |---|---|
 | 部品 | `components/ui/` |
+| 仕組み（`use-modal` / `use-toast`） | `hooks/` |
 | 共有物（`slot` / `ring`） | `lib/` |
 | トークンの CSS | `styles/` |
 
-部品の中の参照は `@/components/ui/...` と `@/lib/...` に書き換わってコピーされます。
+部品の中の参照は `@/components/ui/...`・`@/hooks/...`・`@/lib/...` に
+書き換わってコピーされます。
 
 必要な npm の依存（`class-variance-authority` / `lucide-react`）は、
 CLI が一緒に入れます。

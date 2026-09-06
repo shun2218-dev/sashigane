@@ -11,6 +11,7 @@
  * shadcn の慣例に合わせる。**利用側の `@/` にコピーされる。**
  *
  *   registry:ui   → components/ui/<file>
+ *   registry:hook → hooks/<file>
  *   registry:lib  → lib/<file>
  *   registry:file → 指定した target
  *
@@ -52,7 +53,17 @@ const TOKENS = join(ROOT, 'packages/tokens/dist');
 const TARGET_DIR = {
   'registry:ui': 'components/ui',
   'registry:lib': 'lib',
+  'registry:hook': 'hooks',
 };
+
+/**
+ * hook のファイル名。**`use-` で始まるものは、それ自身が item になる**（決定6-27 改訂）。
+ *
+ * 部品の中に置いたままだと、**hook だけを落とす道が無い。**
+ * 決定6-27 が hooks を切り出した理由は「見た目を使わずに仕組みだけ使う場面がある」
+ * なので、**配信の側でそれができないと理由が半分しか果たされない。**
+ */
+const HOOK_FILE = /^use-[a-z0-9-]+\.tsx?$/;
 
 /**
  * 部品ではない共有物。**コンポーネントの数え方から外れる**ので、
@@ -62,6 +73,12 @@ const LIB_ITEMS = {
   'internal/slot.tsx': 'slot',
   'internal/ring.ts': 'ring',
   'internal/focus.ts': 'focus',
+  /*
+    **部品と hook の両方から参照される。** 部品側に置いたままにすると
+    `use-toast` が `toast` に依存することになり、**仕組みだけ入れると
+    見た目まで付いてくる。** それでは hook を分けた意味が無い。
+  */
+  'toast/toast-store.ts': 'toast-store',
 };
 
 /** コピー先が持っていないもの。**react は利用側が既に持っている** */
@@ -108,11 +125,40 @@ for (const file of sources) {
     );
     process.exit(1);
   }
-  itemOf.set(rel, LIB_ITEMS[rel] ?? rel.split('/')[0]);
+  const base = rel.split('/').pop();
+  itemOf.set(
+    rel,
+    LIB_ITEMS[rel] ?? (HOOK_FILE.test(base) ? base.replace(/\.tsx?$/, '') : rel.split('/')[0]),
+  );
+}
+
+/** hook の item 名。**名前から推し量らず、実際に見つけたものを持つ** */
+const hookNames = new Set(
+  [...itemOf].filter(([rel]) => HOOK_FILE.test(rel.split('/').pop())).map(([, name]) => name),
+);
+
+/**
+ * 部品 → その中から切り出した hook。**import からは見えない。**
+ *
+ * `modal.tsx` は `use-modal.ts` を import していない（`open` と `onClose` を受け取る）。
+ * それでも**例も型表も `useModal` で書いてある**ので、
+ * 部品だけ入れた利用者は書いてあるとおりに書けない。**部品の依存として引く。**
+ */
+const hooksOfComponent = new Map();
+for (const [rel, name] of itemOf) {
+  if (!hookNames.has(name)) continue;
+  const dir = rel.split('/')[0];
+  if (dir === name) continue;
+  hooksOfComponent.set(dir, (hooksOfComponent.get(dir) ?? new Set()).add(name));
 }
 
 /** item 名 → 型 */
-const typeOf = (name) => (Object.values(LIB_ITEMS).includes(name) ? 'registry:lib' : 'registry:ui');
+const typeOf = (name) =>
+  Object.values(LIB_ITEMS).includes(name)
+    ? 'registry:lib'
+    : hookNames.has(name)
+      ? 'registry:hook'
+      : 'registry:ui';
 
 /** コピー先での import の書き方。**拡張子は落とす** */
 const importPathFor = (rel) => {
@@ -191,6 +237,8 @@ for (const file of sources) {
   item.files.push(entry);
   for (const d of dependencies) item.dependencies.add(d);
   for (const d of registryDependencies) item.registryDependencies.add(d);
+  // **import には現れない依存。** 上の覚書を参照
+  for (const h of hooksOfComponent.get(name) ?? []) item.registryDependencies.add(h);
   items.set(name, item);
 }
 
@@ -279,9 +327,9 @@ writeFileSync(
   )}\n`,
 );
 
-const uiCount = [...items.values()].filter((i) => i.type === 'registry:ui').length;
-const libCount = [...items.values()].filter((i) => i.type === 'registry:lib').length;
+const countOf = (type) => [...items.values()].filter((i) => i.type === type).length;
 console.log(
   `✓ レジストリ ${all.length} 件を ${OUT} へ生成` +
-    `（部品 ${uiCount} / 共有 ${libCount} / トークン 1 / 全部入り 1）`,
+    `（部品 ${countOf('registry:ui')} / 仕組み ${countOf('registry:hook')}` +
+    ` / 共有 ${countOf('registry:lib')} / トークン 1 / 全部入り 1）`,
 );
