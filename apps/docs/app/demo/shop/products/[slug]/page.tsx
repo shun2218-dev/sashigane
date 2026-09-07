@@ -118,7 +118,7 @@ export default function ProductDetail() {
             {product.isNew ? <Badge tone="accent">新着</Badge> : null}
           </div>
 
-          <h1 className="text-display font-emphasis">{product.name}</h1>
+          <h1 className="text-heading-1 font-emphasis sm:text-display">{product.name}</h1>
           <p className="text-body text-muted">{product.body}</p>
 
           <div className="flex flex-wrap gap-1">
@@ -129,7 +129,7 @@ export default function ProductDetail() {
             ))}
           </div>
 
-          <p className="text-display font-numeric font-emphasis">
+          <p className="text-heading-1 font-numeric font-emphasis sm:text-display">
             {yen(total)}
             <span className="ms-2 text-caption text-muted">税込</span>
           </p>
@@ -278,7 +278,11 @@ export default function ProductDetail() {
             .slice(0, 3)
             .map((p) => (
               <Card key={p.slug} surface="surface" interactive asChild>
-                <Link href={`/demo/shop/products/${p.slug}`}>
+                <Link
+                  href={`/demo/shop/products/${p.slug}`}
+                  data-sg-interactive
+                  className="flex flex-col gap-3 rounded-sm p-2 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+                >
                   <ShopImage
                     seed={p.slug}
                     alt={p.name}

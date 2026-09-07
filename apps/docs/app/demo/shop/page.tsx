@@ -50,20 +50,24 @@ export default function ShopTop() {
         **全幅の写真に見出しを重ねる。** 最初の画面を写真で埋めると、
         店であることが文字より早く伝わる。
       */}
+      {/*
+        **狭い画面では重ねない。** 重ねると写真が文字で埋まり、
+        どちらも読めなくなる。写真の下に置いて、順に読ませる。
+      */}
       <section className="relative">
         <ShopImage
           seed="season-autumn"
           alt=""
           responsive
-          className="aspect-16/9 w-full object-cover"
+          className="aspect-square w-full object-cover sm:aspect-16/9"
         />
-        <div className="absolute inset-0 flex items-end">
-          <ShopWidth className="pb-12">
+        <div className="sm:absolute sm:inset-0 sm:flex sm:items-end">
+          <ShopWidth className="-mt-8 pb-0 sm:mt-0 sm:pb-12">
             <div
               data-sg-surface="surface"
-              className="flex max-w-45rem flex-col gap-4 rounded-lg p-8 shadow-overlay"
+              className="flex max-w-45rem flex-col gap-4 rounded-lg p-6 shadow-overlay sm:p-8"
             >
-              <h1 className="text-display font-emphasis">焙煎したてを、そのまま</h1>
+              <h1 className="text-heading-1 font-emphasis sm:text-display">焙煎したてを、そのまま</h1>
               <p className="text-body text-muted">
                 注文を受けてから焙煎します。発送は焙煎の翌日です。
               </p>
@@ -95,7 +99,11 @@ export default function ShopTop() {
           <ul className="grid gap-8 sm:grid-cols-3">
             {featured.map((p) => (
               <li key={p.slug}>
-                <Link href={`/demo/shop/products/${p.slug}`} className="flex flex-col gap-3">
+                <Link
+                    href={`/demo/shop/products/${p.slug}`}
+                    data-sg-interactive
+                    className="flex flex-col gap-3 rounded-sm p-2 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+                  >
                   <ShopImage
                     seed={p.slug}
                     alt={p.name}

@@ -59,20 +59,32 @@ export function ShopChrome({ children }: { children: ReactNode }) {
         data-sg-surface="page"
         className="sticky top-0 z-10 border-b-1 border-border-subtle"
       >
-        <ShopWidth className="flex items-center gap-6 py-3">
-          <Link href="/demo/shop" className="text-label font-emphasis">
+        {/*
+          **狭い画面では折り返させない。** 折り返すとヘッダが3行になり、
+          貼り付いたまま画面の3分の1を占める。**行を増やさず、横に流す。**
+        */}
+        <ShopWidth className="flex items-center gap-4 py-3">
+          <Link href="/demo/shop" className="shrink-0 text-label font-emphasis">
             {SHOP}
           </Link>
-          <nav aria-label="店の中" className="flex items-center gap-1">
+          <nav
+            aria-label="店の中"
+            className="flex min-w-0 items-center gap-1 overflow-x-auto"
+          >
             {NAV.map((n) => (
               <Button key={n.href} variant="ghost" asChild>
-                <Link href={n.href}>{n.label}</Link>
+                <Link href={n.href} className="whitespace-nowrap">
+                  {n.label}
+                </Link>
               </Button>
             ))}
           </nav>
-          <div className="ms-auto">
+          {/* **狭い画面では隠す。** 店の中の移動が先である */}
+          <div className="ms-auto hidden shrink-0 sm:block">
             <Button variant="outline" asChild>
-              <Link href="/docs">ドキュメントへ</Link>
+              <Link href="/docs" className="whitespace-nowrap">
+                ドキュメントへ
+              </Link>
             </Button>
           </div>
         </ShopWidth>

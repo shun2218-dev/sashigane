@@ -122,7 +122,11 @@ export default function ProductList() {
             <ul className="grid gap-8 sm:grid-cols-2 xl:grid-cols-3">
               {shown.map((p) => (
                 <li key={p.slug}>
-                  <Link href={`/demo/shop/products/${p.slug}`} className="flex flex-col gap-3">
+                  <Link
+                    href={`/demo/shop/products/${p.slug}`}
+                    data-sg-interactive
+                    className="flex flex-col gap-3 rounded-sm p-2 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+                  >
                     <ShopImage
                       seed={p.slug}
                       alt={p.name}
