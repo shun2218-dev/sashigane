@@ -30,12 +30,11 @@ import {
   Radio,
   RadioGroup,
   Separator,
-  Spinner,
   Textarea,
   useModal,
   useToast,
 } from '@sashigane/ui';
-import { PRODUCTS, yen } from '../data';
+import { PRODUCTS, SAMPLE_CART, yen } from '../data';
 import { ShopWidth } from '../shop-chrome';
 
 const PAY = [
@@ -44,11 +43,7 @@ const PAY = [
   { value: 'cod', label: '代金引換（手数料 330円）' },
 ];
 
-/** カートの中身。**デモなので固定である** */
-const ITEMS = [
-  { slug: 'yirgacheffe', count: 2 },
-  { slug: 'house-blend', count: 1 },
-];
+type Errors = Partial<Record<'name' | 'mail' | 'zip' | 'address', string>>;
 
 export default function Checkout() {
   const confirm = useModal();
@@ -56,23 +51,36 @@ export default function Checkout() {
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [day, setDay] = useState<Date | undefined>();
-  const [error, setError] = useState<string | undefined>();
+  const [errors, setErrors] = useState<Errors>({});
 
-  const rows = ITEMS.flatMap((i) => {
+  const rows = SAMPLE_CART.flatMap((i) => {
     const p = PRODUCTS.find((x) => x.slug === i.slug);
     return p ? [{ ...i, product: p }] : [];
   });
   const total = rows.reduce((n, r) => n + r.product.price * r.count, 0);
 
+  /*
+    **誤りは欄に渡す。** `Field` に `error` を渡すと入力に `aria-invalid` が付き、
+    `Form` がそこへフォーカスを移す。
+
+    自前の知らせで出すと、**どちらも起きない。** 文言は見えるが、
+    読み上げは欄と結ばれず、フォーカスは送信ボタンに残る。実際、最初はそう書いていた。
+
+    `required` は印を付けるだけで、**強制しない**（`Form` は `noValidate` が既定）。
+    検証は利用側が書く。書かないと、空の欄のまま確認まで進む。
+  */
   const check = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    if (!String(data.get('mail') ?? '').includes('@')) {
-      setError('メールアドレスの形が正しくありません');
-      return;
-    }
-    setError(undefined);
-    confirm.show();
+    const value = (key: string) => String(data.get(key) ?? '').trim();
+    const next: Errors = {};
+    if (!value('name')) next.name = 'お名前を入れてください';
+    if (!value('mail')) next.mail = 'メールアドレスを入れてください';
+    else if (!value('mail').includes('@')) next.mail = 'メールアドレスの形が正しくありません';
+    if (!/^\d{7}$/.test(value('zip'))) next.zip = '7桁の数字で入れてください';
+    if (!value('address')) next.address = '住所を入れてください';
+    setErrors(next);
+    if (Object.keys(next).length === 0) confirm.show();
   };
 
   const send = () => {
@@ -110,24 +118,24 @@ export default function Checkout() {
 
       <div className="grid gap-8 lg:grid-cols-3">
         <Form id="order" onSubmit={check} className="flex flex-col gap-4 lg:col-span-2">
-          {error ? (
-            <Alert tone="danger" title="送れませんでした" live>
-              {error}
-            </Alert>
-          ) : null}
-
           <h2 className="text-label font-emphasis">お届け先</h2>
 
-          <Field id="name" label="お名前" required>
+          <Field id="name" label="お名前" required error={errors.name}>
             <Input name="name" autoComplete="name" />
           </Field>
-          <Field id="mail" label="メールアドレス" description="控えをお送りします" required>
+          <Field
+            id="mail"
+            label="メールアドレス"
+            description="控えをお送りします"
+            required
+            error={errors.mail}
+          >
             <Input name="mail" type="email" autoComplete="email" />
           </Field>
-          <Field id="zip" label="郵便番号" description="ハイフンなし" required>
+          <Field id="zip" label="郵便番号" description="ハイフンなし" required error={errors.zip}>
             <Input name="zip" inputMode="numeric" autoComplete="postal-code" className="font-numeric" />
           </Field>
-          <Field id="address" label="住所" required>
+          <Field id="address" label="住所" required error={errors.address}>
             <Input name="address" autoComplete="street-address" />
           </Field>
 
@@ -191,11 +199,10 @@ export default function Checkout() {
         open={confirm.open}
         onClose={confirm.hide}
         title="この内容で注文しますか"
-        style={{ maxWidth: 460 }}
         actions={
           <>
-            <Button onClick={send} disabled={sending}>
-              {sending ? <Spinner aria-label="送信中" /> : null}
+            {/* **送信中の印は `Button` が持っている。** 手で並べると読み上げの状態が付かない */}
+            <Button onClick={send} loading={sending}>
               注文する
             </Button>
             <Button variant="ghost" onClick={confirm.hide} disabled={sending}>

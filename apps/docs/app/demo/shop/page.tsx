@@ -59,6 +59,7 @@ export default function ShopTop() {
           seed="season-autumn"
           alt=""
           responsive
+          priority
           className="aspect-square w-full object-cover sm:aspect-16/9"
         />
         <div className="sm:absolute sm:inset-0 sm:flex sm:items-end">

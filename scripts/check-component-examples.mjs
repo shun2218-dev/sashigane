@@ -608,6 +608,9 @@ if (strayHosts.length) {
  * `<link>` はレイアウトに置き、器はその下のページに置いてもよい。
  * **React の木を辿らずに、`app/` の親子で判定している。**
  * 別の経路（`_components/` に切り出すなど）で置かれたら見逃す。
+ *
+ * **下へ効くのは `layout.tsx` だけである。** ページに書いた `<link>` は、そのページにしか効かない。
+ * 最初はディレクトリ単位で数えていて、**ページの `<link>` で兄弟のページまで通していた。**
  */
 const PREVIEW_CSS_LINK = /href=["']\/preview\.css["']/;
 const USES_HOST = /previewProps\(/;
@@ -616,23 +619,33 @@ const USES_HOST = /previewProps\(/;
   **`tracked` は `packages/ui/src` しか見ていない。** ここはサイト側を見るので、
   別に集める。片方を使い回すと**対象が0件のまま緑になる**——実際にそうなった。
 */
-const siteFiles = execSync('git ls-files apps/docs/app', { encoding: 'utf8' })
-  .split('\n')
-  .filter((f) => f.endsWith('.tsx') && existsSync(f));
-
-const linkedDirs = new Set(
-  siteFiles
-    .filter((f) => PREVIEW_CSS_LINK.test(readFileSync(f, 'utf8')))
-    .map((f) => dirname(f)),
+const APP_DIR = 'apps/docs/app';
+const siteSources = new Map(
+  execSync(`git ls-files ${APP_DIR}`, { encoding: 'utf8' })
+    .split('\n')
+    .filter((f) => f.endsWith('.tsx') && existsSync(f))
+    .map((f) => [f, readFileSync(f, 'utf8')]),
 );
-/** そのファイルか、`app/` までの親のどこかが `<link>` を持っているか */
-const isLinked = (file) => {
-  let dir = dirname(file);
-  while (dir.startsWith('apps/docs/app')) {
-    if (linkedDirs.has(dir)) return true;
-    dir = dirname(dir);
-  }
-  return false;
+
+/**
+ * `<link>` が届いているかを判定する関数を作る。**ファイルを読まない**——
+ * 対照を同じ関数に通すため。
+ *
+ * 届くのは、**そのファイル自身**か、**`app/` までの親の `layout.tsx`** である。
+ */
+const linkJudge = (sources) => {
+  const layoutDirs = new Set(
+    [...sources]
+      .filter(([f, src]) => f.endsWith('/layout.tsx') && PREVIEW_CSS_LINK.test(src))
+      .map(([f]) => dirname(f)),
+  );
+  return (file) => {
+    if (PREVIEW_CSS_LINK.test(sources.get(file))) return true;
+    for (let dir = dirname(file); dir === APP_DIR || dir.startsWith(`${APP_DIR}/`); dir = dirname(dir)) {
+      if (layoutDirs.has(dir)) return true;
+    }
+    return false;
+  };
 };
 
 // 対照（教訓2）
@@ -644,13 +657,34 @@ if (PREVIEW_CSS_LINK.test('<link rel="stylesheet" href="/tokens.css" />')) {
   console.error('陰性対照が発火した: 別の CSS を preview.css と報告した');
   process.exit(1);
 }
+{
+  const link = '<link rel="stylesheet" href="/preview.css" />';
+  const fixture = new Map([
+    [`${APP_DIR}/x/layout.tsx`, link],
+    [`${APP_DIR}/x/a/page.tsx`, 'previewProps("")'],
+    [`${APP_DIR}/y/page.tsx`, `${link} previewProps("")`],
+    [`${APP_DIR}/y/b/page.tsx`, 'previewProps("")'],
+  ]);
+  const judge = linkJudge(fixture);
+  const expected = [
+    [`${APP_DIR}/x/a/page.tsx`, true, 'レイアウトの link が子のページに届かない'],
+    [`${APP_DIR}/y/page.tsx`, true, 'ページ自身の link を数えていない'],
+    [`${APP_DIR}/y/b/page.tsx`, false, 'ページの link を下のページにまで効かせた'],
+  ];
+  for (const [file, want, message] of expected) {
+    if (judge(file) !== want) {
+      console.error(`対照が外れた: ${message}`);
+      process.exit(1);
+    }
+  }
+}
 
-const unlinked = siteFiles
-  .filter((f) => USES_HOST.test(readFileSync(f, 'utf8')))
-  .filter((f) => !isLinked(f));
+const isLinked = linkJudge(siteSources);
+const hosts = [...siteSources].filter(([, src]) => USES_HOST.test(src)).map(([f]) => f);
+const unlinked = hosts.filter((f) => !isLinked(f));
 
 // **対象が0件なら、検査は何も見ていない**（教訓2）
-if (siteFiles.filter((f) => USES_HOST.test(readFileSync(f, 'utf8'))).length === 0) {
+if (hosts.length === 0) {
   console.error('プレビューの器を使っているページが1件もありません。対象が消えています。');
   process.exit(1);
 }
@@ -673,7 +707,7 @@ console.log(
     'トークン読み込み2件・asChild 6件・名乗り7件・プレビューの器2件）',
 );
 console.log(`✓ プレビューの器は ${PREVIEW_HOST} だけが持ち、not-prose を伴っている`);
-console.log('✓ 器を使うページは preview.css を読んでいる（対照 2 件が期待どおり）');
+console.log('✓ 器を使うページは preview.css を読んでいる（対照 5 件が期待どおり）');
 /* ---------- Field の配線を測る表（Issue #242） ---------- */
 
 /**

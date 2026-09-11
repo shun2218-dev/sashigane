@@ -42,7 +42,6 @@ import {
   TabsList,
   TabsPanel,
   TabsTrigger,
-  Textarea,
   useToast,
 } from '@sashigane/ui';
 import { PRODUCTS, bySlug, stockLabel, stockTone, yen } from '../../data';
@@ -55,11 +54,20 @@ const GRINDS = [
   { value: 'fine', label: '細挽き（エスプレッソ）' },
 ];
 
+/**
+ * 量。**`factor` は 200g の値段に掛ける数である。**
+ *
+ * ラベルが値引きを約束しているので、**金額もそれに従わせる。**
+ * 最初は量を選んでも金額が動かず、表示が嘘をついていた。
+ */
 const SIZES = [
-  { value: '200', label: '200g' },
-  { value: '500', label: '500g（10% 引き）' },
-  { value: '1000', label: '1kg（15% 引き）' },
+  { value: '200', label: '200g', factor: 1 },
+  { value: '500', label: '500g（10% 引き）', factor: 2.5 * 0.9 },
+  { value: '1000', label: '1kg（15% 引き）', factor: 5 * 0.85 },
 ];
+
+/** 毎月お届けの値引き。ラベルの「10% 引き」と揃える */
+const SUBSCRIBE_RATE = 0.9;
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -73,7 +81,9 @@ export default function ProductDetail() {
   if (!product) notFound();
 
   const soldOut = product.stock === 0;
-  const total = product.price * count;
+  const factor = SIZES.find((s) => s.value === size)?.factor ?? 1;
+  const unit = Math.round(product.price * factor * (subscribe ? SUBSCRIBE_RATE : 1));
+  const total = unit * count;
 
   const add = () => {
     showToast({
@@ -101,17 +111,26 @@ export default function ProductDetail() {
           **写真は1枚である。** 同じ商品の別角度を持っていないので、
           カルーセルにすると同じ絵が並ぶ。**枠だけ用意して中身を水増ししない。**
         */}
-        <ShopImage
-          seed={product.slug}
-          alt={`${product.name}の写真`}
-          className="aspect-square w-full rounded-lg object-cover"
-        />
-
         {/*
-          **情報の列は上に貼り付ける。** 写真が長いので、下まで送ると
-          買う操作が画面の外に出る。
+          **写真を上に貼り付ける。** 情報の列のほうが長いので、
+          選びながら下へ送っても写真が画面に残る。
+
+          最初は情報の列を貼り付けていたが、**列が写真より長く、一度も貼り付いていなかった。**
+          貼り付く要素は、入れ物の中に動ける余白があるときしか動かない。
+          宣言の値（`top`）を読んでも、それは分からない。
+
+          **貼り付く位置はヘッダより下にする。** ヘッダは 67px ある。
+          `top-16`（64px）では潜るので、次の段（24）まで上げて間を空ける。
         */}
-        <div className="flex h-fit flex-col gap-4 md:sticky md:top-16">
+        <div className="h-fit md:sticky md:top-24">
+          <ShopImage
+            seed={product.slug}
+            alt={`${product.name}の写真`}
+            className="aspect-square w-full rounded-lg object-cover"
+          />
+        </div>
+
+        <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={stockTone(product.stock)}>{stockLabel(product.stock)}</Badge>
             <Badge tone="neutral">{product.roast}</Badge>
@@ -273,27 +292,36 @@ export default function ProductDetail() {
 
       <section className="flex flex-col gap-8">
         <h2 className="text-heading-2 font-emphasis">似ている豆</h2>
+        {/*
+          **`Card asChild` は要素を作らない**ので、`ul` の直下に置くと `a` が並ぶ。
+          リストとして読み上げられるように `li` で包む。
+
+          角と余白と hover は `Card` が持っている。**リンクの側に書き足さない**——
+          書くと同じ性質のクラスが2つ並び、どちらが勝つかは CSS の順で決まる。
+        */}
         <ul className="grid gap-8 sm:grid-cols-3">
           {PRODUCTS.filter((p) => p.roast === product.roast && p.slug !== product.slug)
             .slice(0, 3)
             .map((p) => (
-              <Card key={p.slug} surface="surface" interactive asChild>
-                <Link
-                  href={`/demo/shop/products/${p.slug}`}
-                  data-sg-interactive
-                  className="flex flex-col gap-3 rounded-sm p-2 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
-                >
-                  <ShopImage
-                    seed={p.slug}
-                    alt={p.name}
-                    className="aspect-16/9 w-full rounded-sm"
-                  />
-                  <CardHeader>
-                    <CardTitle>{p.name}</CardTitle>
-                    <CardDescription>{yen(p.price)}</CardDescription>
-                  </CardHeader>
-                </Link>
-              </Card>
+              <li key={p.slug}>
+                <Card surface="surface" interactive asChild>
+                  <Link
+                    href={`/demo/shop/products/${p.slug}`}
+                    className="focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+                  >
+                    {/* 商品の写真は 4:3。**比を変えるなら切り取りを添える**（`product-image.tsx`） */}
+                    <ShopImage
+                      seed={p.slug}
+                      alt={p.name}
+                      className="aspect-4/3 w-full rounded-sm object-cover"
+                    />
+                    <CardHeader>
+                      <CardTitle>{p.name}</CardTitle>
+                      <CardDescription>{yen(p.price)}</CardDescription>
+                    </CardHeader>
+                  </Link>
+                </Card>
+              </li>
             ))}
         </ul>
       </section>

@@ -29,23 +29,16 @@ import {
   TableRow,
   useToast,
 } from '@sashigane/ui';
-import { PRODUCTS, yen } from '../data';
+import { PRODUCTS, SAMPLE_CART, yen } from '../data';
 import { ShopWidth } from '../shop-chrome';
 import { ShopImage } from '../product-image';
-
-/** 最初から入っているもの。**デモなので固定である** */
-const INITIAL = [
-  { slug: 'yirgacheffe', count: 2 },
-  { slug: 'house-blend', count: 1 },
-  { slug: 'toraja', count: 1 },
-];
 
 const SHIPPING = 590;
 const FREE_OVER = 5000;
 
 export default function Cart() {
   const { show: showToast } = useToast();
-  const [items, setItems] = useState(INITIAL);
+  const [items, setItems] = useState(SAMPLE_CART);
 
   const rows = items.flatMap((i) => {
     const p = PRODUCTS.find((x) => x.slug === i.slug);

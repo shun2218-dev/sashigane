@@ -1,8 +1,7 @@
 /*
   架空の商品。**この店にある全部である。**
 
-  絵は持たない。**画像を置くと、トークンで組んでいないものが画面の大半を占める。**
-  代わりに焙煎度を面の深さで見せる。
+  写真は `product-image.tsx` が `slug` で引く。
 */
 export type Product = {
   slug: string;
@@ -119,6 +118,18 @@ export const PRODUCTS: Product[] = [
 ];
 
 export const bySlug = (slug: string) => PRODUCTS.find((p) => p.slug === slug);
+
+/**
+ * カートの中身。**デモなので固定である。**
+ *
+ * カートと注文の両方がここを読む。**2箇所に書くと、ページを進んだだけで中身が変わる**——
+ * 実際、注文の画面でだけ1品消えていた。
+ */
+export const SAMPLE_CART = [
+  { slug: 'yirgacheffe', count: 2 },
+  { slug: 'house-blend', count: 1 },
+  { slug: 'toraja', count: 1 },
+];
 
 export const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`;
 
