@@ -13,3 +13,10 @@
 */
 @import '../../packages/tokens/dist/theme.css' source(none);
 @source '../../packages/ui/src';
+/*
+  コンポーネントを組み合わせたデモ。**ここも走査に入れる。**
+
+  入れないと、このページが書いたクラスだけ生成されない。**エラーは出ず、
+  素のまま表示される**ので、画面を見るまで気づけない。
+*/
+@source './app/demo/shop';
