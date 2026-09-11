@@ -6,6 +6,8 @@
   Form が送信の失敗時に最初の誤りへフォーカスを移す。Field が関連付けを作る。
   Calendar で希望日を選び、Modal で最終確認をしてから送る。
 
+  中身はカート（`cart.tsx`）から来る。**注文したらカートを空にする。**
+
   **本当には送らない。** 送っている見た目だけを見せる。
 */
 import Link from 'next/link';
@@ -16,6 +18,7 @@ import {
   BreadcrumbItem,
   Button,
   Card,
+  CardDescription,
   CardHeader,
   CardTitle,
   Calendar,
@@ -34,7 +37,8 @@ import {
   useModal,
   useToast,
 } from '@sashigane/ui';
-import { PRODUCTS, SAMPLE_CART, yen } from '../data';
+import { useCart } from '../cart';
+import { lineNote, yen } from '../data';
 import { ShopWidth } from '../shop-chrome';
 
 const PAY = [
@@ -48,16 +52,13 @@ type Errors = Partial<Record<'name' | 'mail' | 'zip' | 'address', string>>;
 export default function Checkout() {
   const confirm = useModal();
   const { show: showToast } = useToast();
+  const { lines, clear } = useCart();
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [day, setDay] = useState<Date | undefined>();
   const [errors, setErrors] = useState<Errors>({});
 
-  const rows = SAMPLE_CART.flatMap((i) => {
-    const p = PRODUCTS.find((x) => x.slug === i.slug);
-    return p ? [{ ...i, product: p }] : [];
-  });
-  const total = rows.reduce((n, r) => n + r.product.price * r.count, 0);
+  const total = lines.reduce((n, r) => n + r.unit * r.count, 0);
 
   /*
     **誤りは欄に渡す。** `Field` に `error` を渡すと入力に `aria-invalid` が付き、
@@ -89,6 +90,7 @@ export default function Checkout() {
       setSending(false);
       confirm.hide();
       setDone(true);
+      clear();
       showToast({ message: '注文を受け付けました', tone: 'success' });
     }, 1200);
   };
@@ -102,6 +104,23 @@ export default function Checkout() {
         <Button asChild>
           <Link href="/demo/shop">トップへ戻る</Link>
         </Button>
+      </ShopWidth>
+    );
+  }
+
+  /* **空のカートでは注文させない。** 合計 ¥0 の確認まで進めても意味が無い */
+  if (lines.length === 0) {
+    return (
+      <ShopWidth className="flex flex-col gap-8 py-12">
+        <Card surface="surface">
+          <CardHeader>
+            <CardTitle>カートが空なので、注文に進めません</CardTitle>
+            <CardDescription>先に豆をカートに入れてください。</CardDescription>
+          </CardHeader>
+          <Button asChild>
+            <Link href="/demo/shop/products">商品を見る</Link>
+          </Button>
+        </Card>
       </ShopWidth>
     );
   }
@@ -175,14 +194,17 @@ export default function Checkout() {
             <CardTitle>ご注文の内容</CardTitle>
           </CardHeader>
           <List separated>
-            {rows.map((r) => (
-              <ListItem key={r.slug} separated>
+            {lines.map((r) => (
+              <ListItem key={r.key} separated>
                 <span className="flex justify-between gap-4">
-                  <span>
-                    {r.product.name}
-                    <span className="ms-1 text-caption text-muted">×{r.count}</span>
+                  <span className="flex flex-col">
+                    <span>
+                      {r.product.name}
+                      <span className="ms-1 text-caption text-muted">×{r.count}</span>
+                    </span>
+                    <span className="text-caption text-muted">{lineNote(r)}</span>
                   </span>
-                  <span className="font-numeric">{yen(r.product.price * r.count)}</span>
+                  <span className="font-numeric">{yen(r.unit * r.count)}</span>
                 </span>
               </ListItem>
             ))}

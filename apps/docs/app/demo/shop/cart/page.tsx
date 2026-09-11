@@ -3,11 +3,12 @@
 /*
   カート。**表で並べ、数量を直せる。**
 
+  中身は店全体で1つ持っている（`cart.tsx`）。商品の詳細で入れたものがここに出る。
+
   ここでも数量の増減は自分で組んでいる。**行ごとに同じものを書くことになる**ので、
-  1つの画面に3つ並ぶ。部品が無いことがはっきり出る場所である。
+  1つの画面に何度も並ぶ。部品が無いことがはっきり出る場所である。
 */
 import Link from 'next/link';
-import { useState } from 'react';
 import {
   Alert,
   Badge,
@@ -29,7 +30,8 @@ import {
   TableRow,
   useToast,
 } from '@sashigane/ui';
-import { PRODUCTS, SAMPLE_CART, yen } from '../data';
+import { useCart } from '../cart';
+import { lineNote, yen } from '../data';
 import { ShopWidth } from '../shop-chrome';
 import { ShopImage } from '../product-image';
 
@@ -38,22 +40,14 @@ const FREE_OVER = 5000;
 
 export default function Cart() {
   const { show: showToast } = useToast();
-  const [items, setItems] = useState(SAMPLE_CART);
+  const { lines, setCount, remove, limit } = useCart();
 
-  const rows = items.flatMap((i) => {
-    const p = PRODUCTS.find((x) => x.slug === i.slug);
-    return p ? [{ ...i, product: p }] : [];
-  });
-
-  const subtotal = rows.reduce((n, r) => n + r.product.price * r.count, 0);
+  const subtotal = lines.reduce((n, r) => n + r.unit * r.count, 0);
   const shipping = subtotal >= FREE_OVER || subtotal === 0 ? 0 : SHIPPING;
   const total = subtotal + shipping;
 
-  const setCount = (slug: string, count: number) =>
-    setItems((cur) => cur.map((i) => (i.slug === slug ? { ...i, count } : i)));
-
-  const remove = (slug: string, name: string) => {
-    setItems((cur) => cur.filter((i) => i.slug !== slug));
+  const drop = (key: string, name: string) => {
+    remove(key);
     showToast({ message: `${name} をカートから外しました`, tone: 'default' });
   };
 
@@ -66,7 +60,7 @@ export default function Cart() {
 
       <h1 className="text-heading-2 font-emphasis">カート</h1>
 
-      {rows.length === 0 ? (
+      {lines.length === 0 ? (
         <Card surface="surface">
           <CardHeader>
             <CardTitle>カートは空です</CardTitle>
@@ -100,60 +94,61 @@ export default function Cart() {
                 </TableRow>
               </thead>
               <tbody>
-                {rows.map((r) => (
-                  <TableRow key={r.slug}>
-                    <TableCell scope="row">
-                      <span className="flex items-center gap-3">
-                        <ShopImage
-                          seed={r.slug}
-                          alt={r.product.name}
-                          className="w-16 rounded-sm"
-                        />
-                        <span className="flex flex-col">
-                          <Link href={`/demo/shop/products/${r.slug}`} className="text-label">
-                            {r.product.name}
-                          </Link>
-                          <Badge tone="neutral" size="sm">
-                            {r.product.roast}
-                          </Badge>
+                {lines.map((r) => {
+                  /* **同じ豆が2行あるとき、読み上げで見分けられるように中身まで言う** */
+                  const name = `${r.product.name}（${lineNote(r)}）`;
+                  return (
+                    <TableRow key={r.key}>
+                      <TableCell scope="row">
+                        <span className="flex items-center gap-3">
+                          <ShopImage
+                            seed={r.slug}
+                            alt={r.product.name}
+                            className="w-16 rounded-sm"
+                          />
+                          <span className="flex flex-col">
+                            <Link href={`/demo/shop/products/${r.slug}`} className="text-label">
+                              {r.product.name}
+                            </Link>
+                            <span className="text-caption text-muted">{lineNote(r)}</span>
+                            <Badge tone="neutral" size="sm">
+                              {r.product.roast}
+                            </Badge>
+                          </span>
                         </span>
-                      </span>
-                    </TableCell>
-                    <TableCell numeric>{r.product.price.toLocaleString('ja-JP')}</TableCell>
-                    <TableCell numeric>
-                      {/*
-                        **ラベルは表の見出しが持っている。** 行ごとに「数量」と出すと
-                        同じ語が並ぶので、読み上げにだけ渡す。
-                        Field を通さないので、**関連付けは自分で書くことになる**——
-                        数量の増減に部品が無いことが、ここでも出る。
-                      */}
-                      <Input
-                        type="number"
-                        min={1}
-                        max={99}
-                        value={r.count}
-                        aria-label={`${r.product.name} の数量`}
-                        className="font-numeric"
-                        onChange={(e) =>
-                          setCount(r.slug, Math.max(1, Math.min(99, Number(e.currentTarget.value) || 1)))
-                        }
-                      />
-                    </TableCell>
-                    <TableCell numeric>
-                      {(r.product.price * r.count).toLocaleString('ja-JP')}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        iconOnly
-                        aria-label={`${r.product.name} を外す`}
-                        onClick={() => remove(r.slug, r.product.name)}
-                      >
-                        <IconX />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell numeric>{r.unit.toLocaleString('ja-JP')}</TableCell>
+                      <TableCell numeric>
+                        {/*
+                          **ラベルは表の見出しが持っている。** 行ごとに「数量」と出すと
+                          同じ語が並ぶので、読み上げにだけ渡す。
+                          Field を通さないので、**関連付けは自分で書くことになる**——
+                          数量の増減に部品が無いことが、ここでも出る。
+                        */}
+                        <Input
+                          type="number"
+                          min={1}
+                          max={limit(r.key)}
+                          value={r.count}
+                          aria-label={`${name} の数量`}
+                          className="font-numeric"
+                          onChange={(e) => setCount(r.key, Number(e.currentTarget.value) || 1)}
+                        />
+                      </TableCell>
+                      <TableCell numeric>{(r.unit * r.count).toLocaleString('ja-JP')}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          iconOnly
+                          aria-label={`${name} を外す`}
+                          onClick={() => drop(r.key, r.product.name)}
+                        >
+                          <IconX />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </tbody>
             </Table>
           </div>

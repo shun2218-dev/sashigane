@@ -44,52 +44,53 @@ import {
   TabsTrigger,
   useToast,
 } from '@sashigane/ui';
-import { PRODUCTS, bySlug, stockLabel, stockTone, yen } from '../../data';
+import { useCart } from '../../cart';
+import {
+  DEFAULT_OPTIONS,
+  GRINDS,
+  PRODUCTS,
+  SIZES,
+  bySlug,
+  stockLabel,
+  stockTone,
+  unitPrice,
+  yen,
+} from '../../data';
 import { ShopWidth } from '../../shop-chrome';
 import { ShopImage } from '../../product-image';
-
-const GRINDS = [
-  { value: 'beans', label: '豆のまま' },
-  { value: 'medium', label: '中挽き（ドリップ）' },
-  { value: 'fine', label: '細挽き（エスプレッソ）' },
-];
-
-/**
- * 量。**`factor` は 200g の値段に掛ける数である。**
- *
- * ラベルが値引きを約束しているので、**金額もそれに従わせる。**
- * 最初は量を選んでも金額が動かず、表示が嘘をついていた。
- */
-const SIZES = [
-  { value: '200', label: '200g', factor: 1 },
-  { value: '500', label: '500g（10% 引き）', factor: 2.5 * 0.9 },
-  { value: '1000', label: '1kg（15% 引き）', factor: 5 * 0.85 },
-];
-
-/** 毎月お届けの値引き。ラベルの「10% 引き」と揃える */
-const SUBSCRIBE_RATE = 0.9;
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
   const product = bySlug(slug);
   const { show: showToast } = useToast();
-  const [size, setSize] = useState('200');
+  const cart = useCart();
+  const [grind, setGrind] = useState(DEFAULT_OPTIONS.grind);
+  const [size, setSize] = useState(DEFAULT_OPTIONS.size);
   const [count, setCount] = useState(1);
-  const [subscribe, setSubscribe] = useState(false);
-  const [gift, setGift] = useState(false);
+  const [subscribe, setSubscribe] = useState(DEFAULT_OPTIONS.subscribe);
+  const [gift, setGift] = useState(DEFAULT_OPTIONS.gift);
 
   if (!product) notFound();
 
   const soldOut = product.stock === 0;
-  const factor = SIZES.find((s) => s.value === size)?.factor ?? 1;
-  const unit = Math.round(product.price * factor * (subscribe ? SUBSCRIBE_RATE : 1));
-  const total = unit * count;
+  const total = unitPrice(product, size, subscribe) * count;
 
+  /*
+    **入った数で知らせを変える。** 在庫で抑えられたのに「入れました」と言うと、
+    カートを開いたときに数が合わない。
+  */
   const add = () => {
-    showToast({
-      message: `${product.name} をカートに入れました`,
-      tone: 'success',
-    });
+    const added = cart.add(product.slug, { size, grind, subscribe, gift }, count);
+    if (added === count) {
+      showToast({ message: `${product.name} を ${count} 袋カートに入れました`, tone: 'success' });
+    } else if (added > 0) {
+      showToast({
+        message: `在庫が足りないので、${product.name} を ${added} 袋だけ入れました`,
+        tone: 'default',
+      });
+    } else {
+      showToast({ message: `${product.name} は在庫の上限までカートに入っています`, tone: 'default' });
+    }
   };
 
   return (
@@ -156,9 +157,16 @@ export default function ProductDetail() {
           <Separator />
 
           <RadioGroup id="grind" label="挽き方" description="開封後は2週間で飲み切ってください">
-            {GRINDS.map((g, i) => (
+            {/* **選んだ挽き方をカートへ渡すので、状態で持つ** */}
+            {GRINDS.map((g) => (
               <Field key={g.value} layout="inline" id={`grind-${g.value}`} label={g.label}>
-                <Radio name="grind" value={g.value} defaultChecked={i === 0} disabled={soldOut} />
+                <Radio
+                  name="grind"
+                  value={g.value}
+                  checked={grind === g.value}
+                  onChange={() => setGrind(g.value)}
+                  disabled={soldOut}
+                />
               </Field>
             ))}
           </RadioGroup>

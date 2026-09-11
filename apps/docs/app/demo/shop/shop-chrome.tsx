@@ -19,6 +19,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Button, Separator, Toaster } from '@sashigane/ui';
+import { CartProvider } from './cart';
 
 const NAV = [
   { href: '/demo/shop', label: 'トップ' },
@@ -48,7 +49,16 @@ export function ShopWidth({
   return <div className={`mx-auto w-full ${w} px-6 ${className}`}>{children}</div>;
 }
 
+/** 店の外枠。**カートは店全体で1つ。** ここで包むと、店の中を移っても中身が残る */
 export function ShopChrome({ children }: { children: ReactNode }) {
+  return (
+    <CartProvider>
+      <ShopFrame>{children}</ShopFrame>
+    </CartProvider>
+  );
+}
+
+function ShopFrame({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       {/*

@@ -119,11 +119,64 @@ export const PRODUCTS: Product[] = [
 
 export const bySlug = (slug: string) => PRODUCTS.find((p) => p.slug === slug);
 
+export const GRINDS = [
+  { value: 'beans', label: '豆のまま', short: '豆のまま' },
+  { value: 'medium', label: '中挽き（ドリップ）', short: '中挽き' },
+  { value: 'fine', label: '細挽き（エスプレッソ）', short: '細挽き' },
+];
+
 /**
- * カートの中身。**デモなので固定である。**
+ * 量。**`factor` は 200g の値段に掛ける数である。**
  *
- * カートと注文の両方がここを読む。**2箇所に書くと、ページを進んだだけで中身が変わる**——
- * 実際、注文の画面でだけ1品消えていた。
+ * ラベルが値引きを約束しているので、**金額もそれに従わせる。**
+ * 最初は量を選んでも金額が動かず、表示が嘘をついていた。
+ */
+export const SIZES = [
+  { value: '200', label: '200g', short: '200g', factor: 1 },
+  { value: '500', label: '500g（10% 引き）', short: '500g', factor: 2.5 * 0.9 },
+  { value: '1000', label: '1kg（15% 引き）', short: '1kg', factor: 5 * 0.85 },
+];
+
+/** 毎月お届けの値引き。ラベルの「10% 引き」と揃える */
+export const SUBSCRIBE_RATE = 0.9;
+
+/** 商品の詳細で選ぶもの。**カートの行はこれごとに分かれる** */
+export type CartOptions = { size: string; grind: string; subscribe: boolean; gift: boolean };
+
+export const DEFAULT_OPTIONS: CartOptions = {
+  size: '200',
+  grind: 'beans',
+  subscribe: false,
+  gift: false,
+};
+
+/**
+ * 1袋の値段。**詳細・カート・注文が同じ式を通る。**
+ *
+ * 画面ごとに書くと、どこかが値引きを忘れる。
+ */
+export const unitPrice = (product: Product, size: string, subscribe: boolean) =>
+  Math.round(
+    product.price *
+      (SIZES.find((s) => s.value === size)?.factor ?? 1) *
+      (subscribe ? SUBSCRIBE_RATE : 1),
+  );
+
+/** 行の中身を1行で。**同じ豆の行を見分けるために出す** */
+export const lineNote = (o: CartOptions) =>
+  [
+    SIZES.find((s) => s.value === o.size)?.short,
+    GRINDS.find((g) => g.value === o.grind)?.short,
+    o.subscribe ? '毎月お届け' : null,
+    o.gift ? 'ギフト包装' : null,
+  ]
+    .filter(Boolean)
+    .join('・');
+
+/**
+ * カートの最初の中身。**訪れるたびにここから始まる**（`cart.tsx`）。
+ *
+ * 空から始めると、カートの画面を直接開いた人には空の状態しか見えない。
  */
 export const SAMPLE_CART = [
   { slug: 'yirgacheffe', count: 2 },
