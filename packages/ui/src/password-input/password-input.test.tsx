@@ -104,10 +104,12 @@ describe('フォームと押せないとき', () => {
 });
 
 describe('面と線', () => {
-  it('凹んだ面を宣言し、線は枠が描く', async () => {
+  it('地を持たず、線は枠が描く', async () => {
     const { container } = await render(onSurface(<PasswordInput aria-label="パスワード" />));
     const input = inputIn(container);
-    expect(input.getAttribute('data-sg-surface')).toBe('inset');
+    // **口を示すのは線である。** 対比は Input の側で測っている
+    expect(input.getAttribute('data-sg-surface')).toBeNull();
+    expect(getComputedStyle(input).backgroundColor).toBe('rgba(0, 0, 0, 0)');
     const frame = container.querySelector('[data-sg-component="password-input-frame"]');
     if (!frame) throw new Error('枠が描画されていません');
     const f = getComputedStyle(frame);

@@ -97,7 +97,6 @@ export function PasswordInput({
     >
       <input
         data-sg-component="password-input"
-        data-sg-surface="inset"
         type={shown ? 'text' : 'password'}
         className={inner}
         {...props}

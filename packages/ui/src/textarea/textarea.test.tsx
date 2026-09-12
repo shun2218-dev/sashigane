@@ -60,8 +60,12 @@ describe('1行の入力欄と同じ見た目', () => {
     );
   });
 
-  it('凹んだ面を宣言する', async () => {
+  it('地を持たない。口を示すのは線である', async () => {
     const { container } = await render(onSurface(<Textarea aria-label="x" />));
-    expect(container.querySelector('textarea')?.getAttribute('data-sg-surface')).toBe('inset');
+    const el = container.querySelector('textarea');
+    if (!el) throw new Error('入力が描画されていません');
+    // **1行の入力欄と同じ。** 線の対比は Input の側で測っている
+    expect(el.getAttribute('data-sg-surface')).toBeNull();
+    expect(getComputedStyle(el).backgroundColor).toBe('rgba(0, 0, 0, 0)');
   });
 });

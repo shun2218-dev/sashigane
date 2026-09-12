@@ -44,7 +44,6 @@ export function Textarea({ valid, className, ...props }: TextareaProps) {
     >
       <textarea
         data-sg-component="textarea"
-        data-sg-surface="inset"
         className={inner}
         {...props}
       />

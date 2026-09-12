@@ -38,7 +38,7 @@ import { type ControlState, ring, stateOf } from '../internal/ring.ts';
  * 入力欄と複数行の入力で同じ見た目を使う。**ここ1箇所で組み立てる。**
  */
 export const control = cva(
-  'w-full rounded-sm px-3 py-2 text-body ' +
+  'w-full rounded-lg bg-transparent px-3 py-2 text-body ' +
     'placeholder:text-faint ' +
     'disabled:text-faint ' +
     /*
@@ -82,7 +82,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
  * 線は共有のものを使い、**箱の形だけをここで足す。**
  * 写しを作ると、片方だけ直したときにずれる。
  */
-export const frameClass = (state: ControlState) => `${ring({ state })} flex w-full rounded-sm`;
+export const frameClass = (state: ControlState) => `${ring({ state })} flex w-full rounded-lg`;
 
 /**
  * 1行の入力欄。
@@ -115,7 +115,6 @@ export function Input({ valid, className, ...props }: InputProps) {
     >
       <input
         data-sg-component="input"
-        data-sg-surface="inset"
         className={control({ state })}
         {...props}
       />

@@ -59,7 +59,7 @@ const DEFAULT_SURFACE = 'surface';
  * `asChild` を付けると**この枠は要素を1つも作らず**、
  * クラスと属性を子へ移して**子だけを描く。**
  */
-const card = cva('flex flex-col gap-surface p-surface rounded-sm border-1 border-border', {
+const card = cva('flex flex-col gap-surface p-surface rounded-xl border-1 border-border', {
   variants: {
     /**
      * 面の種類。
@@ -72,11 +72,21 @@ const card = cva('flex flex-col gap-surface p-surface rounded-sm border-1 border
       overlay: '',
     },
     /**
-     * 影の高さ。**既定は `none`。**
+     * 影の高さ。**既定は `raised`。**
      *
-     * 影を既定にしていないのは、影と角丸を使わない設計が実在するためである。
-     * ダークモードでは影ではなく輪郭として出る——暗い地の上で影はほとんど見えないので、
+     * 影と角丸を使わない設計が実在するので、`none` を消してはいない。
+     * **既定でないだけである。**
+     *
+     * もともとは `none` が既定だった。影の濃さが面の梯子1段分から解かれる形になり、
+     * 梯子を明色端へ寄せたことで**影が十分に薄くなった**ので、既定にしている。
+     *
+     * 暗色モードでは影ではなく輪郭として出る——暗い地の上で影はほとんど見えないので、
      * 段の差で表している。
+     *
+     * **暗色では線が2本になる。** 枠の線（`border-default`）の外側に、
+     * 浮きの輪郭（`border-subtle`）がもう1本乗る。測ると L\* 39.7 と 31.9 で、
+     * 外側のほうが地（L\* 13.6）に近い。**申告しておく**——
+     * 消すには浮きの表し方を段以外にすることになり、暗色では影が使えない。
      */
     elevation: {
       none: '',
@@ -91,7 +101,7 @@ const card = cva('flex flex-col gap-surface p-surface rounded-sm border-1 border
    * `elevation` を明示すれば上書きできるが、省略したときに暗くなることは無い。
    */
   compoundVariants: [{ surface: 'overlay', elevation: 'none', class: 'shadow-overlay' }],
-  defaultVariants: { surface: DEFAULT_SURFACE, elevation: 'none' },
+  defaultVariants: { surface: DEFAULT_SURFACE, elevation: 'raised' },
 });
 
 export interface CardProps

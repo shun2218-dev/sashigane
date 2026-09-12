@@ -86,11 +86,12 @@ describe('入った印', () => {
 });
 
 describe('面と線', () => {
-  it('凹んだ面を宣言する', async () => {
+  it('地を持たない。口を示すのは線である', async () => {
     const { container } = await render(onSurface(<Checkbox aria-label="x" />));
     const box = boxIn(container);
-    expect(box.getAttribute('data-sg-surface')).toBe('inset');
-    expect(getComputedStyle(box).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    // **入っていないときは地を持たない。** 対比は Input の側で測っている
+    expect(box.getAttribute('data-sg-surface')).toBeNull();
+    expect(getComputedStyle(box).backgroundColor).toBe('rgba(0, 0, 0, 0)');
   });
 
   it('線は枠が描き、入力そのものは線を持たない', async () => {

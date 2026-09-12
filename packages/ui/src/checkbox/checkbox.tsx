@@ -70,8 +70,7 @@ export function Checkbox({ valid, className, ...props }: CheckboxProps) {
       <input
         type="checkbox"
         data-sg-component="checkbox"
-        data-sg-surface="inset"
-        className="peer size-full appearance-none rounded-sm border-0 outline-none"
+        className="peer size-full appearance-none rounded-sm border-0 bg-transparent outline-none"
         {...props}
       />
       {/*

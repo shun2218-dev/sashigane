@@ -237,8 +237,8 @@ export function TabsTrigger({ value, className, ...props }: TabsTriggerProps) {
     `aria-selected` が読み上げに届き、線が見た目に届く。
   */
   const classes = on
-    ? 'cursor-pointer border-b-2 border-accent-mark px-3 py-2 text-body text-default'
-    : 'cursor-pointer border-b-2 border-transparent px-3 py-2 text-body text-muted';
+    ? 'cursor-pointer border-b-2 border-accent-mark px-3 py-2 text-body font-emphasis text-default'
+    : 'cursor-pointer border-b-2 border-transparent px-3 py-2 text-body font-emphasis text-muted';
   return (
     <button
       type="button"

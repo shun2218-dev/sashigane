@@ -66,8 +66,7 @@ export function Radio({ valid, className, ...props }: RadioProps) {
       <input
         type="radio"
         data-sg-component="radio"
-        data-sg-surface="inset"
-        className="peer size-full appearance-none rounded-full border-0 outline-none"
+        className="peer size-full appearance-none rounded-full border-0 bg-transparent outline-none"
         {...props}
       />
       {/* 選ばれた印。**読み上げには出さない**——選ばれているかは `input` が伝える */}

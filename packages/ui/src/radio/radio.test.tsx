@@ -137,10 +137,12 @@ describe('グループのラベル', () => {
 });
 
 describe('面と線', () => {
-  it('凹んだ面を宣言し、線は枠が描く', async () => {
+  it('地を持たず、線は枠が描く', async () => {
     const { container } = await render(onSurface(<Radio aria-label="x" name="s" value="a" />));
     const radio = radiosIn(container)[0] as HTMLInputElement;
-    expect(radio.getAttribute('data-sg-surface')).toBe('inset');
+    // **選ぶ口を示すのは線である。** 対比は Input の側で測っている
+    expect(radio.getAttribute('data-sg-surface')).toBeNull();
+    expect(getComputedStyle(radio).backgroundColor).toBe('rgba(0, 0, 0, 0)');
     const f = getComputedStyle(frameIn(container));
     const b = getComputedStyle(radio);
     expect(f.outlineStyle).toBe('solid');

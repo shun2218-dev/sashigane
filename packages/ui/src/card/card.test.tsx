@@ -79,11 +79,12 @@ describe('前提', () => {
 });
 
 describe('props の写像', () => {
-  it('既定では面を surface と宣言し、浮きを持たない', async () => {
+  it('既定では面を surface と宣言し、1段だけ浮く', async () => {
     const { container } = await render(onSurface(<Card>x</Card>));
     const el = cardIn(container);
     expect(el.getAttribute('data-sg-surface')).toBe('surface');
-    expect(styleOf(el).boxShadow).toBe('none');
+    // **既定は `raised`**（決定6-58）。書かなくても浮く
+    expect(styleOf(el).boxShadow).not.toBe('none');
   });
 
   it('interactive のときだけ data-sg-interactive が付く', async () => {
@@ -116,8 +117,9 @@ describe('設計の不変条件', () => {
     const { container } = await render(onSurface(<Card>x</Card>));
     expect([...cardIn(container).classList].sort()).toEqual(
       // 並べ方（flex / flex-col / gap-surface）は色ではない。
-      // **セクションを縦に並べて間を空けるのは枠の責務**である（決定6-15）
-      ['flex', 'flex-col', 'gap-surface', 'border-1', 'border-border', 'p-surface', 'rounded-sm'].sort(),
+      // **セクションを縦に並べて間を空けるのは枠の責務**である（決定6-15）。
+      // `shadow-raised` は既定の浮きであって塗りではない（決定6-58）
+      ['flex', 'flex-col', 'gap-surface', 'border-1', 'border-border', 'p-surface', 'rounded-xl', 'shadow-raised'].sort(),
     );
   });
 
@@ -127,8 +129,22 @@ describe('設計の不変条件', () => {
      * クラスが cva の中にあれば CSS は生成されるが、
      * **props を渡したときに実際に付くか**は別である。
      */
-    const none = await render(onSurface(<Card>x</Card>));
+    /*
+     * **既定は `raised` なので、`none` は明示して測る**（決定6-58）。
+     * 既定を測ったつもりで「浮きが無い」を確かめていると、
+     * 既定が動いた瞬間に**何も測っていない**状態になる。
+     */
+    const none = await render(onSurface(<Card elevation="none">x</Card>));
     expect(styleOf(cardIn(none.container)).boxShadow).toBe('none');
+
+    // **既定が `raised` であることも測る。** 書かなかったときに浮くことが決定である
+    const bare = await render(onSurface(<Card>x</Card>));
+    const { container: raisedByProp } = await render(
+      onSurface(<Card elevation="raised">x</Card>),
+    );
+    expect(styleOf(cardIn(bare.container)).boxShadow).toBe(
+      styleOf(cardIn(raisedByProp)).boxShadow,
+    );
 
     const shadows = new Set<string>();
     for (const level of ['raised', 'overlay', 'front'] as const) {

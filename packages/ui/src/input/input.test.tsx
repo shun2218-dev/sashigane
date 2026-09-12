@@ -9,7 +9,7 @@ import '../../test/tokens.css';
  *
  * 測るのは3つである。
  *
- *   **凹んだ面を宣言すること** — 背景だけを塗ると前景が置き去りになる
+ *   **地を持たないこと、そして線が 3:1 を満たすこと** — 口を示すのは線である
  *   **誤りの線が文字色でないこと** — 取り違えは検査では捕まらない
  *   **線が1本しか無いこと** — 状態とフォーカスで別々の仕組みを使うと2本出る
  */
@@ -30,22 +30,78 @@ describe('前提', () => {
   });
 });
 
+/**
+ * 画面に出た色をそのまま読む。**計算値の文字列を解かない。**
+ *
+ * `getComputedStyle` は色を `oklch()` でも `lab()` でも返す。どちらも知覚の明度で、
+ * WCAG の相対輝度ではない。**書式ごとに解く式を持つと、書式が増えたときに黙って外れる。**
+ * 1px に塗って読めば、ブラウザが解いた結果そのものが取れる。
+ */
+const toRgb = (color: string): [number, number, number] => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('2d の文脈が取れません');
+  /*
+   * **読めない色は黙って無視される。** `fillStyle` に解けない値を入れても
+   * 例外は出ず、**前の値のまま**になる。だから解けない番兵を先に置いて、
+   * 塗った結果が番兵と同じなら落とす。
+   */
+  ctx.fillStyle = '#ff00ff';
+  ctx.fillStyle = color;
+  if (ctx.fillStyle === '#ff00ff') throw new Error(`色を読めません: ${color}`);
+  ctx.fillRect(0, 0, 1, 1);
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+  return [r!, g!, b!];
+};
+
+const luminance = (color: string) => {
+  const [r, g, b] = toRgb(color).map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+
+const contrast = (a: string, b: string) => {
+  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p) as [number, number];
+  return (x + 0.05) / (y + 0.05);
+};
+
 describe('面', () => {
-  it('凹んだ面を宣言する', async () => {
+  it('地を持たない。口を示すのは線である', async () => {
     const { container } = await render(onSurface(<Input aria-label="x" />));
     const el = inputIn(container);
-    expect(el.getAttribute('data-sg-surface')).toBe('inset');
-    // **面が塗っていること。** 透明なら宣言が効いていない
-    expect(getComputedStyle(el).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    /*
+     * **凹んだ面を宣言していた。** 地を1段深くして「入力できる場所」を示す形である。
+     * 測ると、面の梯子の2段目は地としては濃く、入力欄が灰色の板になっていた。
+     *
+     * **地を外すと、示すものが線だけになる。** だから線の対比を下で測る——
+     * 外形だけで部品を識別させる以上、そこが 3:1 を満たしていなければならない。
+     */
+    expect(el.getAttribute('data-sg-surface')).toBeNull();
+    expect(getComputedStyle(el).backgroundColor).toBe('rgba(0, 0, 0, 0)');
   });
 
-  it('ページの地とは違う色になる', async () => {
+  it('線が、まわりの地に対して 3:1 を満たす', async () => {
     const { container } = await render(onSurface(<Input aria-label="x" />));
     const page = container.querySelector('[data-sg-surface="page"]');
     if (!page) throw new Error('面が無い');
-    const bg = (el: Element) => getComputedStyle(el).backgroundColor;
-    // **凹んで見えないと、入力できる場所だと分からない**
-    expect(bg(inputIn(container))).not.toBe(bg(page));
+    const frame = container.querySelector('[data-sg-component="input-frame"]');
+    if (!frame) throw new Error('枠が描画されていません');
+    /*
+     * **WCAG 1.4.11 は、部品を識別するのに必要な部分に 3:1 を求める。**
+     * 地を持たない以上、識別しているのは線だけである。
+     *
+     * **通す側を測っている**（教訓2）。割る側だけを持っていると、
+     * 線を薄くしたときに落ちるものが無い。
+     */
+    const ratio = contrast(
+      getComputedStyle(frame).outlineColor,
+      getComputedStyle(page).backgroundColor,
+    );
+    expect(ratio, `線の対比が ${ratio.toFixed(2)}:1 しかない`).toBeGreaterThanOrEqual(3);
   });
 });
 

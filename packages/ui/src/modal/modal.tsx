@@ -143,7 +143,7 @@ export function Modal({
    * 変えたい利用側は `className` で別の段を渡す。
    */
   const classes =
-    'm-auto w-full max-w-32rem rounded-lg p-6 shadow-overlay ' +
+    'm-auto w-full max-w-32rem rounded-xl p-6 shadow-overlay ' +
     // `dialog` の既定の境界を消す。**preflight は配布先にあるとは限らない**
     'border-0';
 
