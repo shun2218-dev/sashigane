@@ -11,6 +11,7 @@ import {
   CarouselPrevious,
   CarouselSlide,
   CarouselSlides,
+  useCarouselPosition,
 } from './carousel.tsx';
 import Edge from './examples/edge.tsx';
 import '../../test/tokens.css';
@@ -199,6 +200,68 @@ describe('自動スクロール', () => {
     await expect.poll(() => btn().getAttribute('aria-label')).toBe('自動でスクロールするのを止める');
   });
 
+});
+
+describe('自分の見た目で操作を作る口', () => {
+  /**
+   * **サムネイルのような操作を、利用側が自分の見た目で作れること。**
+   *
+   * 渡すのは3つだけである——いま何枚目か・何枚あるか・飛ぶ手段。
+   * **送りの仕組みそのものは渡さない。** 渡すと、その仕組みの API が
+   * そのままこちらの約束になり、入れ替えたときに利用側が壊れる。
+   */
+  const Thumbs = () => {
+    const { selected, count, goTo } = useCarouselPosition();
+    return (
+      <div>
+        <span data-testid="count">{count}</span>
+        {Array.from({ length: count }, (_, i) => (
+          <button
+            key={i}
+            type="button"
+            data-testid={`thumb-${i}`}
+            aria-current={i === selected ? 'true' : undefined}
+            onClick={() => goTo(i)}
+          >
+            {i + 1}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  it('枚数を受け取り、押した枚へ飛ぶ', async () => {
+    const { container } = await render(
+      onSurface(
+        <Carousel label="写真">
+          <CarouselSlides>
+            {['一', '二', '三'].map((n) => (
+              <CarouselSlide key={n}>{n}枚目</CarouselSlide>
+            ))}
+          </CarouselSlides>
+          <Thumbs />
+        </Carousel>,
+      ),
+    );
+    const thumb = (i: number) =>
+      container.querySelector(`[data-testid="thumb-${i}"]`) as HTMLButtonElement;
+
+    await expect.poll(() => container.querySelector('[data-testid="count"]')?.textContent).toBe('3');
+    expect(thumb(0).getAttribute('aria-current')).toBe('true');
+
+    await userEvent.click(thumb(2));
+    /*
+      **飛んだことは「いま何枚目か」で測る。**
+      押した側の見た目を測ると、押せたことしか分からない。
+    */
+    await expect.poll(() => thumb(2).getAttribute('aria-current')).toBe('true');
+    await expect.poll(() => thumb(0).getAttribute('aria-current')).toBeNull();
+  });
+
+  it('枠の外で使うと落ちる', async () => {
+    // **黙って何も起きないより、落ちるほうがよい**
+    await expect(render(<Thumbs />)).rejects.toThrow();
+  });
 });
 
 describe('例が教えている形', () => {

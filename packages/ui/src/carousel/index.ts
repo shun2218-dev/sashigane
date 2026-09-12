@@ -13,4 +13,6 @@ export {
   type CarouselMarkersProps,
   CarouselPlayPause,
   AUTOPLAY_DELAY,
+  useCarouselPosition,
+  type CarouselPosition,
 } from './carousel.tsx';
