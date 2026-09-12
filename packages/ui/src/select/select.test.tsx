@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { Field } from '../field/field.tsx';
 import { Select } from './select.tsx';
@@ -260,6 +260,31 @@ describe('ラベルとの結びつけ', () => {
     expect(label?.control).toBe(trigger);
     expect(trigger.getAttribute('aria-describedby')).toBe('s-error');
     expect(trigger.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  /**
+   * **読み上げ名はラベルであって、選ばれている値ではない。**
+   *
+   * 引き金は `button` である。`button` の名前は既定では**中身**から作られるので、
+   * 何もしなければ「あんず」と名乗ることになる。
+   *
+   * **「ラベルが指していること」と「ラベルが名前になること」は別である。**
+   * 上のテストは前者（`label.control`）しか測っていなかった。
+   * 同じ窓から覗いている限り、後者が壊れても映らない。
+   */
+  it('読み上げ名は、選ばれている値ではなくラベルになる', async () => {
+    const { container } = await render(
+      onSurface(
+        <Field id="fruit" label="果物">
+          <Select options={options} value="a" onChange={() => undefined} />
+        </Field>,
+      ),
+    );
+    const trigger = triggerIn(container);
+    // 名前はラベルから来る
+    await expect.element(page.elementLocator(trigger)).toHaveAccessibleName('果物');
+    // **中身は値のままである。** 見えている文字を消して名前を通したのではない
+    expect(trigger.textContent).toContain('あんず');
   });
 
   it('誤りのときは線の色が変わる', async () => {

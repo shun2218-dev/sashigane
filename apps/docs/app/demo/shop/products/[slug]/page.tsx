@@ -261,7 +261,8 @@ export default function ProductDetail() {
               <TableRow>
                 <TableCell scope="row">在庫</TableCell>
                 <TableCell>{stockLabel(product.stock)}</TableCell>
-                <TableCell numeric>{product.stock}</TableCell>
+                {/* **具体的な数は出さない**（`stockLabel` と揃える） */}
+                <TableCell numeric>—</TableCell>
               </TableRow>
             </tbody>
           </Table>

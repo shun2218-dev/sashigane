@@ -17,11 +17,16 @@ export default function Page() {
           <Link className="text-fd-primary underline" href="/theme">
             テーマビルダー
           </Link>
+          {/*
+            **2つのデモの違いは「素の HTML かどうか」ではない。**
+            トークンだけを入れた場合と、コンポーネントまで入れた場合である。
+            導入の深さがそのまま並んでいる。
+          */}
           <Link className="text-fd-primary underline" href="/demo">
-            デモ（素の HTML）
+            デモ（トークンだけ）
           </Link>
           <Link className="text-fd-primary underline" href="/demo/shop">
-            デモ（コンポーネント）
+            デモ（トークンとコンポーネント）
           </Link>
         </div>
       </main>

@@ -190,5 +190,11 @@ export const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`;
 export const stockTone = (stock: number) =>
   stock === 0 ? 'danger' : stock <= 10 ? 'warning' : 'success';
 
+/**
+ * 在庫の言い方。**具体的な数は出さない。**
+ *
+ * 「残り8袋」は、買う判断には要らない精度である。
+ * 少ないことだけが伝わればよい。
+ */
 export const stockLabel = (stock: number) =>
-  stock === 0 ? '在庫切れ' : stock <= 10 ? `残り${stock}袋` : '在庫あり';
+  stock === 0 ? '在庫切れ' : stock <= 10 ? '残りわずか' : '在庫あり';
