@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { Input } from '../input/input.tsx';
 import { Textarea } from './textarea.tsx';
+import { lineContrast } from '../../test/contrast.ts';
 import '../../test/tokens.css';
 
 /**
@@ -67,5 +68,31 @@ describe('1行の入力欄と同じ見た目', () => {
     // **1行の入力欄と同じ。** 線の対比は Input の側で測っている
     expect(el.getAttribute('data-sg-surface')).toBeNull();
     expect(getComputedStyle(el).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+  });
+
+  it('線が、まわりの地に対して 3:1 を満たす', async () => {
+    const { container } = await render(onSurface(<Textarea aria-label="x" />));
+    const page = container.querySelector('[data-sg-surface="page"]');
+    const frame = container.querySelector('[data-sg-component="textarea-frame"]');
+    if (!page || !frame) throw new Error('面か枠が描画されていません');
+    /*
+      **口は地を持たないので、示しているのは線だけである**（決定6-58）。
+      `ring` は共有しているが、**共有していることは測れない。**
+      どれか1つが独自の線を持ち始めても落ちるように、6つそれぞれで測る。
+    */
+    const ratio = lineContrast(frame, page);
+    expect(ratio, `線の対比が ${ratio.toFixed(2)}:1 しかない`).toBeGreaterThanOrEqual(3);
+  });
+
+  it('無効のときだけ凹んだ面を宣言する', async () => {
+    const off = await render(onSurface(<Textarea aria-label="x" disabled />));
+    const el = off.container.querySelector('textarea');
+    if (!el) throw new Error('描画されていません');
+    /*
+      **無効のとき、線は `border-subtle` まで弱まる**（実測 1.54:1）。
+      線だけでは枠がほとんど見えないので、Button と同じく凹んだ面を宣言する。
+    */
+    expect(el.getAttribute('data-sg-surface')).toBe('inset');
+    expect(getComputedStyle(el).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 });

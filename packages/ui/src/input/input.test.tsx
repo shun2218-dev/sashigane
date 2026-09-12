@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { Input } from './input.tsx';
+import { lineContrast } from '../../test/contrast.ts';
 import '../../test/tokens.css';
 
 /**
@@ -30,45 +31,6 @@ describe('前提', () => {
   });
 });
 
-/**
- * 画面に出た色をそのまま読む。**計算値の文字列を解かない。**
- *
- * `getComputedStyle` は色を `oklch()` でも `lab()` でも返す。どちらも知覚の明度で、
- * WCAG の相対輝度ではない。**書式ごとに解く式を持つと、書式が増えたときに黙って外れる。**
- * 1px に塗って読めば、ブラウザが解いた結果そのものが取れる。
- */
-const toRgb = (color: string): [number, number, number] => {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1;
-  canvas.height = 1;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('2d の文脈が取れません');
-  /*
-   * **読めない色は黙って無視される。** `fillStyle` に解けない値を入れても
-   * 例外は出ず、**前の値のまま**になる。だから解けない番兵を先に置いて、
-   * 塗った結果が番兵と同じなら落とす。
-   */
-  ctx.fillStyle = '#ff00ff';
-  ctx.fillStyle = color;
-  if (ctx.fillStyle === '#ff00ff') throw new Error(`色を読めません: ${color}`);
-  ctx.fillRect(0, 0, 1, 1);
-  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-  return [r!, g!, b!];
-};
-
-const luminance = (color: string) => {
-  const [r, g, b] = toRgb(color).map((v) => {
-    const c = v / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  }) as [number, number, number];
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-};
-
-const contrast = (a: string, b: string) => {
-  const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p) as [number, number];
-  return (x + 0.05) / (y + 0.05);
-};
-
 describe('面', () => {
   it('地を持たない。口を示すのは線である', async () => {
     const { container } = await render(onSurface(<Input aria-label="x" />));
@@ -84,6 +46,20 @@ describe('面', () => {
     expect(getComputedStyle(el).backgroundColor).toBe('rgba(0, 0, 0, 0)');
   });
 
+  it('無効のときだけ凹んだ面を宣言する', async () => {
+    const on = await render(onSurface(<Input aria-label="x" />));
+    expect(inputIn(on.container).getAttribute('data-sg-surface')).toBeNull();
+
+    const off = await render(onSurface(<Input aria-label="x" disabled />));
+    const el = inputIn(off.container);
+    /*
+      **無効のとき、線は `border-subtle` まで弱まる**（実測 1.54:1）。
+      線だけでは枠がほとんど見えないので、Button と同じく凹んだ面を宣言する。
+    */
+    expect(el.getAttribute('data-sg-surface')).toBe('inset');
+    expect(getComputedStyle(el).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+  });
+
   it('線が、まわりの地に対して 3:1 を満たす', async () => {
     const { container } = await render(onSurface(<Input aria-label="x" />));
     const page = container.querySelector('[data-sg-surface="page"]');
@@ -97,10 +73,7 @@ describe('面', () => {
      * **通す側を測っている**（教訓2）。割る側だけを持っていると、
      * 線を薄くしたときに落ちるものが無い。
      */
-    const ratio = contrast(
-      getComputedStyle(frame).outlineColor,
-      getComputedStyle(page).backgroundColor,
-    );
+    const ratio = lineContrast(frame, page);
     expect(ratio, `線の対比が ${ratio.toFixed(2)}:1 しかない`).toBeGreaterThanOrEqual(3);
   });
 });

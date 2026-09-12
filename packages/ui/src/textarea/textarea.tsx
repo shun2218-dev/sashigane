@@ -44,6 +44,14 @@ export function Textarea({ valid, className, ...props }: TextareaProps) {
     >
       <textarea
         data-sg-component="textarea"
+        /*
+          **無効のときだけ凹んだ面を宣言する。** Button と同じ形である。
+
+          入力できる状態では地を持たない——口を示すのは線である。
+          ただし無効のときは線が `border-subtle` まで弱まるので、
+          **線だけでは枠がほとんど見えない**（実測 1.54:1）。
+        */
+        data-sg-surface={props.disabled ? 'inset' : undefined}
         className={inner}
         {...props}
       />

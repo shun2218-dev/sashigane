@@ -104,7 +104,7 @@ export default function Cart() {
                           <ShopImage
                             seed={r.slug}
                             alt={r.product.name}
-                            className="w-16 rounded-sm"
+                            className="w-16 rounded-lg"
                           />
                           <span className="flex flex-col">
                             <Link href={`/demo/shop/products/${r.slug}`} className="text-label">
