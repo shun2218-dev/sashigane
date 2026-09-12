@@ -21,8 +21,13 @@ export const baseOptions: BaseLayoutProps = {
   links: [
     { text: 'ドキュメント', url: '/docs' },
     { text: 'テーマビルダー', url: '/theme' },
-    { text: 'デモ（素の HTML）', url: '/demo' },
-    { text: 'デモ（コンポーネント）', url: '/demo/shop' },
+    /*
+      **違いは導入の深さである。** トークンだけを入れた場合と、
+      コンポーネントまで入れた場合。「素の HTML」は作りの話であって、
+      利用者が選ぶものの名前ではない。
+    */
+    { text: 'デモ（トークンだけ）', url: '/demo' },
+    { text: 'デモ（トークンとコンポーネント）', url: '/demo/shop' },
   ],
   githubUrl: 'https://github.com/shun2218-dev/sashigane',
 };

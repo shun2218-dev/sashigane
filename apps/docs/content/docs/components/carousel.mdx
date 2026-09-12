@@ -120,6 +120,44 @@ Embla が設定を足せば何もせずに使えます。
 **動きを減らす設定のときは、止まった状態で始まります。**
 黙って動かしませんが、動かす手段は残します。
 
+## 位置の見た目を自分で決めたいときは `useCarouselPosition`
+
+サムネイルの列や「3 / 7」のような表示は、このフックで組めます。渡されるのは3つだけです。
+
+| | |
+|---|---|
+| `selected` | いま見えている枚目（0 始まり） |
+| `count` | 何枚あるか |
+| `goTo(index)` | その枚へ飛ぶ |
+
+```tsx
+function Thumbnails({ photos }: { photos: { src: string; alt: string }[] }) {
+  const { selected, count, goTo } = useCarouselPosition();
+  // 1枚しかないなら出しません。押しても何も起きないものを置かないためです
+  if (count <= 1) return null;
+  return (
+    <ul>
+      {photos.map((photo, index) => (
+        <li key={photo.src}>
+          <button
+            type="button"
+            onClick={() => goTo(index)}
+            aria-label={`${photo.alt}を見る`}
+            aria-current={index === selected ? 'true' : undefined}
+          >
+            <img src={photo.src} alt="" />
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+**いまどこを見ているかは、見た目だけでなく属性でも伝えてください**（`aria-current`）。枠線の色だけで表すと、見えない人に届きません。
+
+**送りの仕組みそのものは渡していません。** 渡すと、その仕組みの API がそのまま約束になり、入れ替えたときにあなたのコードが壊れます。前後のボタンと位置の印で足りるなら、`CarouselPrevious` / `CarouselNext` / `CarouselMarkers` を使ってください。
+
 ## 動きを減らす設定ではアニメーションなしで切り替わります
 
 スクロールのアニメーションは止まり、すぐに切り替わります。**利用側で何かする必要はありません。**

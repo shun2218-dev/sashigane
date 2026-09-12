@@ -101,6 +101,48 @@ const useCarousel = (): CarouselState => {
   return ctx;
 };
 
+export interface CarouselPosition {
+  /** いま見えている枚目（0 始まり） */
+  selected: number;
+  /** 何枚あるか */
+  count: number;
+  /** その枚へ飛ぶ */
+  goTo: (index: number) => void;
+}
+
+/**
+ * いまどこを見ているかと、**指定の枚へ飛ぶ手段**。
+ *
+ * サムネイルや「3 / 7」のような表示を**自分の見た目で組むための口**です。
+ * `Carousel` の中で呼んでください。
+ *
+ * ```tsx
+ * function Thumbnails({ photos }) {
+ *   const { selected, count, goTo } = useCarouselPosition();
+ *   if (count <= 1) return null;
+ *   return photos.map((p, i) => (
+ *     <button key={p.src} onClick={() => goTo(i)} aria-current={i === selected || undefined}>
+ *       <img src={p.src} alt="" />
+ *     </button>
+ *   ));
+ * }
+ * ```
+ *
+ * ## 渡すのは3つだけです
+ *
+ * 送りの仕組み自体は渡しません。**渡すと、その仕組みの API がそのまま
+ * こちらの約束になる**ので、仕組みを入れ替えたときに利用側が壊れます。
+ *
+ * 前後に送るボタンと位置の印は `CarouselPrevious` / `CarouselNext` /
+ * `CarouselMarkers` が持っています。**それで足りるならそちらを使ってください。**
+ * これが要るのは、**印の見た目そのものを自分で決めたいとき**です。
+ */
+export function useCarouselPosition(): CarouselPosition {
+  const { api, selected, count } = useCarousel();
+  const goTo = useCallback((index: number) => api?.scrollTo(index), [api]);
+  return { selected, count, goTo };
+}
+
 export interface CarouselProps extends HTMLAttributes<HTMLDivElement> {
   /**
    * 自動でスクロールする。**既定では動かさない。**

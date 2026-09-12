@@ -18,8 +18,8 @@
 */
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { Button, Separator, Toaster } from '@sashigane/ui';
-import { CartProvider } from './cart';
+import { Badge, Button, Separator, Toaster } from '@sashigane/ui';
+import { CartProvider, useCart } from './cart';
 
 const NAV = [
   { href: '/demo/shop', label: 'トップ' },
@@ -59,6 +59,16 @@ export function ShopChrome({ children }: { children: ReactNode }) {
 }
 
 function ShopFrame({ children }: { children: ReactNode }) {
+  const { lines } = useCart();
+  /*
+    **カートに何点入っているかを、店のどこからでも見せる。**
+
+    知らせ（Toast）は出るが消えるので、**入れたことが残らない。**
+    数は袋の数を足したものである（行の数ではない）——
+    同じ豆を2袋入れたら 2 になる。
+  */
+  const cartCount = lines.reduce((n, l) => n + l.count, 0);
+
   return (
     <div className="flex min-h-screen flex-col">
       {/*
@@ -85,6 +95,18 @@ function ShopFrame({ children }: { children: ReactNode }) {
               <Button key={n.href} variant="ghost" asChild>
                 <Link href={n.href} className="whitespace-nowrap">
                   {n.label}
+                  {/*
+                    **点数は数字で見せ、読み上げには言葉で渡す。**
+                    印だけだと「3」としか読まれず、何の 3 か分からない。
+                  */}
+                  {n.href.endsWith('/cart') && cartCount > 0 ? (
+                    <>
+                      <Badge tone="accent" size="sm" aria-hidden="true">
+                        {cartCount}
+                      </Badge>
+                      <span className="sr-only">{`（${cartCount}点）`}</span>
+                    </>
+                  ) : null}
                 </Link>
               </Button>
             ))}
@@ -126,7 +148,7 @@ function ShopFrame({ children }: { children: ReactNode }) {
                 sashigane のドキュメント
               </Link>
               <Link href="/demo" className="text-body">
-                素の HTML のデモ
+                トークンだけのデモ
               </Link>
             </nav>
           </div>

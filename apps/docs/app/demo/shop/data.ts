@@ -119,6 +119,25 @@ export const PRODUCTS: Product[] = [
 
 export const bySlug = (slug: string) => PRODUCTS.find((p) => p.slug === slug);
 
+/**
+ * 店の風景。**全商品に共通である。**
+ *
+ * 商品ごとの別角度は持っていない。**持っていないものを水増ししない**ので、
+ * 商品の写真1枚のあとに、この店の写真を続ける。
+ * 実際の店でも、商品の写真のあとに焙煎や包装の写真が並ぶ。
+ */
+export const SCENERY = [
+  { seed: 'season-autumn', alt: '焙煎したての豆' },
+  { seed: 'season-subscribe', alt: '毎月お届けの荷姿' },
+  { seed: 'season-gift', alt: '贈り物の包装' },
+];
+
+/** 商品詳細で見せる写真。**1枚目が商品そのもの** */
+export const photosOf = (product: Product) => [
+  { seed: product.slug, alt: `${product.name}の写真` },
+  ...SCENERY,
+];
+
 export const GRINDS = [
   { value: 'beans', label: '豆のまま', short: '豆のまま' },
   { value: 'medium', label: '中挽き（ドリップ）', short: '中挽き' },
@@ -190,5 +209,11 @@ export const yen = (n: number) => `¥${n.toLocaleString('ja-JP')}`;
 export const stockTone = (stock: number) =>
   stock === 0 ? 'danger' : stock <= 10 ? 'warning' : 'success';
 
+/**
+ * 在庫の言い方。**具体的な数は出さない。**
+ *
+ * 「残り8袋」は、買う判断には要らない精度である。
+ * 少ないことだけが伝わればよい。
+ */
 export const stockLabel = (stock: number) =>
-  stock === 0 ? '在庫切れ' : stock <= 10 ? `残り${stock}袋` : '在庫あり';
+  stock === 0 ? '在庫切れ' : stock <= 10 ? '残りわずか' : '在庫あり';

@@ -23,6 +23,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Carousel,
+  CarouselMarkers,
+  CarouselNext,
+  CarouselPrevious,
+  CarouselSlide,
+  CarouselSlides,
   Checkbox,
   Field,
   IconPlus,
@@ -42,6 +48,7 @@ import {
   TabsList,
   TabsPanel,
   TabsTrigger,
+  useCarouselPosition,
   useToast,
 } from '@sashigane/ui';
 import { useCart } from '../../cart';
@@ -51,6 +58,7 @@ import {
   PRODUCTS,
   SIZES,
   bySlug,
+  photosOf,
   stockLabel,
   stockTone,
   unitPrice,
@@ -58,6 +66,46 @@ import {
 } from '../../data';
 import { ShopWidth } from '../../shop-chrome';
 import { ShopImage } from '../../product-image';
+
+/**
+ * サムネイル。**全部の写真を小さく並べ、押すとその枚へ飛ぶ。**
+ *
+ * 飛ぶ手段は `useCarouselPosition` が渡す。**見た目はこちらが持つ**——
+ * サムネイルの形は店ごとに違うので、部品にしていない。
+ */
+function ShopThumbnails({ photos }: { photos: { seed: string; alt: string }[] }) {
+  const { selected, count, goTo } = useCarouselPosition();
+  // **1枚しか無いなら出さない。** 押しても何も起きないものを置かない
+  if (count <= 1) return null;
+  const thumbClass = (current: boolean) =>
+    current
+      ? 'block w-16 shrink-0 rounded-sm outline-solid outline-2 outline-offset-2 outline-border-focus'
+      : 'block w-16 shrink-0 rounded-sm';
+  return (
+    <ul className="flex items-center gap-3 overflow-x-auto py-1">
+      {photos.map((photo, index) => (
+        <li key={photo.seed}>
+          <button
+            type="button"
+            onClick={() => goTo(index)}
+            /* **何の写真へ飛ぶのかを言う。** 「2枚目」だけでは中身が分からない */
+            aria-label={`${photo.alt}を見る（${index + 1}枚目）`}
+            // **いまの場所を申告する。** 枠線だけで伝えると、見えない人に届かない
+            aria-current={index === selected ? 'true' : undefined}
+            className={thumbClass(index === selected)}
+          >
+            {/* 名前は上のボタンが持っているので、絵は読み上げに出さない */}
+            <ShopImage
+              seed={photo.seed}
+              alt=""
+              className="aspect-square w-full rounded-sm object-cover"
+            />
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -74,6 +122,7 @@ export default function ProductDetail() {
 
   const soldOut = product.stock === 0;
   const total = unitPrice(product, size, subscribe) * count;
+  const photos = photosOf(product);
 
   /*
     **入った数で知らせを変える。** 在庫で抑えられたのに「入れました」と言うと、
@@ -109,10 +158,9 @@ export default function ProductDetail() {
 
       <section className="grid gap-12 md:grid-cols-2">
         {/*
-          **写真は1枚である。** 同じ商品の別角度を持っていないので、
-          カルーセルにすると同じ絵が並ぶ。**枠だけ用意して中身を水増ししない。**
-        */}
-        {/*
+          **1枚目が商品、そのあとに店の風景が続く**（`data.ts` の `photosOf`）。
+          商品ごとの別角度は持っていないので、**同じ絵を並べて枚数を水増ししない。**
+
           **写真を上に貼り付ける。** 情報の列のほうが長いので、
           選びながら下へ送っても写真が画面に残る。
 
@@ -124,11 +172,27 @@ export default function ProductDetail() {
           `top-16`（64px）では潜るので、次の段（24）まで上げて間を空ける。
         */}
         <div className="h-fit md:sticky md:top-24">
-          <ShopImage
-            seed={product.slug}
-            alt={`${product.name}の写真`}
-            className="aspect-square w-full rounded-lg object-cover"
-          />
+          <Carousel label={`${product.name}の写真`}>
+            <CarouselSlides>
+              {photos.map((photo) => (
+                <CarouselSlide key={photo.seed}>
+                  <ShopImage
+                    seed={photo.seed}
+                    alt={photo.alt}
+                    className="aspect-square w-full rounded-lg object-cover"
+                  />
+                </CarouselSlide>
+              ))}
+            </CarouselSlides>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1">
+                <CarouselPrevious />
+                <CarouselNext />
+              </div>
+              <CarouselMarkers />
+            </div>
+            <ShopThumbnails photos={photos} />
+          </Carousel>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -261,7 +325,8 @@ export default function ProductDetail() {
               <TableRow>
                 <TableCell scope="row">在庫</TableCell>
                 <TableCell>{stockLabel(product.stock)}</TableCell>
-                <TableCell numeric>{product.stock}</TableCell>
+                {/* **具体的な数は出さない**（`stockLabel` と揃える） */}
+                <TableCell numeric>—</TableCell>
               </TableRow>
             </tbody>
           </Table>
