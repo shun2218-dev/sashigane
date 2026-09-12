@@ -61,6 +61,7 @@ import { useToast } from './use-toast.ts';
 const TONE_CLASS = {
   default: 'outline-border',
   success: 'outline-success',
+  warning: 'outline-warning',
   danger: 'outline-danger',
 } as const;
 
@@ -76,6 +77,7 @@ const TONE_CLASS = {
 const GAUGE_CLASS = {
   default: 'bg-accent-subtle',
   success: 'bg-success-subtle',
+  warning: 'bg-warning-subtle',
   danger: 'bg-danger-subtle',
 } as const;
 

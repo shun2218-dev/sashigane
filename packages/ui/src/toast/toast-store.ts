@@ -30,7 +30,16 @@
  */
 
 /** トーストの重み。**急を要するものはトーストで出さない**（下の覚書） */
-export type ToastTone = 'default' | 'success' | 'danger';
+/**
+ * 知らせの調子。
+ *
+ * `warning` は**済んだが、求めたとおりではない**ときに使う——
+ * 在庫が足りず一部だけ入った、保存はしたが同期は後で、など。
+ *
+ * `danger` で出すと取り消しや再試行を促す文面と混ざり、
+ * `default` で出すと**求めたとおり済んだ場合と見分けが付かない。**
+ */
+export type ToastTone = 'default' | 'success' | 'warning' | 'danger';
 
 export interface Toast {
   id: string;
