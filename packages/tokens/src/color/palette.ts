@@ -63,8 +63,28 @@ export interface Warning {
 export const lightnessesFor = (anchorL: number, bottom: number): number[] => {
   const { top, anchorStep, backgroundCurve } = cfg.lightness;
   const a = cfg.steps.indexOf(anchorStep as Step);
-  /** 保証が見る最も浅い段（マーク）。面の帯はここを下端として配る */
-  const mark = a - 1;
+  /*
+   * **保証が見る最も浅い段。** 面の帯はここを下端として配る。
+   *
+   * `a - 1` と書いてはならない。**いま両方 400 を指すのは偶然である。**
+   * 要件の表に浅い段を足した瞬間、曲率が保証の段を覆って端点の解が動く——
+   * この改訂が避けたはずの「アンカーが暗くなって暗色の下端が潰れる」が戻る。
+   */
+  const mark = Math.min(
+    ...[...cfg.guarantees.light, ...cfg.guarantees.dark].map((r) =>
+      cfg.steps.indexOf(r.step as Step),
+    ),
+  );
+  /*
+   * **黙って NaN を配らない。** `mark` が 0 だと `0 / 0` が全段に伝播し、
+   * `oklch(NaN ...)` がそのまま出力される。**エラーは出ない**（教訓4）。
+   */
+  if (mark < 1 || mark >= a) {
+    throw new Error(
+      `保証が見る最も浅い段（index ${mark}）が面の帯の下端になりません。\n` +
+        `  上端とアンカー段（index ${a}）の間に無ければ、明度の配分が定義できません。`,
+    );
+  }
   const markL = top - ((top - anchorL) / a) * mark;
   return cfg.steps.map((_, i) =>
     i <= mark
@@ -327,6 +347,18 @@ const bestStepAssignment = (
   }
   return best;
 };
+
+/**
+ * 既定の primary。**利用者はテーマビルダーで選び直す。**
+ *
+ * 警告が出ない色を選んでいる。`#3b82f6`（一般的な青）は info の色相と 18° しか離れず、
+ * `status-too-close-to-primary` が出る。**既定値が警告を出す状態で配布しない。**
+ *
+ * **ここに置いてあるのは、生成物だけのものではないからである。**
+ * 文書の数値表を検査する側も同じ色で解き直す必要があり、
+ * 写しを作ると片方だけ直したときに黙ってずれる。
+ */
+export const DEFAULT_PRIMARY = '#0ea5e9';
 
 export interface Palette {
   /** 生成のたびに解き直したアンカー段の明度 */
