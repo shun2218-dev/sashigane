@@ -36,6 +36,8 @@ export {
   type CarouselMarkersProps,
   CarouselPlayPause,
   AUTOPLAY_DELAY,
+  useCarouselPosition,
+  type CarouselPosition,
 } from './carousel/index.ts';
 export { Checkbox, type CheckboxProps } from './checkbox/index.ts';
 export { Button, type ButtonProps } from './button/index.ts';
