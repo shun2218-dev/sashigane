@@ -135,10 +135,10 @@ export default function ProductDetail() {
     } else if (added > 0) {
       showToast({
         message: `在庫が足りないので、${product.name} を ${added} 袋だけ入れました`,
-        tone: 'default',
+        tone: 'warning',
       });
     } else {
-      showToast({ message: `${product.name} は在庫の上限までカートに入っています`, tone: 'default' });
+      showToast({ message: `${product.name} は在庫の上限までカートに入っています`, tone: 'warning' });
     }
   };
 

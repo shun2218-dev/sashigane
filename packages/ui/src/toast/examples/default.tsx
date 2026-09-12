@@ -20,6 +20,13 @@ export default function Default() {
       <Button onClick={() => showToast({ message: '保存しました', tone: 'success' })}>
         保存する
       </Button>
+      {/* **済んだが、求めたとおりではない。** 失敗ではないので danger にしない */}
+      <Button
+        variant="outline"
+        onClick={() => showToast({ message: '3件のうち2件を保存しました', tone: 'warning' })}
+      >
+        一部だけ済ませる
+      </Button>
       <Button
         variant="ghost"
         onClick={() => showToast({ message: '送信できませんでした', tone: 'danger' })}

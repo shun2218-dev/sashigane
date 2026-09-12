@@ -105,6 +105,39 @@ describe('読み上げに届ける', () => {
   });
 });
 
+describe('調子', () => {
+  /**
+   * **4つの調子が、見た目で見分けられること。**
+   *
+   * `warning` は「済んだが、求めたとおりではない」ときのものである。
+   * `default` と同じ色になると、**求めたとおり済んだ場合と見分けが付かない。**
+   *
+   * **色は `expect.poll` で待つ。** 器は `transition-*` を持つので、
+   * 描画直後の1回読みは補間の途中に当たりうる（教訓4）。
+   */
+  const TONES = ['default', 'success', 'warning', 'danger'] as const;
+
+  it('線の色が、調子ごとに違う', async () => {
+    const { container } = await render(onSurface(<Toaster />));
+    for (const tone of TONES) showToast({ message: `線: ${tone}`, tone });
+    await expect.poll(() => toastsIn(container)).toHaveLength(TONES.length);
+    await expect
+      .poll(() => new Set(toastsIn(container).map((t) => getComputedStyle(t).outlineColor)).size)
+      .toBe(TONES.length);
+  });
+
+  it('ゲージの色も、調子ごとに違う', async () => {
+    const { container } = await render(onSurface(<Toaster />));
+    for (const tone of TONES) showToast({ message: `ゲージ: ${tone}`, tone });
+    const gauges = () =>
+      [...container.querySelectorAll('[data-sg-component="toast-gauge"]')] as HTMLElement[];
+    await expect.poll(() => gauges()).toHaveLength(TONES.length);
+    await expect
+      .poll(() => new Set(gauges().map((g) => getComputedStyle(g).backgroundColor)).size)
+      .toBe(TONES.length);
+  });
+});
+
 describe('置き場', () => {
   it('React の外から出せる', async () => {
     const { container } = await render(onSurface(<Toaster />));
