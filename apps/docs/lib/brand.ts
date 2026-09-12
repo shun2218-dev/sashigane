@@ -12,11 +12,11 @@
  *
  * | | 値 | 由来 |
  * |---|---|---|
- * | `brandFill` | `#0075a7` | 宣言する塗りの段（決定6-9）。**モードにも面にも依存しない** |
- * | `onBrandFill` | `#f3f5f7` | その塗りの上に載る色。両モードとも明るい端 |
- * | `darkSurface` | `#101316` | 暗色モードのページ地（`--sg-color-bg-page`） |
- * | `darkAccent` | `#0090cd` | 暗い地の上のアクセント（決定5-2） |
- * | `darkText` / `darkMuted` | `#d2dadf` / `#92a4b0` | 暗い地の上の本文と控えめな文字 |
+ * | `brandFill` | `#0079ad` | 宣言する塗りの段（決定6-9）。**モードにも面にも依存しない** |
+ * | `onBrandFill` | `#fbfcfc` | その塗りの上に載る色。両モードとも明るい端 |
+ * | `darkSurface` | `#161a1c` | 暗色モードのページ地（`--sg-color-bg-page`） |
+ * | `darkAccent` | `#45bdff` | 暗い地の上のアクセント（決定5-2） |
+ * | `darkText` / `darkMuted` | `#eaeef0` / `#a3b4bf` | 暗い地の上の本文と控えめな文字 |
  *
  * ## ずれたら落ちる
  *
@@ -27,18 +27,23 @@
  *
  * 実際、最初に凍結した3つが間違っていた——`#121212` はブラウザで測った
  * ドキュメントサイトの chrome の地の色で、**このシステムのトークンではなかった。**
+ *
+ * ## 2026-09-13 に全部を取り直した
+ *
+ * 面の帯の配分と上端を変えた（決定5-2 改訂）ので、6つとも動いた。
+ * **検査が6つ全部を並べて落としたので、取りこぼしは無い。**
  */
 
 /** 宣言する塗りの段（決定6-9） */
-export const brandFill = '#0075a7';
+export const brandFill = '#0079ad';
 
 /** その塗りの上に載る色 */
-export const onBrandFill = '#f3f5f7';
+export const onBrandFill = '#fbfcfc';
 
 /** 暗い地。OG は明暗を選べないので、暗い方に寄せる */
-export const darkSurface = '#101316';
+export const darkSurface = '#161a1c';
 
 /** 暗い地の上のアクセントと文字（決定5-2） */
-export const darkAccent = '#0090cd';
-export const darkText = '#d2dadf';
-export const darkMuted = '#92a4b0';
+export const darkAccent = '#45bdff';
+export const darkText = '#eaeef0';
+export const darkMuted = '#a3b4bf';

@@ -41,18 +41,34 @@ export interface Warning {
 }
 
 /**
- * 段 → 明度。anchorStep を anchorL に固定し、上下をそれぞれ等間隔で埋める。
+ * 段 → 明度。anchorStep を anchorL に固定し、上下を埋める。
  *
  * 等間隔ではなく折れ線にしているのは、anchorL が
  * 「明色の面に対し最悪色相でも本文 4.5:1」の境界だからである（決定5-2）。
  * 保証境界を段の定義に含めることで、コントラストが構造的に決まる。
+ *
+ * **面の帯は等間隔ではない**（決定5-2 改訂）。段の位置を `backgroundCurve` 乗してから
+ * 配る。明色端が面の住む側だからである——面が1段ごとに同じ量だけ暗くなると、
+ * **3段目にはもう面として読めない濃さになる。**
+ *
+ * **曲げるのは保証が見る段より上だけである。**
+ * 段400（マーク）と段500（本文）はアンカーへの直線の上に残り、暗色側も動かない。
+ * ここを曲げると段400 が明るくなってページ地に対する 3:1 を割り、
+ * 償うためにアンカーが暗くなる。**するとアンカーは暗色側でも段500 なので、
+ * 暗色の下端が押し下げられて潰れる**（curve=2 で下端が探索の床 0.02 に着いた）。
+ *
+ * 下半分は等間隔のままである。こちらに住むのは文字と塗りで、
+ * **面のように「薄いままでいる」必要が無い。**
  */
 export const lightnessesFor = (anchorL: number, bottom: number): number[] => {
-  const { top, anchorStep } = cfg.lightness;
+  const { top, anchorStep, backgroundCurve } = cfg.lightness;
   const a = cfg.steps.indexOf(anchorStep as Step);
+  /** 保証が見る最も浅い段（マーク）。面の帯はここを下端として配る */
+  const mark = a - 1;
+  const markL = top - ((top - anchorL) / a) * mark;
   return cfg.steps.map((_, i) =>
-    i <= a
-      ? top - ((top - anchorL) / a) * i
+    i <= mark
+      ? top - (top - markL) * (i / mark) ** backgroundCurve
       : anchorL - ((anchorL - bottom) / (cfg.steps.length - 1 - a)) * (i - a),
   );
 };

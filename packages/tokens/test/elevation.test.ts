@@ -105,9 +105,16 @@ describe('影の濃さは色システムから解く（決定1-8 改訂）', () 
         ratios.push(contrastRatio(bg, alpha * y(color) + (1 - alpha) * bg));
       }
     }
-    // page で解いた1つの値を全段で使っても、影の見え方は 1.28〜1.31 に収まる
-    expect(Math.min(...ratios)).toBeGreaterThan(1.26);
-    expect(Math.max(...ratios)).toBeLessThan(1.32);
+    /*
+     * page で解いた1つの値を全段で使っても、影の見え方は 1.12〜1.15 に収まる。
+     *
+     * **この幅は面の梯子から来る。** 影の濃さは「1段分」と定義してあるので、
+     * 面の帯を明色端へ寄せた（決定5-2 改訂）ぶんだけ影も薄くなった——
+     * 1.28〜1.31 だったものが 1.12〜1.15 になり、α は 0.247 から 0.129 へ落ちた。
+     * **定義は変えていない。** 梯子が変わったので影が付いてきただけである。
+     */
+    expect(Math.min(...ratios)).toBeGreaterThan(1.11);
+    expect(Math.max(...ratios)).toBeLessThan(1.16);
   });
 });
 
