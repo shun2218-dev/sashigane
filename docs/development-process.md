@@ -92,6 +92,8 @@ pnpm check:tokens-standalone  # tokens.css が単体で成立すること（原�
 pnpm check:scss               # tokens.scss が SCSS としてコンパイルできること
 pnpm check:tailwind-adapter   # アダプタが期待どおりのユーティリティを出すこと
 pnpm check:token-usage        # プリミティブ参照と Tailwind 任意値記法を禁止する（原則3）
+pnpm check:style-values       # style 属性に生の値が無いこと（原則1、Issue #258）。
+                              # 例・Satori の画像・テーマビルダーは対象外
 pnpm check:sample-page        # サンプルページが生成した変数だけで組まれていること（Issue #61）
 pnpm check:token-values       # tokens.js の値が tokens.css とずれていないこと
 pnpm check:docs-refs          # 文書が挙げている名前と参照が実在すること（Issue #91）と
@@ -126,7 +128,7 @@ pnpm check:component-classes  # コンポーネントが書いたクラスを生
 
 `check:tokens-standalone` `check:tailwind-adapter` `check:token-usage` `check:token-values`
 `check:token-types` `check:output-header` `check:sample-page` `check:docs-refs`
-`check:component-classes` `check:public-language` `check:brand` は `dist/` を読むので、
+`check:component-classes` `check:public-language` `check:brand` `check:style-values` は `dist/` を読むので、
 先に `pnpm build:tokens` が要る。
 CI はその順で走らせている。
 

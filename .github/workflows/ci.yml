@@ -98,6 +98,12 @@ jobs:
       - name: トークンの使い方
         run: pnpm check:token-usage
 
+      # 原則1: style 属性に生の値を書いていないこと（Issue #258）
+      # check:token-usage は class 属性の位置から読み、style は原理的に見逃す
+      # 名前表（dist/tokens.layers.json）を許可リストに使うので build:tokens の後
+      - name: style の値
+        run: pnpm check:style-values
+
       # 原則3: コンポーネントが書いたクラスを「生成された CSS の側から」見る（決定6-2）
       # check:token-usage は class 属性の位置を起点に読むので、cva やオブジェクト引きなど
       # 間接を1段挟むと見えない。Tailwind に走査させて出力に規則を当てる
