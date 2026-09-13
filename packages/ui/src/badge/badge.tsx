@@ -45,7 +45,7 @@ const NEUTRAL_SURFACE = 'inset';
  * hover も focus も持たない。押せるようにしたいなら Button を使う。
  */
 const badge = cva(
-  'inline-flex w-fit items-center gap-1 rounded-full whitespace-nowrap border-1 border-border',
+  'inline-flex w-fit items-center gap-1 rounded-full whitespace-nowrap border-1 border-border font-emphasis',
   {
     variants: {
       /**

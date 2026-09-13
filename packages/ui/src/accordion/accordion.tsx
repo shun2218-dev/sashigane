@@ -114,7 +114,7 @@ export interface AccordionTriggerProps extends HTMLAttributes<HTMLElement> {
 export function AccordionTrigger({ className, children, ...props }: AccordionTriggerProps) {
   // `flex` が既定の三角を消す。`list-none` だけでは Safari で残る
   const classes =
-    'flex cursor-pointer list-none items-center justify-between gap-2 py-3 text-left';
+    'flex cursor-pointer list-none items-center justify-between gap-2 py-3 text-left font-emphasis';
   return (
     <summary
       data-sg-component="accordion-trigger"

@@ -70,8 +70,15 @@ export function Checkbox({ valid, className, ...props }: CheckboxProps) {
       <input
         type="checkbox"
         data-sg-component="checkbox"
-        data-sg-surface="inset"
-        className="peer size-full appearance-none rounded-sm border-0 outline-none"
+        /*
+          **無効のときだけ凹んだ面を宣言する。** Button と同じ形である。
+
+          入力できる状態では地を持たない——口を示すのは線である。
+          ただし無効のときは線が `border-subtle` まで弱まるので、
+          **線だけでは枠がほとんど見えない**（実測 1.54:1）。
+        */
+        data-sg-surface={props.disabled ? 'inset' : undefined}
+        className="peer size-full appearance-none rounded-sm border-0 bg-transparent outline-none"
         {...props}
       />
       {/*

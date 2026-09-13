@@ -155,7 +155,7 @@ export function Select({
   const state = stateOf(valid, aria['aria-invalid']);
   // 式の中で組み立てない。cva の呼び出しを補間の中へ直接置くと、
   // 静的解析の検査が読み切れずに落ちる
-  const outer = `${ring({ state })} relative flex w-full rounded-sm`;
+  const outer = `${ring({ state })} relative flex w-full rounded-lg`;
 
   /**
    * 値を書き込む。**書いてから本物の change を投げる。**
@@ -292,7 +292,14 @@ export function Select({
         role="combobox"
         id={triggerId}
         data-sg-component="select"
-        data-sg-surface="inset"
+        /*
+          **無効のときだけ凹んだ面を宣言する。** Button と同じ形である。
+
+          入力できる状態では地を持たない——口を示すのは線である。
+          ただし無効のときは線が `border-subtle` まで弱まるので、
+          **線だけでは枠がほとんど見えない**（実測 1.54:1）。
+        */
+        data-sg-surface={disabled ? 'inset' : undefined}
         aria-expanded={open}
         aria-controls={listId}
         aria-haspopup="listbox"
@@ -300,7 +307,7 @@ export function Select({
         aria-activedescendant={open ? optionId(active) : undefined}
         aria-required={required || undefined}
         disabled={disabled}
-        className="flex w-full items-center justify-between gap-2 rounded-sm border-0 px-3 py-2 text-body outline-none"
+        className="flex w-full items-center justify-between gap-2 rounded-lg border-0 bg-transparent px-3 py-2 text-body outline-none"
         onClick={() => setOpen((v) => !v)}
         onKeyDown={onKeyDown}
         onBlur={() => {
@@ -326,7 +333,7 @@ export function Select({
           aria-labelledby={triggerId}
           data-sg-component="select-list"
           data-sg-surface="overlay"
-          className="absolute top-full z-10 mt-1 max-h-screen w-full overflow-auto rounded-sm py-1 shadow-overlay"
+          className="absolute top-full z-10 mt-1 max-h-screen w-full overflow-auto rounded-lg py-1 shadow-overlay"
         >
           {options.length === 0 ? (
             /*

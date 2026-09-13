@@ -62,7 +62,7 @@ export default function ProductList() {
       <h1 className="text-heading-2 font-emphasis">商品一覧</h1>
 
       <div className="grid gap-8 md:grid-cols-4">
-        <aside data-sg-surface="surface" className="flex h-fit flex-col gap-4 rounded-lg p-4 md:col-span-1">
+        <aside data-sg-surface="surface" className="flex h-fit flex-col gap-4 rounded-xl p-4 md:col-span-1">
           <h2 className="text-label font-emphasis">絞り込み</h2>
 
           <fieldset className="flex flex-col gap-2">
@@ -125,12 +125,12 @@ export default function ProductList() {
                   <Link
                     href={`/demo/shop/products/${p.slug}`}
                     data-sg-interactive
-                    className="flex flex-col gap-3 rounded-sm p-2 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+                    className="flex flex-col gap-3 rounded-xl p-2 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
                   >
                     <ShopImage
                       seed={p.slug}
                       alt={p.name}
-                      className="aspect-square w-full rounded-sm object-cover"
+                      className="aspect-square w-full rounded-xl object-cover"
                     />
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={stockTone(p.stock)} size="sm">

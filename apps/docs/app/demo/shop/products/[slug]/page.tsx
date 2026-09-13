@@ -79,8 +79,8 @@ function ShopThumbnails({ photos }: { photos: { seed: string; alt: string }[] })
   if (count <= 1) return null;
   const thumbClass = (current: boolean) =>
     current
-      ? 'block w-16 shrink-0 rounded-sm outline-solid outline-2 outline-offset-2 outline-border-focus'
-      : 'block w-16 shrink-0 rounded-sm';
+      ? 'block w-16 shrink-0 rounded-lg outline-solid outline-2 outline-offset-2 outline-border-focus'
+      : 'block w-16 shrink-0 rounded-lg';
   return (
     <ul className="flex items-center gap-3 overflow-x-auto py-1">
       {photos.map((photo, index) => (
@@ -98,7 +98,7 @@ function ShopThumbnails({ photos }: { photos: { seed: string; alt: string }[] })
             <ShopImage
               seed={photo.seed}
               alt=""
-              className="aspect-square w-full rounded-sm object-cover"
+              className="aspect-square w-full rounded-xl object-cover"
             />
           </button>
         </li>
@@ -179,7 +179,7 @@ export default function ProductDetail() {
                   <ShopImage
                     seed={photo.seed}
                     alt={photo.alt}
-                    className="aspect-square w-full rounded-lg object-cover"
+                    className="aspect-square w-full rounded-xl object-cover"
                   />
                 </CarouselSlide>
               ))}
@@ -386,7 +386,7 @@ export default function ProductDetail() {
                     <ShopImage
                       seed={p.slug}
                       alt={p.name}
-                      className="aspect-4/3 w-full rounded-sm object-cover"
+                      className="aspect-4/3 w-full rounded-xl object-cover"
                     />
                     <CardHeader>
                       <CardTitle>{p.name}</CardTitle>

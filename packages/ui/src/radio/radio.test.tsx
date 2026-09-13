@@ -4,6 +4,7 @@ import { render } from 'vitest-browser-react';
 import { Field } from '../field/field.tsx';
 import { RadioGroup } from './radio-group.tsx';
 import { Radio } from './radio.tsx';
+import { lineContrast } from '../../test/contrast.ts';
 import '../../test/tokens.css';
 
 /**
@@ -137,10 +138,12 @@ describe('グループのラベル', () => {
 });
 
 describe('面と線', () => {
-  it('凹んだ面を宣言し、線は枠が描く', async () => {
+  it('地を持たず、線は枠が描く', async () => {
     const { container } = await render(onSurface(<Radio aria-label="x" name="s" value="a" />));
     const radio = radiosIn(container)[0] as HTMLInputElement;
-    expect(radio.getAttribute('data-sg-surface')).toBe('inset');
+    // **選ぶ口を示すのは線である。** 対比は Input の側で測っている
+    expect(radio.getAttribute('data-sg-surface')).toBeNull();
+    expect(getComputedStyle(radio).backgroundColor).toBe('rgba(0, 0, 0, 0)');
     const f = getComputedStyle(frameIn(container));
     const b = getComputedStyle(radio);
     expect(f.outlineStyle).toBe('solid');
@@ -181,5 +184,31 @@ describe('面と線', () => {
     const radius = Number.parseFloat(getComputedStyle(frame).borderTopLeftRadius);
     // **四角いと、1つだけ選ぶものだと形から分からない**
     expect(radius).toBeGreaterThanOrEqual(box.width / 2);
+  });
+
+  it('線が、まわりの地に対して 3:1 を満たす', async () => {
+    const { container } = await render(onSurface(<Radio aria-label="x" name="s" value="a" />));
+    const page = container.querySelector('[data-sg-surface="page"]');
+    const frame = container.querySelector('[data-sg-component="radio-frame"]');
+    if (!page || !frame) throw new Error('面か枠が描画されていません');
+    /*
+      **口は地を持たないので、示しているのは線だけである**（決定6-58）。
+      `ring` は共有しているが、**共有していることは測れない。**
+      どれか1つが独自の線を持ち始めても落ちるように、6つそれぞれで測る。
+    */
+    const ratio = lineContrast(frame, page);
+    expect(ratio, `線の対比が ${ratio.toFixed(2)}:1 しかない`).toBeGreaterThanOrEqual(3);
+  });
+
+  it('無効のときだけ凹んだ面を宣言する', async () => {
+    const off = await render(onSurface(<Radio aria-label="x" name="s" value="a" disabled />));
+    const el = off.container.querySelector('[data-sg-component="radio"]');
+    if (!el) throw new Error('描画されていません');
+    /*
+      **無効のとき、線は `border-subtle` まで弱まる**（実測 1.54:1）。
+      線だけでは枠がほとんど見えないので、Button と同じく凹んだ面を宣言する。
+    */
+    expect(el.getAttribute('data-sg-surface')).toBe('inset');
+    expect(getComputedStyle(el).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 });

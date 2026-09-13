@@ -3,6 +3,7 @@ import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { Field } from '../field/field.tsx';
 import { Select } from './select.tsx';
+import { lineContrast } from '../../test/contrast.ts';
 import '../../test/tokens.css';
 
 /**
@@ -296,5 +297,32 @@ describe('ラベルとの結びつけ', () => {
       return getComputedStyle(el);
     };
     expect(frame(bad.container).outlineColor).not.toBe(frame(plain.container).outlineColor);
+  });
+
+  it('線が、まわりの地に対して 3:1 を満たす', async () => {
+    const { container } = await render(onSurface(<Select aria-label="x" options={options} />));
+    const page = container.querySelector('[data-sg-surface="page"]');
+    const frame = container.querySelector('[data-sg-component="select-frame"]');
+    if (!page || !frame) throw new Error('面か枠が描画されていません');
+    /*
+      **口は地を持たないので、示しているのは線だけである**（決定6-58）。
+      `ring` は共有しているが、**共有していることは測れない。**
+    */
+    const ratio = lineContrast(frame, page);
+    expect(ratio, `線の対比が ${ratio.toFixed(2)}:1 しかない`).toBeGreaterThanOrEqual(3);
+  });
+
+  it('無効のときだけ凹んだ面を宣言する', async () => {
+    const on = await render(onSurface(<Select aria-label="x" options={options} />));
+    expect(
+      on.container.querySelector('[data-sg-component="select"]')?.getAttribute('data-sg-surface'),
+    ).toBeNull();
+
+    const off = await render(onSurface(<Select aria-label="x" options={options} disabled />));
+    const el = off.container.querySelector('[data-sg-component="select"]');
+    if (!el) throw new Error('描画されていません');
+    // **無効のとき線は `border-subtle` まで弱まる**（実測 1.54:1）。面で補う
+    expect(el.getAttribute('data-sg-surface')).toBe('inset');
+    expect(getComputedStyle(el).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 });
