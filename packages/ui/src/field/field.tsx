@@ -135,7 +135,7 @@ export function Field({
   const inline = layout === 'inline';
 
   const labelNode = (
-    <label data-sg-component="field-label" className="text-label" htmlFor={id}>
+    <label data-sg-component="field-label" className="text-label font-emphasis" htmlFor={id}>
       {label}
       {required ? (
         // 記号だけでは読み上げに届かない。**文字も一緒に置く**

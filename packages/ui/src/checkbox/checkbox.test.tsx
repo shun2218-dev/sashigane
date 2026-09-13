@@ -3,6 +3,7 @@ import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { Field } from '../field/field.tsx';
 import { Checkbox } from './checkbox.tsx';
+import { lineContrast } from '../../test/contrast.ts';
 import '../../test/tokens.css';
 
 /**
@@ -86,11 +87,12 @@ describe('入った印', () => {
 });
 
 describe('面と線', () => {
-  it('凹んだ面を宣言する', async () => {
+  it('地を持たない。口を示すのは線である', async () => {
     const { container } = await render(onSurface(<Checkbox aria-label="x" />));
     const box = boxIn(container);
-    expect(box.getAttribute('data-sg-surface')).toBe('inset');
-    expect(getComputedStyle(box).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    // **入っていないときは地を持たない。** 対比は Input の側で測っている
+    expect(box.getAttribute('data-sg-surface')).toBeNull();
+    expect(getComputedStyle(box).backgroundColor).toBe('rgba(0, 0, 0, 0)');
   });
 
   it('線は枠が描き、入力そのものは線を持たない', async () => {
@@ -187,5 +189,31 @@ describe('大きさ', () => {
     const mark = icon.getBoundingClientRect().width;
     expect(box, '枠の大きさ').toBe(16);
     expect(mark, '印の大きさ').toBeLessThan(box);
+  });
+
+  it('線が、まわりの地に対して 3:1 を満たす', async () => {
+    const { container } = await render(onSurface(<Checkbox aria-label="x" />));
+    const page = container.querySelector('[data-sg-surface="page"]');
+    const frame = container.querySelector('[data-sg-component="checkbox-frame"]');
+    if (!page || !frame) throw new Error('面か枠が描画されていません');
+    /*
+      **口は地を持たないので、示しているのは線だけである**（決定6-58）。
+      `ring` は共有しているが、**共有していることは測れない。**
+      どれか1つが独自の線を持ち始めても落ちるように、6つそれぞれで測る。
+    */
+    const ratio = lineContrast(frame, page);
+    expect(ratio, `線の対比が ${ratio.toFixed(2)}:1 しかない`).toBeGreaterThanOrEqual(3);
+  });
+
+  it('無効のときだけ凹んだ面を宣言する', async () => {
+    const off = await render(onSurface(<Checkbox aria-label="x" disabled />));
+    const el = off.container.querySelector('[data-sg-component="checkbox"]');
+    if (!el) throw new Error('描画されていません');
+    /*
+      **無効のとき、線は `border-subtle` まで弱まる**（実測 1.54:1）。
+      線だけでは枠がほとんど見えないので、Button と同じく凹んだ面を宣言する。
+    */
+    expect(el.getAttribute('data-sg-surface')).toBe('inset');
+    expect(getComputedStyle(el).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 });

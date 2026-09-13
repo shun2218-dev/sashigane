@@ -14,6 +14,10 @@
  */
 import { readFileSync } from 'node:fs';
 import {
+  DEFAULT_PRIMARY,
+  generatePalette,
+  hexToOklch,
+  tokens as tokenConstants,
   durationDwell,
   durationLoop,
   durationTransition,
@@ -70,6 +74,52 @@ const rowsIn = (heading, valueColumns) => {
   const re = new RegExp(`^\\|\\s*\\*{0,2}(\\d+)\\*{0,2}\\s*\\|${cell.repeat(valueColumns)}\\s*$`, 'gm');
   return [...section.matchAll(re)].map((m) => m.slice(1).map(Number));
 };
+
+/**
+ * 見出しの直後の表だけを読む。**`rows` / `rowsIn` では拾えない。**
+ *
+ * 面の梯子の表は1列目が名前（`page` など）で数字ではなく、
+ * さらに同じ節に列数の違う表が4つ並んでいる。**節で切るだけでは足りない。**
+ */
+const tableUnder = (heading, valueColumns) => {
+  const at = doc.indexOf(heading);
+  if (at < 0) {
+    errors.push(`decisions.md に「${heading}」が見つかりません`);
+    return [];
+  }
+  const end = doc.indexOf('\n#', at + heading.length);
+  const section = doc.slice(at, end < 0 ? doc.length : end);
+  const cell = '\\s*\\*{0,2}([\\d.]+)\\*{0,2}\\s*\\|';
+  const re = new RegExp(`^\\|\\s*([^|]+?)\\s*\\|${cell.repeat(valueColumns)}\\s*$`, 'gm');
+  return [...section.matchAll(re)].map((m) => [m[1], ...m.slice(2).map(Number)]);
+};
+
+/* ---------- 面の梯子の表: | 面 | 明色の段 | L | 暗色の段 | L | ---------- */
+
+const ladderRows = tableUnder('##### 面の梯子の明度', 4);
+const surfaces = tokenConstants.color.guarantees.surfaces;
+if (ladderRows.length !== surfaces.light.length) {
+  errors.push(
+    `面の梯子の表が ${ladderRows.length} 行しか見つかりません（期待 ${surfaces.light.length} 行）`,
+  );
+} else {
+  const palette = generatePalette(hexToOklch(DEFAULT_PRIMARY));
+  const L = (step) => Number(palette.neutral.byStep[step].L.toFixed(4));
+  ladderRows.forEach(([name, lightStep, lightL, darkStep, darkL], i) => {
+    const wantLight = surfaces.light[i];
+    const wantDark = surfaces.dark[i];
+    if (lightStep !== wantLight) {
+      errors.push(`面の梯子[${name}] の明色の段: 表 ${lightStep} / 生成器 ${wantLight}`);
+    } else if (lightL !== L(wantLight)) {
+      errors.push(`面の梯子[${name}] の明色の L: 表 ${lightL} / 生成器 ${L(wantLight)}`);
+    }
+    if (darkStep !== wantDark) {
+      errors.push(`面の梯子[${name}] の暗色の段: 表 ${darkStep} / 生成器 ${wantDark}`);
+    } else if (darkL !== L(wantDark)) {
+      errors.push(`面の梯子[${name}] の暗色の L: 表 ${darkL} / 生成器 ${L(wantDark)}`);
+    }
+  });
+}
 
 /* ---------- 幅の表: | 段 | rem | px | ---------- */
 
@@ -247,4 +297,5 @@ console.log(`✓ font-size 表 ${fsRows.length} 行が生成器と一致`);
 console.log(`✓ line-height 表 ${lhRows.length} 行 × ${Object.keys(leadingFamilies).length} 系統が生成器と一致`);
 console.log(`✓ letter-spacing 表 ${lsRows.length} 行が生成器と一致`);
 console.log(`✓ elevation 表 ${elRows.length} 行が生成器と一致`);
+console.log(`✓ 面の梯子の表 ${ladderRows.length} 行が生成器と一致`);
 console.log(`✓ README の概要表 ${readmeExpectations.length} 項目が生成器と一致`);

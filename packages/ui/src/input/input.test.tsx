@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { Input } from './input.tsx';
+import { lineContrast } from '../../test/contrast.ts';
 import '../../test/tokens.css';
 
 /**
@@ -9,7 +10,7 @@ import '../../test/tokens.css';
  *
  * 測るのは3つである。
  *
- *   **凹んだ面を宣言すること** — 背景だけを塗ると前景が置き去りになる
+ *   **地を持たないこと、そして線が 3:1 を満たすこと** — 口を示すのは線である
  *   **誤りの線が文字色でないこと** — 取り違えは検査では捕まらない
  *   **線が1本しか無いこと** — 状態とフォーカスで別々の仕組みを使うと2本出る
  */
@@ -31,21 +32,49 @@ describe('前提', () => {
 });
 
 describe('面', () => {
-  it('凹んだ面を宣言する', async () => {
+  it('地を持たない。口を示すのは線である', async () => {
     const { container } = await render(onSurface(<Input aria-label="x" />));
     const el = inputIn(container);
+    /*
+     * **凹んだ面を宣言していた。** 地を1段深くして「入力できる場所」を示す形である。
+     * 測ると、面の梯子の2段目は地としては濃く、入力欄が灰色の板になっていた。
+     *
+     * **地を外すと、示すものが線だけになる。** だから線の対比を下で測る——
+     * 外形だけで部品を識別させる以上、そこが 3:1 を満たしていなければならない。
+     */
+    expect(el.getAttribute('data-sg-surface')).toBeNull();
+    expect(getComputedStyle(el).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+  });
+
+  it('無効のときだけ凹んだ面を宣言する', async () => {
+    const on = await render(onSurface(<Input aria-label="x" />));
+    expect(inputIn(on.container).getAttribute('data-sg-surface')).toBeNull();
+
+    const off = await render(onSurface(<Input aria-label="x" disabled />));
+    const el = inputIn(off.container);
+    /*
+      **無効のとき、線は `border-subtle` まで弱まる**（実測 1.54:1）。
+      線だけでは枠がほとんど見えないので、Button と同じく凹んだ面を宣言する。
+    */
     expect(el.getAttribute('data-sg-surface')).toBe('inset');
-    // **面が塗っていること。** 透明なら宣言が効いていない
     expect(getComputedStyle(el).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 
-  it('ページの地とは違う色になる', async () => {
+  it('線が、まわりの地に対して 3:1 を満たす', async () => {
     const { container } = await render(onSurface(<Input aria-label="x" />));
     const page = container.querySelector('[data-sg-surface="page"]');
     if (!page) throw new Error('面が無い');
-    const bg = (el: Element) => getComputedStyle(el).backgroundColor;
-    // **凹んで見えないと、入力できる場所だと分からない**
-    expect(bg(inputIn(container))).not.toBe(bg(page));
+    const frame = container.querySelector('[data-sg-component="input-frame"]');
+    if (!frame) throw new Error('枠が描画されていません');
+    /*
+     * **WCAG 1.4.11 は、部品を識別するのに必要な部分に 3:1 を求める。**
+     * 地を持たない以上、識別しているのは線だけである。
+     *
+     * **通す側を測っている**（教訓2）。割る側だけを持っていると、
+     * 線を薄くしたときに落ちるものが無い。
+     */
+    const ratio = lineContrast(frame, page);
+    expect(ratio, `線の対比が ${ratio.toFixed(2)}:1 しかない`).toBeGreaterThanOrEqual(3);
   });
 });
 

@@ -66,7 +66,7 @@ export default function ShopTop() {
           <ShopWidth className="-mt-8 pb-0 sm:mt-0 sm:pb-12">
             <div
               data-sg-surface="surface"
-              className="flex max-w-45rem flex-col gap-4 rounded-lg p-6 shadow-overlay sm:p-8"
+              className="flex max-w-45rem flex-col gap-4 rounded-xl p-6 shadow-overlay sm:p-8"
             >
               <h1 className="text-heading-1 font-emphasis sm:text-display">焙煎したてを、そのまま</h1>
               <p className="text-body text-muted">
@@ -103,12 +103,12 @@ export default function ShopTop() {
                 <Link
                     href={`/demo/shop/products/${p.slug}`}
                     data-sg-interactive
-                    className="flex flex-col gap-3 rounded-sm p-2 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
+                    className="flex flex-col gap-3 rounded-xl p-2 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-focus"
                   >
                   <ShopImage
                     seed={p.slug}
                     alt={p.name}
-                    className="aspect-square w-full rounded-sm object-cover"
+                    className="aspect-square w-full rounded-xl object-cover"
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone={stockTone(p.stock)} size="sm">
@@ -165,7 +165,7 @@ export default function ShopTop() {
                       seed={s.key}
                       alt={s.title}
                       responsive
-                      className="aspect-16/9 w-full rounded-sm object-cover"
+                      className="aspect-16/9 w-full rounded-xl object-cover"
                     />
                     <p className="text-label font-emphasis">{s.title}</p>
                     <p className="text-caption text-muted">{s.body}</p>

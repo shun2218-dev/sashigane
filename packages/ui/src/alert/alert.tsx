@@ -73,7 +73,7 @@ const NEUTRAL_SURFACE = 'inset';
  * 枠の前景を継ぐ。線は共有のものを使う（`internal/focus.ts`）。
  * **色を持たないボタン**が Button に無いので、箱だけここで書いている。
  */
-const dismiss = `shrink-0 cursor-pointer rounded-sm p-1 ${FOCUS_RING}`;
+const dismiss = `shrink-0 cursor-pointer rounded-lg p-1 ${FOCUS_RING}`;
 
 /**
  * その場に残る知らせ。
@@ -88,7 +88,7 @@ const dismiss = `shrink-0 cursor-pointer rounded-sm p-1 ${FOCUS_RING}`;
  * 凹んだ面の上に置くと、中立の枠は背景と同化する。
  * 面の段は凹んだところで底に着くので、その上に凹んだ面を宣言しても深くならない。
  */
-const alert = cva('flex w-full items-start gap-3 rounded-lg border-1 border-border p-4', {
+const alert = cva('flex w-full items-start gap-3 rounded-xl border-1 border-border p-4', {
   variants: {
     /**
      * どのトーンで色を付けるか。**既定は中立。**

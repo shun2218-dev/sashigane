@@ -78,7 +78,7 @@ export function RadioGroup({
       className={className ? `${classes} ${className}` : classes}
       {...props}
     >
-      <legend data-sg-component="radio-group-label" className="text-label">
+      <legend data-sg-component="radio-group-label" className="text-label font-emphasis">
         {label}
       </legend>
       {children}

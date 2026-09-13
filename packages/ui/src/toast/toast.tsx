@@ -248,7 +248,7 @@ export function Toaster() {
             className={
               // **1本の線で重みを表す。** 色だけで伝えないよう、文言も一緒に出る
               `pointer-events-auto relative flex max-w-full items-start gap-2 overflow-hidden ` +
-              `rounded-sm p-3 shadow-overlay ` +
+              `rounded-xl p-3 shadow-overlay ` +
               `outline-solid outline-offset-0 outline-2 ${TONE_CLASS[toast.tone]} ` +
               // 表示と消去のアニメーションは属性が持つ。クラスでは書けない
               `opacity-100`

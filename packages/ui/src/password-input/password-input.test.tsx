@@ -3,6 +3,7 @@ import { userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { Field } from '../field/field.tsx';
 import { PasswordInput } from './password-input.tsx';
+import { lineContrast } from '../../test/contrast.ts';
 import '../../test/tokens.css';
 
 /**
@@ -104,10 +105,12 @@ describe('フォームと押せないとき', () => {
 });
 
 describe('面と線', () => {
-  it('凹んだ面を宣言し、線は枠が描く', async () => {
+  it('地を持たず、線は枠が描く', async () => {
     const { container } = await render(onSurface(<PasswordInput aria-label="パスワード" />));
     const input = inputIn(container);
-    expect(input.getAttribute('data-sg-surface')).toBe('inset');
+    // **口を示すのは線である。** 対比は Input の側で測っている
+    expect(input.getAttribute('data-sg-surface')).toBeNull();
+    expect(getComputedStyle(input).backgroundColor).toBe('rgba(0, 0, 0, 0)');
     const frame = container.querySelector('[data-sg-component="password-input-frame"]');
     if (!frame) throw new Error('枠が描画されていません');
     const f = getComputedStyle(frame);
@@ -131,5 +134,31 @@ describe('面と線', () => {
     // **重なると、どちらも押しにくく読み取りにくい**
     const overlaps = a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
     expect(overlaps, '印と切り替えが重なっている').toBe(false);
+  });
+
+  it('線が、まわりの地に対して 3:1 を満たす', async () => {
+    const { container } = await render(onSurface(<PasswordInput aria-label="パスワード" />));
+    const page = container.querySelector('[data-sg-surface="page"]');
+    const frame = container.querySelector('[data-sg-component="password-input-frame"]');
+    if (!page || !frame) throw new Error('面か枠が描画されていません');
+    /*
+      **口は地を持たないので、示しているのは線だけである**（決定6-58）。
+      `ring` は共有しているが、**共有していることは測れない。**
+      どれか1つが独自の線を持ち始めても落ちるように、6つそれぞれで測る。
+    */
+    const ratio = lineContrast(frame, page);
+    expect(ratio, `線の対比が ${ratio.toFixed(2)}:1 しかない`).toBeGreaterThanOrEqual(3);
+  });
+
+  it('無効のときだけ凹んだ面を宣言する', async () => {
+    const off = await render(onSurface(<PasswordInput aria-label="パスワード" disabled />));
+    const el = off.container.querySelector('[data-sg-component="password-input"]');
+    if (!el) throw new Error('描画されていません');
+    /*
+      **無効のとき、線は `border-subtle` まで弱まる**（実測 1.54:1）。
+      線だけでは枠がほとんど見えないので、Button と同じく凹んだ面を宣言する。
+    */
+    expect(el.getAttribute('data-sg-surface')).toBe('inset');
+    expect(getComputedStyle(el).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 });

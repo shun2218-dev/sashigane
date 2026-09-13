@@ -103,7 +103,7 @@ import { Spinner } from '../spinner/spinner.tsx';
  * **button の中に a が入る形にはならない。**
  */
 const button = cva(
-  'inline-flex items-center justify-center gap-2 rounded-sm py-2 ' +
+  'inline-flex items-center justify-center gap-2 rounded-lg py-2 font-emphasis ' +
     // **何を動かすかを決める。** `duration-*` だけだと transition-property が既定の
     // `all` になり、**outline-color まで遷移する。** focus の輪郭が一瞬遅れて付き、
     // 計算値も遷移前の値になる（実ブラウザのテストが捕まえた）。
