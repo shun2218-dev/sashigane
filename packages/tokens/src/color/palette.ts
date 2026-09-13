@@ -41,18 +41,54 @@ export interface Warning {
 }
 
 /**
- * 段 → 明度。anchorStep を anchorL に固定し、上下をそれぞれ等間隔で埋める。
+ * 段 → 明度。anchorStep を anchorL に固定し、上下を埋める。
  *
  * 等間隔ではなく折れ線にしているのは、anchorL が
  * 「明色の面に対し最悪色相でも本文 4.5:1」の境界だからである（決定5-2）。
  * 保証境界を段の定義に含めることで、コントラストが構造的に決まる。
+ *
+ * **面の帯は等間隔ではない**（決定5-2 改訂）。段の位置を `backgroundCurve` 乗してから
+ * 配る。明色端が面の住む側だからである——面が1段ごとに同じ量だけ暗くなると、
+ * **3段目にはもう面として読めない濃さになる。**
+ *
+ * **曲げるのは保証が見る段より上だけである。**
+ * 段400（マーク）と段500（本文）はアンカーへの直線の上に残り、暗色側も動かない。
+ * ここを曲げると段400 が明るくなってページ地に対する 3:1 を割り、
+ * 償うためにアンカーが暗くなる。**するとアンカーは暗色側でも段500 なので、
+ * 暗色の下端が押し下げられて潰れる**（curve=2 で下端が探索の床 0.02 に着いた）。
+ *
+ * 下半分は等間隔のままである。こちらに住むのは文字と塗りで、
+ * **面のように「薄いままでいる」必要が無い。**
  */
 export const lightnessesFor = (anchorL: number, bottom: number): number[] => {
-  const { top, anchorStep } = cfg.lightness;
+  const { top, anchorStep, backgroundCurve } = cfg.lightness;
   const a = cfg.steps.indexOf(anchorStep as Step);
+  /*
+   * **保証が見る最も浅い段。** 面の帯はここを下端として配る。
+   *
+   * `a - 1` と書いてはならない。**いま両方 400 を指すのは偶然である。**
+   * 要件の表に浅い段を足した瞬間、曲率が保証の段を覆って端点の解が動く——
+   * この改訂が避けたはずの「アンカーが暗くなって暗色の下端が潰れる」が戻る。
+   */
+  const mark = Math.min(
+    ...[...cfg.guarantees.light, ...cfg.guarantees.dark].map((r) =>
+      cfg.steps.indexOf(r.step as Step),
+    ),
+  );
+  /*
+   * **黙って NaN を配らない。** `mark` が 0 だと `0 / 0` が全段に伝播し、
+   * `oklch(NaN ...)` がそのまま出力される。**エラーは出ない**（教訓4）。
+   */
+  if (mark < 1 || mark >= a) {
+    throw new Error(
+      `保証が見る最も浅い段（index ${mark}）が面の帯の下端になりません。\n` +
+        `  上端とアンカー段（index ${a}）の間に無ければ、明度の配分が定義できません。`,
+    );
+  }
+  const markL = top - ((top - anchorL) / a) * mark;
   return cfg.steps.map((_, i) =>
-    i <= a
-      ? top - ((top - anchorL) / a) * i
+    i <= mark
+      ? top - (top - markL) * (i / mark) ** backgroundCurve
       : anchorL - ((anchorL - bottom) / (cfg.steps.length - 1 - a)) * (i - a),
   );
 };
@@ -311,6 +347,18 @@ const bestStepAssignment = (
   }
   return best;
 };
+
+/**
+ * 既定の primary。**利用者はテーマビルダーで選び直す。**
+ *
+ * 警告が出ない色を選んでいる。`#3b82f6`（一般的な青）は info の色相と 18° しか離れず、
+ * `status-too-close-to-primary` が出る。**既定値が警告を出す状態で配布しない。**
+ *
+ * **ここに置いてあるのは、生成物だけのものではないからである。**
+ * 文書の数値表を検査する側も同じ色で解き直す必要があり、
+ * 写しを作ると片方だけ直したときに黙ってずれる。
+ */
+export const DEFAULT_PRIMARY = '#0ea5e9';
 
 export interface Palette {
   /** 生成のたびに解き直したアンカー段の明度 */

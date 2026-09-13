@@ -10,6 +10,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  DEFAULT_PRIMARY,
   generatePalette,
   hexToOklch,
   toScss,
@@ -19,14 +20,6 @@ import {
   toTypeDefinitions,
   toValuesJs,
 } from './src/index.ts';
-
-/**
- * 既定の primary。利用者はテーマビルダーで選び直す。
- *
- * 警告が出ない色を選んでいる。#3b82f6（一般的な青）は info の色相と 18° しか離れず
- * status-too-close-to-primary が出る。**既定値が警告を出す状態で配布しない。**
- */
-const DEFAULT_PRIMARY = '#0ea5e9';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, 'dist');

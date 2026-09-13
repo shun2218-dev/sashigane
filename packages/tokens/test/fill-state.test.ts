@@ -168,9 +168,10 @@ describe('淡い塗り（決定5-16）', () => {
     expect(worst).toBeLessThan(g.textMin);
   });
 
-  it('中間色は text-default だけが載る（muted と faint は割る）', () => {
+  it('中間色は text-default と text-muted が載る（faint は割る）', () => {
     let worstDefault = Infinity;
     let worstMuted = Infinity;
+    let worstFaint = Infinity;
     for (const mode of ['light', 'dark'] as const) {
       for (const p of palettes) {
         for (const d of namedDepths) {
@@ -185,13 +186,23 @@ describe('淡い塗り（決定5-16）', () => {
               worstMuted,
               contrastBetween(p.neutral.byStep[r.text.muted]!, bg),
             );
+            worstFaint = Math.min(
+              worstFaint,
+              contrastBetween(p.neutral.byStep[r.text.faint]!, bg),
+            );
           }
         }
       }
     }
     expect(worstDefault).toBeGreaterThanOrEqual(g.textMin);
+    /*
+     * **muted はもともと割っていた。** 面の帯の配分を変えて淡い塗りが浅くなり、
+     * 載るようになった（決定5-16 改訂）。**通す側も測る**——
+     * 割る側だけを持っていると、載るはずのものが落ちても気づけない（教訓2）。
+     */
+    expect(worstMuted).toBeGreaterThanOrEqual(g.textMin);
     // **申告した制約そのもの。** 載せられるようになったら決定を見直す
-    expect(worstMuted).toBeLessThan(g.textMin);
+    expect(worstFaint).toBeLessThan(g.textMin);
   });
 
   it('淡い塗りは面のすぐ外側の段。深い面では一緒に動く', () => {
